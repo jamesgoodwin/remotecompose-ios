@@ -343,6 +343,15 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_DRAW_CONTENT = 174
 
     /**
+     * `Operations.MODIFIER_MARQUEE` — reached via `.then(MarqueeModifier(iterations, animationMode,
+     * repeatDelayMillis, initialDelayMillis, spacing, velocity))` (not a direct method either) —
+     * writes `[iterations:i32][animationMode:i32][repeatDelay:f32][initialDelay:f32][spacing:f32]
+     * [velocity:f32]`, confirmed via `MarqueeModifier(1, 0, 1000f, 500f, 8f, 30f)` decoding to
+     * exactly `[1, 0, 1000.0, 500.0, 8.0, 30.0]`.
+     */
+    private const val OP_MODIFIER_MARQUEE = 228
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -597,6 +606,12 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_DRAW_CONTENT -> Unit // no payload
 
+                OP_MODIFIER_MARQUEE -> {
+                    reader.readS32() // iterations
+                    reader.readS32() // animationMode
+                    repeat(4) { reader.readFloat32() } // repeatDelay, initialDelay, spacing, velocity
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -608,7 +623,7 @@ object RealRemoteComposeParser {
                         "ModifierRoundedClipRect/ModifierMultiClick/ModifierTouchDown/" +
                         "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn/" +
                         "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex/ModifierRipple/" +
-                        "ModifierDrawContent)",
+                        "ModifierDrawContent/ModifierMarquee)",
                 )
             }
         }
