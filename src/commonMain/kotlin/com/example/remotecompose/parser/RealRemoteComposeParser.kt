@@ -496,6 +496,22 @@ object RealRemoteComposeParser {
      */
     private const val GRAPHICS_LAYER_ALPHA_TAG = 11 or 0x400
 
+    // The rest of GraphicsLayerModifierOperation's float-valued attribute tags this parser now
+    // also gives real effect to — source-confirmed (javap on the real
+    // GraphicsLayerModifierOperation class) as SCALE_X=0, SCALE_Y=1, ROTATION_Z=4,
+    // TRANSLATION_X=7, TRANSLATION_Y=8, each OR'd with the same `0x400` float-value tag bit as
+    // [GRAPHICS_LAYER_ALPHA_TAG]. Unlike ALPHA (whose effect — a compositing layer — needs no
+    // pivot), scale/rotation are applied about this container's own inferred content-bounds
+    // center (this renderer has no measure pass to get a real layout box from, the same
+    // approximation [OP_MODIFIER_BACKGROUND] already makes) — so, unlike every other modifier's
+    // immediate emission, they're deferred to this container's own `OP_CONTAINER_END`, once that
+    // bounding box is known; see [ScopeFrame.glScaleX] etc. and their use in `OP_CONTAINER_END`.
+    private const val GRAPHICS_LAYER_SCALE_X_TAG = 0 or 0x400
+    private const val GRAPHICS_LAYER_SCALE_Y_TAG = 1 or 0x400
+    private const val GRAPHICS_LAYER_ROTATION_Z_TAG = 4 or 0x400
+    private const val GRAPHICS_LAYER_TRANSLATION_X_TAG = 7 or 0x400
+    private const val GRAPHICS_LAYER_TRANSLATION_Y_TAG = 8 or 0x400
+
     // `RowLayout`/`ColumnLayout`'s shared positioning-mode ordinals (source-confirmed identical in
     // both classes) — the raw ints `horizontalPositioning`/`verticalPositioning` carry. TOP/BOTTOM
     // are only meaningful on Row's verticalPositioning (cross axis); START/END are only meaningful
@@ -671,6 +687,15 @@ object RealRemoteComposeParser {
             // makes CENTER/END/SPACE_* along the main axis mean anything.
             var explicitWidthPx: Float? = null
             var explicitHeightPx: Float? = null
+            // Set by OP_MODIFIER_GRAPHICS_LAYER when this container's attribute list carries a
+            // SCALE_X/SCALE_Y/ROTATION_Z/TRANSLATION_X/TRANSLATION_Y entry; consumed at this
+            // frame's own OP_CONTAINER_END, once contentBounds() can resolve a real pivot for
+            // scale/rotation from this container's now-finished children.
+            var glScaleX: Float? = null
+            var glScaleY: Float? = null
+            var glRotationZ: Float? = null
+            var glTranslationX: Float? = null
+            var glTranslationY: Float? = null
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
@@ -1286,7 +1311,37 @@ object RealRemoteComposeParser {
                         if (frame.layoutAxis != null) {
                             arrangeChildren(frame)
                         }
+                        // MODIFIER_GRAPHICS_LAYER's SCALE_X/SCALE_Y/ROTATION_Z/TRANSLATION_X/
+                        // TRANSLATION_Y: wrap this frame's now-finished content (background
+                        // included, since a real graphicsLayer transform applies to the whole
+                        // composable box) in MatrixSave/Translate/Rotate/Scale/MatrixRestore,
+                        // pivoting scale/rotation on the inferred content-bounds center — the same
+                        // bounds approximation MODIFIER_BACKGROUND uses, since this renderer has
+                        // no measure pass to get a real layout box's center from instead. The
+                        // MatrixRestore is appended *after* [frame.cleanupOpcodes] below (not here)
+                        // so it closes outermost, keeping this the outermost save/restore pair
+                        // around any MODIFIER_OFFSET/VISIBILITY/GRAPHICS_LAYER-ALPHA opened earlier
+                        // inside this same frame.
+                        var transformWrapped = false
+                        val sx = frame.glScaleX
+                        val sy = frame.glScaleY
+                        val rz = frame.glRotationZ
+                        val tx = frame.glTranslationX
+                        val ty = frame.glTranslationY
+                        if (sx != null || sy != null || rz != null || tx != null || ty != null) {
+                            contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
+                                val pivotX = (bounds[0] + bounds[2]) / 2f
+                                val pivotY = (bounds[1] + bounds[3]) / 2f
+                                val wrap = mutableListOf<Opcode>(Opcode.MatrixSave)
+                                if (tx != null || ty != null) wrap += Opcode.Translate(tx ?: 0f, ty ?: 0f)
+                                if (rz != null) wrap += Opcode.Rotate(rz, pivotX, pivotY)
+                                if (sx != null || sy != null) wrap += Opcode.Scale(sx ?: 1f, sy ?: 1f, pivotX, pivotY)
+                                opcodes.addAll(frame.startIndex, wrap)
+                                transformWrapped = true
+                            }
+                        }
                         opcodes.addAll(frame.cleanupOpcodes)
+                        if (transformWrapped) opcodes += Opcode.MatrixRestore
                         val parent = frame.parent
                         if (parent != null && parent.layoutAxis != null) {
                             parent.childRanges.add(intArrayOf(frame.startIndex, opcodes.size))
@@ -1383,18 +1438,27 @@ object RealRemoteComposeParser {
                 }
 
                 OP_MODIFIER_GRAPHICS_LAYER -> {
-                    // Real semantic effect for the ALPHA attribute specifically (tag ==
-                    // GRAPHICS_LAYER_ALPHA_TAG): opens a real compositing layer around this
+                    // Real semantic effect for ALPHA (opens a real compositing layer around this
                     // container's children, closed by a MatrixRestore queued on this container's
-                    // own scope — the same mechanism MODIFIER_OFFSET/MODIFIER_VISIBILITY use.
-                    // Every other attribute (scale/rotation/shadow/blur/etc.) is still just
-                    // byte-consumed, since those need real box bounds this renderer doesn't have.
+                    // own scope — the same mechanism MODIFIER_OFFSET/MODIFIER_VISIBILITY use) and
+                    // for SCALE_X/SCALE_Y/ROTATION_Z/TRANSLATION_X/TRANSLATION_Y (stashed on this
+                    // container's own [ScopeFrame], applied at its OP_CONTAINER_END once a real
+                    // pivot can be inferred — see the frame's `glScaleX` etc. KDoc). Every other
+                    // attribute (shadow/blur/camera distance/shape/etc.) is still just
+                    // byte-consumed, since those have no equivalent among this renderer's Opcodes.
                     val count = reader.readS32()
                     var alpha: Float? = null
                     repeat(count) {
                         val tag = reader.readS32() // attribute key, OR'd with 0x400 if float-valued
                         val rawValue = reader.readS32() // int or float bit pattern
-                        if (tag == GRAPHICS_LAYER_ALPHA_TAG) alpha = Float.fromBits(rawValue)
+                        when (tag) {
+                            GRAPHICS_LAYER_ALPHA_TAG -> alpha = Float.fromBits(rawValue)
+                            GRAPHICS_LAYER_SCALE_X_TAG -> scopeStack.lastOrNull()?.glScaleX = Float.fromBits(rawValue)
+                            GRAPHICS_LAYER_SCALE_Y_TAG -> scopeStack.lastOrNull()?.glScaleY = Float.fromBits(rawValue)
+                            GRAPHICS_LAYER_ROTATION_Z_TAG -> scopeStack.lastOrNull()?.glRotationZ = Float.fromBits(rawValue)
+                            GRAPHICS_LAYER_TRANSLATION_X_TAG -> scopeStack.lastOrNull()?.glTranslationX = Float.fromBits(rawValue)
+                            GRAPHICS_LAYER_TRANSLATION_Y_TAG -> scopeStack.lastOrNull()?.glTranslationY = Float.fromBits(rawValue)
+                        }
                     }
                     alpha?.let {
                         opcodes += Opcode.SaveLayerAlpha(it)

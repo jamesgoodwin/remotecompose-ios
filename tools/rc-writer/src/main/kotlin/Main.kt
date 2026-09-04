@@ -452,6 +452,31 @@ private fun buildCoverageSample() {
     writer.drawRect(20f, 28f, 35f, 38f)
     writer.endBox()
 
+    // GraphicsLayerModifierOperation.SCALE_X=0/SCALE_Y=1: an 8x8 square scaled 2x should render as
+    // a 16x16 square centered on the *original* square's own center (61-69 stays its vertical
+    // midline at y=65) — proof this parser infers a real pivot from the container's own content
+    // bounds, not just leaving the attribute byte-consumed like every attribute here used to be.
+    val graphicsLayerScale = GraphicsLayerModifier()
+    graphicsLayerScale.setFloatAttribute(0, 2f) // SCALE_X
+    graphicsLayerScale.setFloatAttribute(1, 2f) // SCALE_Y
+    writer.startBox(RecordingModifier().then(graphicsLayerScale), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFFFDD835.toInt())
+        .commit()
+    writer.drawRect(45f, 61f, 53f, 69f)
+    writer.endBox()
+
+    // GraphicsLayerModifierOperation.ROTATION_Z=4: a square rotated 45 degrees about its own
+    // inferred center should read as a diamond, not a square translated/clipped off to one side.
+    val graphicsLayerRotate = GraphicsLayerModifier()
+    graphicsLayerRotate.setFloatAttribute(4, 45f) // ROTATION_Z
+    writer.startBox(RecordingModifier().then(graphicsLayerRotate), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF1E88E5.toInt())
+        .commit()
+    writer.drawRect(60f, 61f, 76f, 69f)
+    writer.endBox()
+
     writer.startBox(RecordingModifier().then(WidthInModifier(1, 5f, 40f)), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF4527A0.toInt())
