@@ -1,6 +1,7 @@
 import androidx.compose.remote.creation.JvmRcPlatformServices
 import androidx.compose.remote.creation.RemoteComposeWriter
 import androidx.compose.remote.creation.RemotePath
+import androidx.compose.remote.creation.actions.HostAction
 import androidx.compose.remote.creation.modifiers.RecordingModifier
 import java.io.File
 
@@ -112,6 +113,13 @@ fun main() {
         .setColor(0xFF5D4037.toInt())
         .commit()
     writer.drawRect(170f, 148f, 190f, 163f)
+    writer.endBox()
+
+    writer.startBox(RecordingModifier().onClick(HostAction(9)), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFFEC407A.toInt())
+        .commit()
+    writer.drawRect(190f, 2f, 199f, 11f)
     writer.endBox()
 
     val bytes = writer.encodeToByteArray()

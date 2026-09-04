@@ -215,6 +215,23 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_HEIGHT = 67
 
     /**
+     * `Operations.MODIFIER_CLICK` — `RecordingModifier.onClick(vararg Action)` writes **no
+     * payload of its own**; it's purely a marker opening a nested action list (one or more
+     * [OP_HOST_ACTION]-shaped ops, or other action kinds this parser doesn't decode) that runs
+     * when the component is tapped, closed by a generic [OP_CONTAINER_END] — the same closing
+     * opcode the layout containers use, reused here for a third kind of scope.
+     *
+     * A real component-level click handler like this is architecturally the same problem as
+     * [OP_LAYOUT_COLUMN]'s dynamic arrangement: knowing *which pixels* trigger it requires the
+     * measure/layout pass this renderer doesn't have, unlike [OP_CLICK_AREA]'s explicit rect. So
+     * this is consumed as a pass-through, not wired into [com.example.remotecompose.model.Opcode.ActionClick].
+     */
+    private const val OP_MODIFIER_CLICK = 59
+
+    /** `Operations.HOST_ACTION` — `HostAction(actionId)` writes `[actionId:i32]`. */
+    private const val OP_HOST_ACTION = 209
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -418,12 +435,17 @@ object RealRemoteComposeParser {
 
                 OP_CONTAINER_END -> Unit // no payload
 
+                OP_MODIFIER_CLICK -> Unit // no payload — just opens a nested action list
+
+                OP_HOST_ACTION -> reader.readS32() // actionId
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
-                        "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight)",
+                        "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
+                        "ModifierClick/HostAction)",
                 )
             }
         }
