@@ -63,8 +63,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `startBox`/`endBox` child — all three drawn at the *identical* raw `(22, 150)` top-left, two of
  * them the same height — so real horizontal spread (using the row's declared 80f width as the
  * space to distribute) and real vertical centering against the tallest child are both this
- * renderer's own alignment-mode handling, not document-authored placement), not by anything in
- * this codebase. Shared by every platform demo entry point
+ * renderer's own alignment-mode handling, not document-authored placement, and a purple triangular
+ * `drawRect` clipped by a raw `writer.save()`/`writer.addClipPath(pathId)`/`writer.restore()` (the
+ * clip path itself registered via `writer.addPathData(RemotePath)`, not drawn on its own) — only
+ * the triangle inside the clip path should paint, the rest of the oversized rect should not), not
+ * by anything in this codebase. Shared by every platform demo entry point
  * (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -118,6 +121,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "1sr///+q/////wAAAAAAAAAAyf///6koAAAAAgAAAAT/GXbSKkAAAABCtAAAQUAAAELIAADW1sr///+o/////wAAAAAAAAAAyf///6coAAAAAgAAAAT/" +
             "OI48KkAAAABCtAAAQUAAAELIAADW1tbWy////6b/////AAAABgAAAAIAAAAAEAAAAABCoAAAyf///6XK////pP////8AAAAAAAAAAMn///+jKAAAAAIA" +
             "AAAE/8YoKCpBsAAAQxYAAEHwAABDHgAA1tbK////ov////8AAAAAAAAAAMn///+hKAAAAAIAAAAE//moJSpBsAAAQxYAAEHwAABDJgAA1tbK////oP//" +
-            "//8AAAAAAAAAAMn///+fKAAAAAIAAAAE/wCDjypBsAAAQxYAAEHwAABDHgAA1tbW1g=="
+            "//8AAAAAAAAAAMn///+fKAAAAAIAAAAE/wCDjypBsAAAQxYAAEHwAABDHgAA1tbW1oJ7AAAANAAAAA7/gAAKQtIAAEMoAAD/gAALAAAAAAAAAABC+gAA" +
+            "QxYAAP+AAAsAAAAAAAAAAEL6AABDKAAA/4AADyYAAAA0KAAAAAIAAAAE/2obmipC0gAAQxYAAEMCAABDKgAAgw=="
     )
 }

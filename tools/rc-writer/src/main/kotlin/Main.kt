@@ -551,6 +551,18 @@ private fun buildCoverageSample() {
     writer.endBox()
     writer.endRow()
 
+    writer.save()
+    val clipTriangle = RemotePath()
+    clipTriangle.moveTo(105f, 168f)
+    clipTriangle.lineTo(125f, 150f)
+    clipTriangle.lineTo(125f, 168f)
+    clipTriangle.close()
+    val clipPathId = writer.addPathData(clipTriangle)
+    writer.addClipPath(clipPathId)
+    writer.getRcPaint().setColor(0xFF6A1B9A.toInt()).commit()
+    writer.drawRect(105f, 150f, 130f, 170f) // full rect; only the clipped triangle should paint
+    writer.restore()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

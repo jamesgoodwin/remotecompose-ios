@@ -122,6 +122,18 @@ object RealRemoteComposeParser {
     /** `Operations.DRAW_PATH` — `[pathId:i32]`, referencing a [OP_DATA_PATH] resource. */
     private const val OP_DRAW_PATH = 124
 
+    /**
+     * `Operations.CLIP_PATH` — `RemoteComposeBuffer.addClipPath(pathId)` writes just `[pathId:i32]`
+     * (5 bytes total, confirmed against real output: nothing but the opcode byte and one int
+     * before the next opcode) — the real op's `ClipPath.apply(WireBuffer, Int)` only ever takes
+     * the id; a region-op (replace/intersect/union/etc, packed into the *read*-side int's high
+     * byte) is never written by this simple `addClipPath(int)` call path, so it always decodes as
+     * 0/REPLACE here — modeled as an intersect via the same [Opcode.ClipPath] the executor already
+     * implements (Compose's own `DrawTransform.clipPath` has no separate replace mode to honor
+     * anyway). References an id already registered by a prior [OP_DATA_PATH].
+     */
+    private const val OP_CLIP_PATH = 38
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -984,6 +996,14 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.DrawPath(commands, PaintStyle(currentColor, PaintStyleKind.FILL))
                 }
 
+                OP_CLIP_PATH -> {
+                    val pathId = reader.readS32()
+                    val commands = pathPool[pathId] ?: throw RemoteComposeParseException(
+                        "ClipPath references path id $pathId which no prior DataPath defined",
+                    )
+                    opcodes += Opcode.ClipPath(commands)
+                }
+
                 OP_DATA_BITMAP -> {
                     val bitmapId = reader.readS32()
                     reader.readS32() // width — BitmapPool/decodeImageBitmap reads it back out of the PNG itself
@@ -1366,7 +1386,8 @@ object RealRemoteComposeParser {
                         "ModifierDrawContent/ModifierMarquee/ModifierGraphicsLayer/" +
                         "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
-                        "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect)",
+                        "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
+                        "ClipPath)",
                 )
             }
         }
