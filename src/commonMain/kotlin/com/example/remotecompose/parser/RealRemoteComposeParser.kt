@@ -191,6 +191,16 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_COLLAPSIBLE_ROW = 230
 
     /**
+     * `Operations.LAYOUT_FLOW` — `startFlow` writes `[componentId:i32][animationId:i32]
+     * [horizontalPositioning:i32][verticalPositioning:i32][spacedBy:f32]
+     * [maxItemsInMainAxis:i32][maxLinesInCrossAxis:i32]` — [OP_LAYOUT_COLUMN]'s shape plus two
+     * trailing ints, confirmed via real output (`maxItemsInMainAxis`/`maxLinesInCrossAxis` default
+     * to `Int.MAX_VALUE` when unset). Closed the same way as the other layout containers (a
+     * `LAYOUT_CONTENT` children marker, then two [OP_CONTAINER_END]s).
+     */
+    private const val OP_LAYOUT_FLOW = 240
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -607,6 +617,16 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // spacedBy
                 }
 
+                OP_LAYOUT_FLOW -> {
+                    reader.readS32() // componentId
+                    reader.readS32() // animationId
+                    reader.readS32() // horizontalPositioning
+                    reader.readS32() // verticalPositioning
+                    reader.readFloat32() // spacedBy
+                    reader.readS32() // maxItemsInMainAxis
+                    reader.readS32() // maxLinesInCrossAxis
+                }
+
                 OP_LAYOUT_BOX -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
@@ -724,7 +744,7 @@ object RealRemoteComposeParser {
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
-                        "LayoutCollapsibleColumn/LayoutCollapsibleRow/" +
+                        "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
