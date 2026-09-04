@@ -769,6 +769,57 @@ object RealRemoteComposeParser {
         }
 
         /**
+         * Returns a copy of [op] with every absolute coordinate shifted by ([dx], [dy]) — used by
+         * [arrangeChildren] as the reliable alternative to wrapping a child's range in a
+         * MatrixSave/Translate/MatrixRestore triple when that range contains [Opcode.DrawText] (see
+         * that call site's KDoc for why). Path/list-shaped payloads ([Opcode.DrawPath]) are shifted
+         * point-by-point; opcodes with no absolute position (transform/clip control, [Opcode.Unknown])
+         * pass through unchanged, since a relative op's own delta stays correct under an outer shift.
+         */
+        fun shiftOpcode(op: Opcode, dx: Float, dy: Float): Opcode = when (op) {
+            is Opcode.DrawRect -> op.copy(
+                left = op.left + dx, top = op.top + dy, right = op.right + dx, bottom = op.bottom + dy,
+            )
+            is Opcode.DrawRoundRect -> op.copy(
+                left = op.left + dx, top = op.top + dy, right = op.right + dx, bottom = op.bottom + dy,
+            )
+            is Opcode.DrawOval -> op.copy(
+                left = op.left + dx, top = op.top + dy, right = op.right + dx, bottom = op.bottom + dy,
+            )
+            is Opcode.DrawArc -> op.copy(
+                left = op.left + dx, top = op.top + dy, right = op.right + dx, bottom = op.bottom + dy,
+            )
+            is Opcode.DrawBitmap -> op.copy(
+                left = op.left + dx, top = op.top + dy, right = op.right + dx, bottom = op.bottom + dy,
+            )
+            is Opcode.DrawCircle -> op.copy(centerX = op.centerX + dx, centerY = op.centerY + dy)
+            is Opcode.DrawLine -> op.copy(x1 = op.x1 + dx, y1 = op.y1 + dy, x2 = op.x2 + dx, y2 = op.y2 + dy)
+            is Opcode.ClipRect -> op.copy(
+                left = op.left + dx, top = op.top + dy, right = op.right + dx, bottom = op.bottom + dy,
+            )
+            is Opcode.ActionClick -> op.copy(
+                left = op.left + dx, top = op.top + dy, right = op.right + dx, bottom = op.bottom + dy,
+            )
+            is Opcode.DrawText -> op.copy(x = op.x + dx, y = op.y + dy)
+            is Opcode.DrawPath -> op.copy(commands = op.commands.map { command ->
+                when (command) {
+                    is PathCommand.MoveTo -> command.copy(x = command.x + dx, y = command.y + dy)
+                    is PathCommand.LineTo -> command.copy(x = command.x + dx, y = command.y + dy)
+                    is PathCommand.QuadraticTo -> command.copy(
+                        x1 = command.x1 + dx, y1 = command.y1 + dy, x2 = command.x2 + dx, y2 = command.y2 + dy,
+                    )
+                    is PathCommand.CubicTo -> command.copy(
+                        x1 = command.x1 + dx, y1 = command.y1 + dy,
+                        x2 = command.x2 + dx, y2 = command.y2 + dy,
+                        x3 = command.x3 + dx, y3 = command.y3 + dy,
+                    )
+                    PathCommand.Close -> command
+                }
+            })
+            else -> op
+        }
+
+        /**
          * Returns `(leadingGap, betweenGap)` for [mode] given [extraSpace] (container main-axis
          * extent minus the children's own packed-together size; 0 or negative when the container
          * has no known extent bigger than its content, in which case every mode below correctly
@@ -863,8 +914,20 @@ object RealRemoteComposeParser {
                 val delta = deltas[i] ?: continue
                 if (delta[0] == 0f && delta[1] == 0f) continue
                 val range = children[i]
-                opcodes.add(range[1], Opcode.MatrixRestore)
-                opcodes.addAll(range[0], listOf(Opcode.MatrixSave, Opcode.Translate(delta[0], delta[1])))
+                // Rewrite every opcode's own coordinates directly instead of wrapping the range in
+                // MatrixSave/Translate/MatrixRestore. A real on-device Compose Canvas target was
+                // confirmed (via a minimal, isolated repro) to corrupt DrawText positioning — even
+                // *unwrapped* DrawText elsewhere in the same render — after two or more repeated
+                // canvas.save()/translate()/restore() cycles from sibling arranged children, the
+                // exact shape every stat card's icon-then-value-then-label triplet has. Since a
+                // shape's own position is just as easy to rewrite directly as text's, arrangeChildren
+                // never emits real Matrix ops at all — sidestepping the bug at its root rather than
+                // only where it was first noticed. Nested Translate/MatrixSave/MatrixRestore inside
+                // this range (from an inner, already-arranged nested Column/Row) pass through
+                // shiftOpcode unchanged, since a relative delta stays correct under an outer shift.
+                for (j in range[0] until range[1]) {
+                    opcodes[j] = shiftOpcode(opcodes[j], delta[0], delta[1])
+                }
             }
         }
 

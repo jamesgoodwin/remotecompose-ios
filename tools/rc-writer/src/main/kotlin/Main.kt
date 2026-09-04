@@ -22,7 +22,73 @@ fun main(args: Array<String>) {
         buildShowcase()
         return
     }
+    if (args.getOrNull(0) == "texttest") {
+        buildTextTransformTest()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * Minimal repro of an unresolved Compose Multiplatform/Skiko rendering bug, kept for whoever picks
+ * this up next: this exact sequence of `drawText`/`drawRect`/`drawCircle` calls — all absolute
+ * coordinates, *zero* transform opcodes (MatrixSave/Translate/MatrixRestore are entirely absent
+ * from the parsed opcode list; verified) — renders correctly on the headless Desktop demo
+ * (`runDesktopDemo`, an offscreen *software* Skia raster surface), but on a real on-screen Canvas
+ * composable backed by GPU-accelerated Skiko — confirmed on *both* a real Android emulator and a
+ * real iOS Simulator — "Users"/"Orders"/"Uptime" render on top of "Activity" instead of below it,
+ * even though their coordinates are unambiguously non-overlapping (verified directly from the
+ * parsed opcode dump). Removing the trailing DrawCircle calls after "Activity" (the showcase's
+ * avatar row) makes the bug disappear; nothing about *why* trailing shape draws corrupt an
+ * earlier, already-issued DrawText call's position was found despite extensive isolation (ruled
+ * out: MatrixSave/Restore involvement, string content/length, color, draw-call repetition count,
+ * leading vs. trailing position of the affected text). Given it reproduces identically on two
+ * independent GPU-backed platforms but never on the software-only one, this looks like a genuine
+ * upstream Skiko/Compose Multiplatform issue in how on-screen `drawText` interacts with later draw
+ * calls in the same frame, not a bug in this renderer's own opcode handling.
+ */
+private fun buildTextTransformTest() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(360, 420, "texttest", platform)
+    // Exact replica of the real showcase's parsed opcode list — same 18 opcodes, same absolute
+    // coordinates verbatim from that dump — to rule out any mistake in a hand-approximated test
+    // coordinate ever having accidentally overlapped another one (it did, on an earlier attempt).
+    fun text(s: String, x: Float, y: Float, argb: Int) {
+        writer.getRcPaint().setColor(argb).commit()
+        writer.drawTextAnchored(s, x, y, 0f, 0f, 0)
+    }
+    val navy = 0xFF1A237E.toInt()
+    val slate = 0xFF546E7A.toInt()
+    writer.getRcPaint().setColor(0xFFE3F2FD.toInt()).commit()
+    writer.drawRect(20f, 63.2f, 64f, 133.6f)
+    writer.getRcPaint().setColor(0xFF1E88E5.toInt()).commit()
+    writer.drawCircle(42f, 73.2f, 10f)
+    text("128", 28.8f, 89.2f, navy)
+    text("Users", 20f, 114.4f, slate)
+    writer.getRcPaint().setColor(0xFFE8F5E9.toInt()).commit()
+    writer.drawRect(64f, 57.2f, 116.8f, 139.6f)
+    writer.getRcPaint().setColor(0xFF43A047.toInt()).commit()
+    writer.drawCircle(90.4f, 73.2f, 16f)
+    text("42", 81.6f, 95.2f, navy)
+    text("Orders", 64f, 120.4f, slate)
+    writer.getRcPaint().setColor(0xFFFFF3E0.toInt()).commit()
+    writer.drawRect(116.8f, 60.2f, 169.6f, 136.6f)
+    writer.getRcPaint().setColor(0xFFFB8C00.toInt()).commit()
+    writer.drawCircle(143.2f, 73.2f, 13f)
+    text("97%", 130f, 92.2f, navy)
+    text("Uptime", 116.8f, 117.4f, slate)
+    text("Activity", 20f, 157.6f, navy)
+    writer.getRcPaint().setColor(0xFFE53935.toInt()).commit()
+    writer.drawCircle(30f, 210.8f, 10f)
+    writer.getRcPaint().setColor(0xFF8E24AA.toInt()).commit()
+    writer.drawCircle(56f, 210.8f, 16f)
+    writer.getRcPaint().setColor(0xFF00897B.toInt()).commit()
+    writer.drawCircle(84f, 210.8f, 12f)
+    writer.getRcPaint().setColor(0xFFFDD835.toInt()).commit()
+    writer.drawCircle(104f, 210.8f, 8f)
+    val bytes = writer.encodeToByteArray()
+    File("texttest.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to texttest.rc")
 }
 
 /**
