@@ -6,6 +6,7 @@ import com.example.remotecompose.model.Header
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PaintStyle
 import com.example.remotecompose.model.PaintStyleKind
+import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
 
 /**
@@ -98,6 +99,40 @@ object RealRemoteComposeParser {
     private const val OP_DRAW_SECTOR = 52
 
     /**
+     * `Operations.DATA_PATH` — defines a reusable path resource: `[pathId:i32][floatCount:i32]`
+     * followed by `floatCount` raw i32 words forming `RemotePathBase`'s flat, NaN-tagged command
+     * array (see `androidx.compose.remote.core.RemotePathBase` — [Utils.asNan]-style sentinels,
+     * not plain floats, mark where each command starts).
+     *
+     * Confirmed against real output from a `moveTo`/`lineTo`/`lineTo`/`close()` path: the encoder
+     * has a documented bug (`RemotePathBase.add(int,float,float)`: "THIS IS FLAW in the encoding
+     * TODO FIX ON VERSIONING") that advances the write cursor 2 slots too many before writing a
+     * command's real coordinates, leaving 2 zeroed/garbage floats between a command's tag and its
+     * actual arguments for every non-[PATH_CMD_MOVE]/[PATH_CMD_CLOSE] command — this reader has to
+     * reproduce that exact padding to stay aligned, not just skip it as a curiosity. Per-command
+     * stride (tag + padding + real args), verified for [PATH_CMD_MOVE]/[PATH_CMD_LINE]/
+     * [PATH_CMD_CLOSE] only — [PATH_CMD_QUADRATIC]/[PATH_CMD_CONIC]/[PATH_CMD_CUBIC] are declared
+     * from source but their exact padded stride hasn't been confirmed against real bytes yet, so
+     * they're a hard parse failure here rather than a guess.
+     */
+    private const val OP_DATA_PATH = 123
+
+    /** `Operations.DRAW_PATH` — `[pathId:i32]`, referencing a [OP_DATA_PATH] resource. */
+    private const val OP_DRAW_PATH = 124
+
+    // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
+    // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
+    private const val PATH_CMD_MOVE = 10
+    private const val PATH_CMD_LINE = 11
+    private const val PATH_CMD_QUADRATIC = 12
+    private const val PATH_CMD_CONIC = 13
+    private const val PATH_CMD_CUBIC = 14
+    private const val PATH_CMD_CLOSE = 15
+
+    /** Mask isolating sign+exponent; a path-array word is a command tag iff these bits are all set. */
+    private const val NAN_TAG_MASK = -0x800000 // 0xFF800000 as a 32-bit Int
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -116,6 +151,7 @@ object RealRemoteComposeParser {
         var height = 0
         var currentColor = Color.Black
         val textPool = mutableMapOf<Int, String>()
+        val pathPool = mutableMapOf<Int, List<PathCommand>>()
         val opcodes = mutableListOf<Opcode>()
 
         while (reader.hasRemaining()) {
@@ -232,10 +268,25 @@ object RealRemoteComposeParser {
                     )
                 }
 
+                OP_DATA_PATH -> {
+                    val pathId = reader.readS32()
+                    val floatCount = reader.readS32()
+                    pathPool[pathId] = decodePathArray(reader, floatCount)
+                }
+
+                OP_DRAW_PATH -> {
+                    val pathId = reader.readS32()
+                    val commands = pathPool[pathId] ?: throw RemoteComposeParseException(
+                        "DrawPath references path id $pathId which no prior DataPath defined",
+                    )
+                    opcodes += Opcode.DrawPath(commands, PaintStyle(currentColor, PaintStyleKind.FILL))
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
-                        "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector)",
+                        "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
+                        "DataPath/DrawPath)",
                 )
             }
         }
@@ -254,5 +305,46 @@ object RealRemoteComposeParser {
             bitmaps = BitmapPool.EMPTY,
             opcodes = opcodes,
         )
+    }
+
+    /**
+     * Decodes a `RemotePathBase` flat command array of [floatCount] raw i32 words (read directly
+     * as bits, not as [BufferReader.readFloat32], since a command tag is a specific NaN bit
+     * pattern that must be tested before deciding whether a word is a tag or real float data).
+     *
+     * @throws RemoteComposeParseException on [PATH_CMD_QUADRATIC]/[PATH_CMD_CONIC]/
+     *   [PATH_CMD_CUBIC] — declared from source but not yet byte-verified (see [OP_DATA_PATH]).
+     */
+    private fun decodePathArray(reader: BufferReader, floatCount: Int): List<PathCommand> {
+        val words = IntArray(floatCount) { reader.readS32() }
+        val commands = mutableListOf<PathCommand>()
+        var i = 0
+        while (i < words.size) {
+            val tagWord = words[i]
+            require((tagWord and NAN_TAG_MASK) == NAN_TAG_MASK) {
+                "Expected a path command tag at float index $i, got a non-tag word"
+            }
+            when (val tag = tagWord and 0x7FFFFF) {
+                PATH_CMD_MOVE -> {
+                    commands += PathCommand.MoveTo(Float.fromBits(words[i + 1]), Float.fromBits(words[i + 2]))
+                    i += 3
+                }
+                PATH_CMD_LINE -> {
+                    // Real encoder bug: 2 garbage words between the tag and the real (x, y) — see
+                    // OP_DATA_PATH's KDoc.
+                    commands += PathCommand.LineTo(Float.fromBits(words[i + 3]), Float.fromBits(words[i + 4]))
+                    i += 5
+                }
+                PATH_CMD_CLOSE -> {
+                    commands += PathCommand.Close
+                    i += 1
+                }
+                else -> throw RemoteComposeParseException(
+                    "Real path command tag $tag at float index $i is not yet supported " +
+                        "(only MOVE/LINE/CLOSE verified against real output)",
+                )
+            }
+        }
+        return commands
     }
 }

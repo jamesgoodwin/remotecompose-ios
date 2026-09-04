@@ -1,5 +1,6 @@
 import androidx.compose.remote.creation.JvmRcPlatformServices
 import androidx.compose.remote.creation.RemoteComposeWriter
+import androidx.compose.remote.creation.RemotePath
 import java.io.File
 
 fun main() {
@@ -45,6 +46,16 @@ fun main() {
         .setColor(0xFFD81B60.toInt())
         .commit()
     writer.drawSector(140f, 140f, 198f, 198f, 200f, 100f)
+
+    writer.getRcPaint()
+        .setColor(0xFF3949AB.toInt())
+        .commit()
+    val trianglePath = RemotePath()
+    trianglePath.moveTo(155f, 178f)
+    trianglePath.lineTo(198f, 178f)
+    trianglePath.lineTo(176f, 199f)
+    trianglePath.close()
+    writer.drawPath(trianglePath)
 
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)

@@ -22,3 +22,6 @@ local.properties
 
 # macOS
 .DS_Store
+
+# Claude Code harness state (not project content)
+.claude/
