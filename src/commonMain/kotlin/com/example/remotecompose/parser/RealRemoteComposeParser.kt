@@ -133,6 +133,23 @@ object RealRemoteComposeParser {
     private const val NAN_TAG_MASK = -0x800000 // 0xFF800000 as a 32-bit Int
 
     /**
+     * `Operations.DATA_BITMAP` — defines a reusable image resource:
+     * `[bitmapId:i32][width:i32][height:i32][pngByteLength:i32][pngBytes...]`. The image bytes
+     * are a real, directly-decodable encoded image (confirmed via magic bytes `\x89PNG\r\n\x1a\n`)
+     * — not a raw pixel dump — so they can be handed straight to [BitmapPool] unchanged, the same
+     * as [RemoteComposeParser]'s placeholder bitmap pool.
+     */
+    private const val OP_DATA_BITMAP = 101
+
+    /**
+     * `Operations.DRAW_BITMAP` — `[bitmapId:i32][left:f32][top:f32][right:f32][bottom:f32]
+     * [contentDescriptionTextId:i32]`. The trailing text-pool reference (the `drawBitmap(...,
+     * contentDescription)` string) is read to stay aligned but not used, the same as
+     * [OP_ROOT_CONTENT_DESCRIPTION]'s.
+     */
+    private const val OP_DRAW_BITMAP = 44
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -152,6 +169,7 @@ object RealRemoteComposeParser {
         var currentColor = Color.Black
         val textPool = mutableMapOf<Int, String>()
         val pathPool = mutableMapOf<Int, List<PathCommand>>()
+        val bitmapPool = mutableMapOf<Int, ByteArray>()
         val opcodes = mutableListOf<Opcode>()
 
         while (reader.hasRemaining()) {
@@ -282,11 +300,29 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.DrawPath(commands, PaintStyle(currentColor, PaintStyleKind.FILL))
                 }
 
+                OP_DATA_BITMAP -> {
+                    val bitmapId = reader.readS32()
+                    reader.readS32() // width — BitmapPool/decodeImageBitmap reads it back out of the PNG itself
+                    reader.readS32() // height
+                    val pngLength = reader.readS32()
+                    bitmapPool[bitmapId] = reader.readBytes(pngLength)
+                }
+
+                OP_DRAW_BITMAP -> {
+                    val bitmapId = reader.readS32()
+                    val left = reader.readFloat32()
+                    val top = reader.readFloat32()
+                    val right = reader.readFloat32()
+                    val bottom = reader.readFloat32()
+                    reader.readS32() // content-description text-pool id — not needed for drawing
+                    opcodes += Opcode.DrawBitmap(bitmapId, left, top, right, bottom)
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
-                        "DataPath/DrawPath)",
+                        "DataPath/DrawPath/DataBitmap/DrawBitmap)",
                 )
             }
         }
@@ -302,7 +338,7 @@ object RealRemoteComposeParser {
             ),
             strings = StringPool.fromEntries(textPool),
             variables = VariablePool.EMPTY,
-            bitmaps = BitmapPool.EMPTY,
+            bitmaps = BitmapPool.fromEntries(bitmapPool),
             opcodes = opcodes,
         )
     }

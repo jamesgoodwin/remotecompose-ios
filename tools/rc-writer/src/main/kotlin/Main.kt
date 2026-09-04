@@ -57,6 +57,14 @@ fun main() {
     trianglePath.close()
     writer.drawPath(trianglePath)
 
+    val checkerImage = java.awt.image.BufferedImage(8, 8, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+    for (yy in 0 until 8) {
+        for (xx in 0 until 8) {
+            checkerImage.setRGB(xx, yy, if ((xx + yy) % 2 == 0) 0xFFFFFFFF.toInt() else 0xFF212121.toInt())
+        }
+    }
+    writer.drawBitmap(checkerImage, 70f, 65f, 110f, 105f, "checker")
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
