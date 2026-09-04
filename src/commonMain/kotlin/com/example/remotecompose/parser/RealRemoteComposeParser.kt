@@ -78,6 +78,12 @@ object RealRemoteComposeParser {
      */
     private const val OP_DRAW_TEXT_ANCHORED = 133
 
+    /** `Operations.DRAW_LINE` — `[x1,y1,x2,y2]` as four raw floats. */
+    private const val OP_DRAW_LINE = 47
+
+    /** `Operations.DRAW_OVAL` — `[left,top,right,bottom]` as four raw floats (bounds of the ellipse). */
+    private const val OP_DRAW_OVAL = 56
+
     /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
@@ -177,10 +183,32 @@ object RealRemoteComposeParser {
                     )
                 }
 
+                OP_DRAW_LINE -> {
+                    val x1 = reader.readFloat32()
+                    val y1 = reader.readFloat32()
+                    val x2 = reader.readFloat32()
+                    val y2 = reader.readFloat32()
+                    opcodes += Opcode.DrawLine(
+                        x1, y1, x2, y2,
+                        PaintStyle(currentColor, PaintStyleKind.STROKE),
+                    )
+                }
+
+                OP_DRAW_OVAL -> {
+                    val left = reader.readFloat32()
+                    val top = reader.readFloat32()
+                    val right = reader.readFloat32()
+                    val bottom = reader.readFloat32()
+                    opcodes += Opcode.DrawOval(
+                        left, top, right, bottom,
+                        PaintStyle(currentColor, PaintStyleKind.FILL),
+                    )
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
-                        "DrawRoundRect/DrawTextAnchored)",
+                        "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval)",
                 )
             }
         }

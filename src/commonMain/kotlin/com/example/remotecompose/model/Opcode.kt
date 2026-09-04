@@ -62,6 +62,18 @@ sealed interface Opcode {
         val paint: PaintStyle,
     ) : Opcode
 
+    /** Draws a straight line segment from `(x1, y1)` to `(x2, y2)`. */
+    data class DrawLine(
+        val x1: Float, val y1: Float, val x2: Float, val y2: Float,
+        val paint: PaintStyle,
+    ) : Opcode
+
+    /** Draws an ellipse inscribed in the rect `(left, top, right, bottom)`. */
+    data class DrawOval(
+        val left: Float, val top: Float, val right: Float, val bottom: Float,
+        val paint: PaintStyle,
+    ) : Opcode
+
     /**
      * Draws text at ([x], [y]).
      *

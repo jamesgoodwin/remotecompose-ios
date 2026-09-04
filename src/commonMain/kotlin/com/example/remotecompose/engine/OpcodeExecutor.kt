@@ -124,6 +124,25 @@ object OpcodeExecutor {
                         }
                     }
 
+                    is Opcode.DrawLine -> drawScope.drawLine(
+                        color = opcode.paint.color,
+                        start = Offset(opcode.x1, opcode.y1),
+                        end = Offset(opcode.x2, opcode.y2),
+                        // drawLine has no Fill/Stroke DrawStyle choice — it's always stroked — so
+                        // a zero strokeWidth (the default for shapes whose real paint bundle
+                        // hasn't been decoded to carry one) would render invisibly; floor it.
+                        strokeWidth = opcode.paint.strokeWidth.coerceAtLeast(1f),
+                    )
+
+                    is Opcode.DrawOval -> withPaintStyles(opcode.paint) { style ->
+                        drawScope.drawOval(
+                            color = opcode.paint.color,
+                            topLeft = Offset(opcode.left, opcode.top),
+                            size = rectSize(opcode.left, opcode.top, opcode.right, opcode.bottom),
+                            style = style,
+                        )
+                    }
+
                     is Opcode.DrawText -> drawScope.drawText(
                         textMeasurer = context.textMeasurer,
                         text = context.document.strings[opcode.stringIndex],

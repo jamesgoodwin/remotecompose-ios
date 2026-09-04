@@ -26,6 +26,16 @@ fun main() {
         .commit()
     writer.drawTextAnchored("Hi", 100f, 20f, 0f, 0f, 0)
 
+    writer.getRcPaint()
+        .setColor(0xFF8E24AA.toInt())
+        .commit()
+    writer.drawLine(10f, 195f, 190f, 195f)
+
+    writer.getRcPaint()
+        .setColor(0xFFFB8C00.toInt())
+        .commit()
+    writer.drawOval(140f, 30f, 195f, 60f)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
