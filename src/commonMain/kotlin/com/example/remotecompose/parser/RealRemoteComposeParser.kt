@@ -165,14 +165,17 @@ object RealRemoteComposeParser {
      * verticalPositioning)` writes `[componentId:i32][animationId:i32]
      * [horizontalPositioning:i32][verticalPositioning:i32][spacedBy:f32]`.
      *
-     * This parser treats every layout container opcode ([OP_LAYOUT_COLUMN]/[OP_LAYOUT_CONTENT]/
-     * [OP_CONTAINER_END]) as a **pass-through scope marker**: it consumes exactly the right bytes
-     * to stay aligned, but emits no [Opcode] and does not reposition children. That is correct for
-     * a document whose children carry absolute, already-final coordinates (as `tools/rc-writer`'s
-     * writer calls do here) — real dynamic arrangement (e.g. children sized/positioned relative to
-     * `spacedBy` or `horizontalPositioning`) would need an actual measure/layout pass this flat
-     * opcode-list renderer doesn't have, which is real, deliberately out-of-scope future work, not
-     * an oversight.
+     * Most layout container opcodes ([OP_LAYOUT_BOX]/[OP_LAYOUT_FLOW]/etc, [OP_LAYOUT_CONTENT]/
+     * [OP_CONTAINER_END]) are still treated as **pass-through scope markers**: exactly the right
+     * bytes are consumed to stay aligned, but no repositioning happens — correct only for a
+     * document whose children already carry final, non-overlapping absolute coordinates.
+     * [OP_LAYOUT_COLUMN] and [OP_LAYOUT_ROW] are the exception: this renderer still has no real
+     * measure pass (nothing here computes a child's size before it's drawn), but once a child's
+     * own content has been parsed, its *drawn* extent is known after the fact — enough to really
+     * stack children in document order along the container's axis, `spacedBy` apart, rather than
+     * trusting the document's own absolute placement for them. See `arrangeChildren` (in
+     * [RealRemoteComposeParser.parse]) for the mechanism and its honest limits (no real alignment
+     * modes, no reserved-but-empty space, first child's own position is the anchor).
      */
     private const val OP_LAYOUT_COLUMN = 204
 
@@ -579,20 +582,43 @@ object RealRemoteComposeParser {
         // buffered per-scope — so a [ScopeFrame] only tracks (a) [startIndex], the [opcodes] size
         // at the moment this scope was pushed (everything from there to the current size when this
         // scope's CONTAINER_END fires is "this container's content", used by MODIFIER_BACKGROUND's
-        // bounds inference below), and (b) [cleanupOpcodes], ops queued by attachToTopScope to be
-        // appended *after* that content once the scope closes (MODIFIER_OFFSET/VISIBILITY/
-        // GRAPHICS_LAYER's MatrixRestore).
-        class ScopeFrame(val startIndex: Int) {
+        // bounds inference and MODIFIER_COLUMN/ROW's child-arrangement below), and (b)
+        // [cleanupOpcodes], ops queued by attachToTopScope to be appended *after* that content once
+        // the scope closes (MODIFIER_OFFSET/VISIBILITY/GRAPHICS_LAYER's MatrixRestore).
+        //
+        // [parent] is whichever frame was on top of this stack when this frame was pushed — it's
+        // how LAYOUT_COLUMN/LAYOUT_ROW discover their *direct* children for real arrangement: a
+        // LAYOUT_CONTENT frame's own [layoutAxis]/[spacedBy] are set (from [pendingLayoutAxis]) only
+        // when it directly follows a LAYOUT_COLUMN/LAYOUT_ROW open; then every frame whose [parent]
+        // is that LAYOUT_CONTENT frame — i.e. every direct child container, since a bare draw call
+        // never pushes a frame at all — registers its own finished [startIndex, opcodes.size) range
+        // into the LAYOUT_CONTENT frame's [childRanges] as it closes. A child that's itself a
+        // container two levels deep (e.g. a Box's own outer scope, whose *inner* LAYOUT_CONTENT
+        // frame is what real grandchildren attach to) still registers correctly, because [parent]
+        // is captured at push time — the outer Box frame's parent is the Column's LAYOUT_CONTENT
+        // frame, while the Box's *inner* content frame's parent is the Box's own outer frame, not
+        // the Column's. This naturally recurses: a nested Column's own CONTAINER_END arranges its
+        // own children (rewriting their coordinates in place) before its enclosing Box (and in turn
+        // that Box's enclosing Column) ever inspects its bounding box.
+        class ScopeFrame(val startIndex: Int, val parent: ScopeFrame?) {
             val cleanupOpcodes = mutableListOf<Opcode>()
             var backgroundColor: Color? = null
+            var layoutAxis: Char? = null // 'V' (LAYOUT_COLUMN) or 'H' (LAYOUT_ROW); null otherwise
+            var spacedBy: Float = 0f
+            val childRanges = mutableListOf<IntArray>() // only populated/consumed when layoutAxis != null
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
-            scopeStack.add(ScopeFrame(opcodes.size))
+            scopeStack.add(ScopeFrame(opcodes.size, scopeStack.lastOrNull()))
         }
         fun attachToTopScope(op: Opcode) {
             scopeStack.lastOrNull()?.cleanupOpcodes?.add(op)
         }
+        // Set by OP_LAYOUT_COLUMN/OP_LAYOUT_ROW, consumed by the very next OP_LAYOUT_CONTENT (the
+        // real byte stream always writes a container's own modifiers — none of which open a
+        // LAYOUT_CONTENT themselves — between the two, so nothing else can consume this first).
+        var pendingLayoutAxis: Char? = null
+        var pendingSpacedBy = 0f
 
         /**
          * This renderer has no measure/layout pass, so a container's "bounds" for
@@ -646,6 +672,59 @@ object RealRemoteComposeParser {
                 }
             }
             return if (left.isFinite()) floatArrayOf(left, top, right, bottom) else null
+        }
+
+        /**
+         * Real arrangement for a LAYOUT_COLUMN/LAYOUT_ROW's direct children, run once — from
+         * [OP_CONTAINER_END] — when [frame] (a LAYOUT_CONTENT frame carrying [ScopeFrame.layoutAxis])
+         * closes and every entry in [ScopeFrame.childRanges] is final. Each child's natural size
+         * comes from [contentBounds] over its own already-authored (absolute-coordinate) content;
+         * children are then stacked from the first child's own position along the container's main
+         * axis, [ScopeFrame.spacedBy] apart, cross-axis-aligned to the first child's own edge (this
+         * parser discards `horizontalPositioning`/`verticalPositioning`, so it can't honor real
+         * start/center/end/space-between alignment modes — every arrangement here is start-aligned).
+         * A child is moved into place the same way [OP_MODIFIER_OFFSET] moves content: a
+         * MatrixSave/Translate pair spliced immediately before its content, MatrixRestore right
+         * after. Splicing is done in *reverse* document order specifically so that an earlier
+         * child's still-unprocessed [start, end) range is never shifted by a later child's
+         * insertions (every insertion for child K happens at or after K's own start index, which is
+         * always ≥ any not-yet-processed, earlier child's end index).
+         */
+        fun arrangeChildren(frame: ScopeFrame) {
+            val axis = frame.layoutAxis ?: return
+            val children = frame.childRanges.sortedBy { it[0] }
+            if (children.size < 2) return // 0 or 1 child needs no repositioning
+            val naturalBounds = children.map { range -> contentBounds(opcodes.subList(range[0], range[1])) }
+            val anchorIndex = naturalBounds.indexOfFirst { it != null }
+            if (anchorIndex == -1) return
+            val anchor = naturalBounds[anchorIndex]!!
+            var cursorMain = if (axis == 'V') anchor[1] else anchor[0] // top (Column) or left (Row)
+            val crossAnchor = if (axis == 'V') anchor[0] else anchor[1] // left (Column) or top (Row), held fixed
+            val deltas = arrayOfNulls<FloatArray>(children.size)
+            for (i in children.indices) {
+                val bounds = naturalBounds[i] ?: continue
+                val width = bounds[2] - bounds[0]
+                val height = bounds[3] - bounds[1]
+                val dx: Float
+                val dy: Float
+                if (axis == 'V') {
+                    dx = crossAnchor - bounds[0]
+                    dy = cursorMain - bounds[1]
+                    cursorMain += height + frame.spacedBy
+                } else {
+                    dx = cursorMain - bounds[0]
+                    dy = crossAnchor - bounds[1]
+                    cursorMain += width + frame.spacedBy
+                }
+                deltas[i] = floatArrayOf(dx, dy)
+            }
+            for (i in children.indices.reversed()) {
+                val delta = deltas[i] ?: continue
+                if (delta[0] == 0f && delta[1] == 0f) continue
+                val range = children[i]
+                opcodes.add(range[1], Opcode.MatrixRestore)
+                opcodes.addAll(range[0], listOf(Opcode.MatrixSave, Opcode.Translate(delta[0], delta[1])))
+            }
         }
 
         while (reader.hasRemaining()) {
@@ -805,13 +884,28 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.ActionClick(actionId, metadataTextId, left, top, right, bottom)
                 }
 
-                OP_LAYOUT_COLUMN, OP_LAYOUT_ROW, OP_LAYOUT_COLLAPSIBLE_COLUMN, OP_LAYOUT_COLLAPSIBLE_ROW -> {
+                OP_LAYOUT_COLUMN, OP_LAYOUT_ROW -> {
+                    reader.readS32() // componentId
+                    reader.readS32() // animationId
+                    reader.readS32() // horizontalPositioning — discarded; see arrangeChildren's KDoc
+                    reader.readS32() // verticalPositioning — discarded; see arrangeChildren's KDoc
+                    val spacedBy = reader.readFloat32()
+                    pushScope() // this container's own scope — closed by its outermost CONTAINER_END
+                    // Consumed by this container's own LAYOUT_CONTENT next, so its content frame
+                    // (where the real children live) knows to arrange them — see arrangeChildren.
+                    pendingLayoutAxis = if (opId == OP_LAYOUT_COLUMN) 'V' else 'H'
+                    pendingSpacedBy = spacedBy
+                }
+
+                OP_LAYOUT_COLLAPSIBLE_COLUMN, OP_LAYOUT_COLLAPSIBLE_ROW -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
                     reader.readS32() // horizontalPositioning
                     reader.readS32() // verticalPositioning
                     reader.readFloat32() // spacedBy
-                    pushScope() // this container's own scope — closed by its outermost CONTAINER_END
+                    // Real arrangement isn't wired up for the collapsible variants yet (unlike plain
+                    // LAYOUT_COLUMN/LAYOUT_ROW below) — deliberately deferred, not an oversight.
+                    pushScope()
                 }
 
                 OP_LAYOUT_FLOW -> {
@@ -849,7 +943,13 @@ object RealRemoteComposeParser {
 
                 OP_LAYOUT_CONTENT, OP_LAYOUT_CANVAS_CONTENT -> {
                     reader.readS32() // componentId
-                    pushScope() // the children scope itself — no cleanup needed, just consumes one end
+                    pushScope() // the children scope itself — this is where real children attach
+                    val axis = pendingLayoutAxis
+                    if (axis != null) {
+                        scopeStack.last().layoutAxis = axis
+                        scopeStack.last().spacedBy = pendingSpacedBy
+                        pendingLayoutAxis = null
+                    }
                 }
 
                 OP_LAYOUT_CANVAS -> {
@@ -904,10 +1004,13 @@ object RealRemoteComposeParser {
                 OP_CONTAINER_END -> {
                     // Close this scope: if it carried a MODIFIER_BACKGROUND, insert an inferred
                     // background DrawRect *before* this container's own content (everything
-                    // appended to [opcodes] since [ScopeFrame.startIndex]); then append this
-                    // scope's deferred cleanup (e.g. a MatrixRestore queued by MODIFIER_OFFSET/
-                    // MODIFIER_VISIBILITY/MODIFIER_GRAPHICS_LAYER) right after that content,
-                    // closing whatever that modifier opened around it.
+                    // appended to [opcodes] since [ScopeFrame.startIndex]); if it's a LAYOUT_COLUMN/
+                    // LAYOUT_ROW content frame, arrange its now-final children in place; then append
+                    // this scope's deferred cleanup (e.g. a MatrixRestore queued by MODIFIER_OFFSET/
+                    // MODIFIER_VISIBILITY/MODIFIER_GRAPHICS_LAYER) right after that content, closing
+                    // whatever that modifier opened around it; and finally, if this scope's own
+                    // parent is itself a LAYOUT_COLUMN/LAYOUT_ROW content frame, register this now-
+                    // finished [startIndex, opcodes.size) range as one of *its* children.
                     val frame = scopeStack.removeLastOrNull()
                     if (frame != null) {
                         val bg = frame.backgroundColor
@@ -922,7 +1025,14 @@ object RealRemoteComposeParser {
                                 )
                             }
                         }
+                        if (frame.layoutAxis != null) {
+                            arrangeChildren(frame)
+                        }
                         opcodes.addAll(frame.cleanupOpcodes)
+                        val parent = frame.parent
+                        if (parent != null && parent.layoutAxis != null) {
+                            parent.childRanges.add(intArrayOf(frame.startIndex, opcodes.size))
+                        }
                     }
                 }
 

@@ -54,7 +54,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * shapes deliberately left unpainted by either, so an orange background rect inferred from their
  * combined bounding box (this renderer has no measure/layout pass, so real content-position
  * knowledge is the closest available substitute) is visually distinguishable from either shape's
- * own fill), not by anything in this codebase. Shared by every platform demo entry point
+ * own fill, and three red/blue/green `startBox`/`endBox` children — each drawing its rect at the
+ * *identical* raw `(2, 90)-(12, 100)` document coordinates, i.e. not pre-spaced by the document
+ * author at all — wrapped in a `startColumn(RecordingModifier().spacedBy(3f), 0, 0)`/`endColumn`,
+ * so a render showing them stacked without overlap can only be this renderer's own real Column
+ * child-arrangement at work), not by anything in this codebase. Shared by every platform demo entry point
  * (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -104,6 +108,8 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "QXAAAEEgAACDgn5AAAAAQAAAAEMRAABCOAAAKAAAAAIAAAAE//V/FypDEQAAQiQAAEMYAABCOAAAg4KBQjQAAEMvAABCOAAAKAAAAAIAAAAE/2obmipD" +
             "KAAAQiQAAEM3AABCTAAAg4InQz4AAEIkAABDTQAAQkwAACgAAAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIPK////sP////8AAAAAAAAAADcAAAAA" +
             "AAAAAAAAAAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////rygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4AACgAAAACAAAABP8ufTIuQgwAAEKc" +
-            "AABAwAAA1tY="
+            "AABAwAAA1tbM////rv////8AAAAAAAAAAEBAAADJ////rcr///+s/////wAAAAAAAAAAyf///6soAAAAAgAAAAT/0y8vKkAAAABCtAAAQUAAAELIAADW" +
+            "1sr///+q/////wAAAAAAAAAAyf///6koAAAAAgAAAAT/GXbSKkAAAABCtAAAQUAAAELIAADW1sr///+o/////wAAAAAAAAAAyf///6coAAAAAgAAAAT/" +
+            "OI48KkAAAABCtAAAQUAAAELIAADW1tbW"
     )
 }

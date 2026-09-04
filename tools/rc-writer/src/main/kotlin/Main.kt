@@ -411,6 +411,25 @@ fun main() {
     writer.drawCircle(35f, 78f, 6f)
     writer.endBox()
 
+    // Three Box children, each drawn at the *same* raw (2,90)-(12,100) rect — deliberately
+    // overlapping in the document's own absolute coordinates, so a rendering that shows them
+    // stacked without overlap can only be the parser's real Column arrangement at work, not
+    // coordinates the document author already spaced out by hand.
+    writer.startColumn(RecordingModifier().spacedBy(3f), 0, 0)
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFFD32F2F.toInt()).commit()
+    writer.drawRect(2f, 90f, 12f, 100f)
+    writer.endBox()
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFF1976D2.toInt()).commit()
+    writer.drawRect(2f, 90f, 12f, 100f)
+    writer.endBox()
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFF388E3C.toInt()).commit()
+    writer.drawRect(2f, 90f, 12f, 100f)
+    writer.endBox()
+    writer.endColumn()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
