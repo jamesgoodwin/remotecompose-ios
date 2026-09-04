@@ -265,6 +265,15 @@ object RealRemoteComposeParser {
     private const val OP_ROOT_CONTENT_BEHAVIOR = 65
 
     /**
+     * `Operations.ANIMATION_SPEC` — `RecordingModifier.animationSpec(animationId)` writes
+     * `[animationId:i32][motionDuration:f32][motionEasingType:i32][visibilityDuration:f32]
+     * [visibilityEasingType:i32][enterAnimation:i32][exitAnimation:i32]` (7 fields, the last two
+     * being `AnimationSpec.ANIMATION` enum ordinals). Confirmed via `animationSpec(3)`'s
+     * hardcoded defaults decoding to exactly `[3, 300.0, 1, 300.0, 1, 0, 1]`.
+     */
+    private const val OP_ANIMATION_SPEC = 14
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -772,6 +781,16 @@ object RealRemoteComposeParser {
 
                 OP_ROOT_CONTENT_BEHAVIOR -> repeat(4) { reader.readS32() }
 
+                OP_ANIMATION_SPEC -> {
+                    reader.readS32() // animationId
+                    reader.readFloat32() // motionDuration
+                    reader.readS32() // motionEasingType
+                    reader.readFloat32() // visibilityDuration
+                    reader.readS32() // visibilityEasingType
+                    reader.readS32() // enterAnimation
+                    reader.readS32() // exitAnimation
+                }
+
                 OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
                     reader.readS32() // mode
                     reader.readFloat32() // value
@@ -910,7 +929,7 @@ object RealRemoteComposeParser {
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/LayoutFitBox/" +
                         "LayoutRoot/LayoutState/LayoutCanvas/LayoutCanvasContent/LayoutCustom/" +
-                        "LayoutImage/HapticFeedback/Theme/RootContentBehavior/" +
+                        "LayoutImage/HapticFeedback/Theme/RootContentBehavior/AnimationSpec/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +

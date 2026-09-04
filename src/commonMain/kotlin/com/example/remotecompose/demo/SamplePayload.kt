@@ -42,7 +42,8 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `endStateLayout`, an olive rect wrapped in a `startCanvas`/`endCanvas`, and a dark-brown rect
  * wrapped in a `startCustom`/`endCustom`, a `writer.image(...)` leaf component — not yet rendered
  * by this engine's `Image` opcode support, only byte-consumed — and three top-level document
- * metadata ops: `performHaptic(4)`, `setTheme(1)`, `setRootContentBehavior(1, 2, 3, 4)`), not by
+ * metadata ops: `performHaptic(4)`, `setTheme(1)`, `setRootContentBehavior(1, 2, 3, 4)` — and a
+ * brown rect wrapped in a `startBox`/`endBox` carrying an `animationSpec(3)` modifier), not by
  * anything in this codebase. Shared by every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -90,6 +91,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AEIkAABCDAAAQkwAANbWyP///7ooAAAAAgAAAAT/GiN+KkIYAABCJAAAQlQAAEJMAADW2f///7n/////AAAAAAAAAAAAAAAAyf///7goAAAA" +
             "AgAAAAT/rRRXKkJgAABCJAAAQo4AAEJMAADW1s3///+3/////8n///+2z////7UoAAAAAgAAAAT/VYsvKkKUAABCJAAAQrIAAEJMAADW1tZm" +
             "AAAAMwAAAAhteUN1c3RvbV3//////////wAAADMAAAAAyf///7QoAAAAAgAAAAT/TjQuKkK4AABCJAAAQtYAAEJMAADW1ur///+z/////wAA" +
-            "AAMAAAABP0AAANaxAAAABD8AAAABQQAAAAEAAAACAAAAAwAAAAQ="
+            "AAMAAAABP0AAANaxAAAABD8AAAABQQAAAAEAAAACAAAAAwAAAATK////sv////8AAAAAAAAAAA4AAAADQ5YAAAAAAAFDlgAAAAAAAQAAAAAA" +
+            "AAAByf///7EoAAAAAgAAAAT/XUA3KkLcAABCJAAAQvoAAEJMAADW1g=="
     )
 }
