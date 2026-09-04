@@ -164,6 +164,23 @@ object RealRemoteComposeParser {
     private const val OP_DRAW_BITMAP = 44
 
     /**
+     * `Operations.DRAW_BITMAP_INT` — `RemoteComposeWriter.drawBitmap(bitmap, width, height, desc)`
+     * writes `[bitmapId:i32][srcLeft:i32][srcTop:i32][srcRight:i32][srcBottom:i32][dstLeft:i32]
+     * [dstTop:i32][dstRight:i32][dstBottom:i32][contentDescriptionTextId:i32]` — 10 raw ints,
+     * the same trailing content-description reference [OP_DRAW_BITMAP] has, read to stay aligned
+     * but not used. (An earlier pass over this opcode concluded `mContentDescId` was never
+     * serialized, based on miscounting a 9-int decode of `drawBitmap(image, 40, 30, "desc")"` — a
+     * real-bytes hex-diff against `writer.getBuffer().drawBitmap(id, 0, 0, 0, 0, 1, 1, 150, 2,
+     * 190, 42, 0)` (real source-rect cropping, via the only public call path that exposes it)
+     * showed a 10th trailing zero consumed by the *next* opcode's header when left unread, proving
+     * the field is in fact always written.) That convenience `drawBitmap(bitmap, width, height,
+     * desc)` overload always sets src == dst, using the given width/height for both — real
+     * source-rect cropping exists in the wire format even though that overload doesn't exercise
+     * it, so [Opcode.DrawBitmap]'s src fields are modeled generally.
+     */
+    private const val OP_DRAW_BITMAP_INT = 66
+
+    /**
      * `Operations.CLICK_AREA` — `addClickArea(actionId, contentDescription, left, top, right,
      * bottom, metadata)` writes `[actionId:i32][contentDescriptionTextId:i32][left:f32][top:f32]
      * [right:f32][bottom:f32][metadataTextId:i32]`. `metadata` is exactly the target-URL string
@@ -1085,6 +1102,23 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.DrawBitmap(bitmapId, left, top, right, bottom)
                 }
 
+                OP_DRAW_BITMAP_INT -> {
+                    val bitmapId = reader.readS32()
+                    val srcLeft = reader.readS32().toFloat()
+                    val srcTop = reader.readS32().toFloat()
+                    val srcRight = reader.readS32().toFloat()
+                    val srcBottom = reader.readS32().toFloat()
+                    val dstLeft = reader.readS32().toFloat()
+                    val dstTop = reader.readS32().toFloat()
+                    val dstRight = reader.readS32().toFloat()
+                    val dstBottom = reader.readS32().toFloat()
+                    reader.readS32() // content-description text-pool id — not needed for drawing
+                    opcodes += Opcode.DrawBitmap(
+                        bitmapId, dstLeft, dstTop, dstRight, dstBottom,
+                        srcLeft, srcTop, srcRight, srcBottom,
+                    )
+                }
+
                 OP_CLICK_AREA -> {
                     val actionId = reader.readS32()
                     reader.readS32() // content-description text-pool id — not needed for hit-testing
@@ -1450,7 +1484,7 @@ object RealRemoteComposeParser {
                         "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
                         "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
-                        "ClipPath)",
+                        "ClipPath/DrawBitmapInt)",
                 )
             }
         }

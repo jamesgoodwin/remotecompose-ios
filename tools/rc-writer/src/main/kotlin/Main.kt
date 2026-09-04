@@ -246,6 +246,21 @@ private fun buildCoverageSample() {
         }
     }
     writer.drawBitmap(checkerImage, 70f, 65f, 110f, 105f, "checker")
+    // A 2x2 image, one solid color per quadrant, so cropping to just one quadrant (as opposed to
+    // scaling the whole image down) is visually unambiguous. RemoteComposeWriter's own public
+    // drawBitmap(...) overloads never expose DRAW_BITMAP_INT's real source-rect cropping (they
+    // always set src == dst) — storeBitmap()/getBuffer().drawBitmap(...) are the only public path
+    // that can, since RemoteComposeBuffer.drawBitmap's 12-arg signature maps directly onto
+    // DrawBitmapInt.apply()'s real 10 wire ints (params 2 and 3 here are accepted but never
+    // written to the wire; the trailing contentDescId *is* written, unlike an earlier pass over
+    // this opcode concluded).
+    val quadrantsImage = java.awt.image.BufferedImage(2, 2, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+    quadrantsImage.setRGB(0, 0, 0xFFE53935.toInt()) // top-left: red
+    quadrantsImage.setRGB(1, 0, 0xFF43A047.toInt()) // top-right: green
+    quadrantsImage.setRGB(0, 1, 0xFF1E88E5.toInt()) // bottom-left: blue
+    quadrantsImage.setRGB(1, 1, 0xFFFDD835.toInt()) // bottom-right: yellow
+    val quadrantsImageId = writer.storeBitmap(quadrantsImage)
+    writer.getBuffer().drawBitmap(quadrantsImageId, 0, 0, 0, 0, 1, 1, 150, 2, 190, 42, 0)
 
     writer.addClickArea(7, "tap target", 20f, 20f, 180f, 180f, "https://example.com/tapped")
 

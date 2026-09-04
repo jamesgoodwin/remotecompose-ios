@@ -177,14 +177,27 @@ object OpcodeExecutor {
                     is Opcode.DrawBitmap -> {
                         val bitmap = context.document.bitmaps.get(opcode.bitmapIndex)
                         if (bitmap != null) {
-                            drawScope.drawImage(
-                                image = bitmap,
-                                dstOffset = IntOffset(opcode.left.roundToInt(), opcode.top.roundToInt()),
-                                dstSize = IntSize(
-                                    (opcode.right - opcode.left).roundToInt().coerceAtLeast(0),
-                                    (opcode.bottom - opcode.top).roundToInt().coerceAtLeast(0),
-                                ),
+                            val dstOffset = IntOffset(opcode.left.roundToInt(), opcode.top.roundToInt())
+                            val dstSize = IntSize(
+                                (opcode.right - opcode.left).roundToInt().coerceAtLeast(0),
+                                (opcode.bottom - opcode.top).roundToInt().coerceAtLeast(0),
                             )
+                            if (opcode.srcLeft != null && opcode.srcTop != null &&
+                                opcode.srcRight != null && opcode.srcBottom != null
+                            ) {
+                                drawScope.drawImage(
+                                    image = bitmap,
+                                    srcOffset = IntOffset(opcode.srcLeft.roundToInt(), opcode.srcTop.roundToInt()),
+                                    srcSize = IntSize(
+                                        (opcode.srcRight - opcode.srcLeft).roundToInt().coerceAtLeast(0),
+                                        (opcode.srcBottom - opcode.srcTop).roundToInt().coerceAtLeast(0),
+                                    ),
+                                    dstOffset = dstOffset,
+                                    dstSize = dstSize,
+                                )
+                            } else {
+                                drawScope.drawImage(image = bitmap, dstOffset = dstOffset, dstSize = dstSize)
+                            }
                         }
                     }
 

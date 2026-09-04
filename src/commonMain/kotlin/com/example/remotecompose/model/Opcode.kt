@@ -115,11 +115,16 @@ sealed interface Opcode {
 
     /**
      * Draws the bitmap at [bitmapIndex], scaled/positioned into the destination rect
-     * `(left, top, right, bottom)`.
+     * `(left, top, right, bottom)`. When [srcLeft]/[srcTop]/[srcRight]/[srcBottom] are non-null
+     * (only `Operations.DRAW_BITMAP_INT` carries them — plain `Operations.DRAW_BITMAP` always
+     * draws the whole source image), only that sub-rectangle of the source bitmap is sampled,
+     * still scaled/positioned into the same destination rect.
      */
     data class DrawBitmap(
         val bitmapIndex: Int,
         val left: Float, val top: Float, val right: Float, val bottom: Float,
+        val srcLeft: Float? = null, val srcTop: Float? = null,
+        val srcRight: Float? = null, val srcBottom: Float? = null,
     ) : Opcode
 
     // --- Interaction ---
