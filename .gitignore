@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+tools/rc-writer/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Kotlin
+.kotlin/
+
+# Xcode / Kotlin Multiplatform iOS
+# project.yml is the source of truth; regenerate with `xcodegen generate` in iosApp/.
+iosApp/RemoteComposeDemo.xcodeproj/
+iosApp/ComposeApp/Info.plist
+iosApp/build/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+
+# Android Studio / IntelliJ
+.idea/
+local.properties
+
+# macOS
+.DS_Store

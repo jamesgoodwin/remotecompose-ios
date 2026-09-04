@@ -1,0 +1,37 @@
+name: RemoteComposeDemo
+options:
+  bundleIdPrefix: com.example.remotecompose
+  deploymentTarget:
+    iOS: "16.0"
+
+targets:
+  RemoteComposeDemo:
+    type: application
+    platform: iOS
+    sources:
+      - path: ComposeApp
+    info:
+      path: ComposeApp/Info.plist
+      properties:
+        CFBundleDisplayName: RemoteComposeDemo
+        CADisableMinimumFrameDurationOnPhone: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.remotecompose.demo
+        PRODUCT_NAME: RemoteComposeDemo
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS: "$(inherited) -framework RemoteComposeShared"
+    preBuildScripts:
+      - name: Compile Kotlin Framework
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false
