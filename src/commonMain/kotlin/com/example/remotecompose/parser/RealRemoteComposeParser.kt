@@ -8,6 +8,9 @@ import com.example.remotecompose.model.PaintStyle
 import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Parses the **real** `androidx.compose.remote` wire format (v1.0.0-alpha18), as produced by the
@@ -78,6 +81,25 @@ object RealRemoteComposeParser {
      * flags concept.
      */
     private const val OP_DRAW_TEXT_ANCHORED = 133
+
+    /**
+     * `Operations.DRAW_TEXT_ON_CIRCLE` — `RemoteComposeWriter.drawTextOnCircle(textId, centerX,
+     * centerY, radius, startAngle, warpRadiusOffset, alignment, placement)` writes
+     * `[textId:i32][centerX:f32][centerY:f32][radius:f32][startAngleDegrees:f32]
+     * [warpRadiusOffset:f32][alignment:byte][placement:byte]` (source-confirmed via javap on the
+     * real `DrawTextOnCircle` operation class: `alignment`/`placement` are plain enum ordinals —
+     * `Alignment` = `START`(0)/`CENTER`(1)/`END`(2), `Placement` = `OUTSIDE`(0)/`INSIDE`(1) — not
+     * NaN-tagged variable references like the two enum fields' *values* would suggest from their
+     * neighboring float fields' `readNanId()` reads elsewhere in that class's real `read()`).
+     * There is no real curved-text algorithm to reverse-engineer here: the real
+     * `DrawTextOnCircle.paint()` itself unconditionally throws
+     * `UnsupportedOperationException("DrawTextOnCircle is not supported")` in this SDK version
+     * (1.0.0-alpha18) — so this parser fully decodes the wire format (real byte-coverage) but
+     * renders only a straight-line approximation reusing [Opcode.DrawText], anchored at the
+     * circle position `startAngleDegrees` points to, ignoring `alignment`/`placement`/
+     * `warpRadiusOffset` (which only affect how letters would bend along the arc).
+     */
+    private const val OP_DRAW_TEXT_ON_CIRCLE = 57
 
     /** `Operations.DRAW_LINE` — `[x1,y1,x2,y2]` as four raw floats. */
     private const val OP_DRAW_LINE = 47
@@ -1051,6 +1073,25 @@ object RealRemoteComposeParser {
                     )
                 }
 
+                OP_DRAW_TEXT_ON_CIRCLE -> {
+                    val textId = reader.readS32()
+                    val centerX = reader.readFloat32()
+                    val centerY = reader.readFloat32()
+                    val radius = reader.readFloat32()
+                    val startAngleDegrees = reader.readFloat32()
+                    reader.readFloat32() // warpRadiusOffset — only affects per-letter curvature
+                    reader.readU8() // alignment — only affects per-letter curvature
+                    reader.readU8() // placement — only affects per-letter curvature
+                    val startAngleRadians = startAngleDegrees * (PI.toFloat() / 180f)
+                    opcodes += Opcode.DrawText(
+                        stringIndex = textId,
+                        x = centerX + radius * cos(startAngleRadians),
+                        y = centerY + radius * sin(startAngleRadians),
+                        fontSize = DEFAULT_TEXT_SIZE_SP,
+                        colorArgb = currentColor.toArgb(),
+                    )
+                }
+
                 OP_DRAW_LINE -> {
                     val x1 = reader.readFloat32()
                     val y1 = reader.readFloat32()
@@ -1548,7 +1589,7 @@ object RealRemoteComposeParser {
                         "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
                         "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
-                        "ClipPath/DrawBitmapInt)",
+                        "ClipPath/DrawBitmapInt/DrawTextOnCircle)",
                 )
             }
         }

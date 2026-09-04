@@ -15,6 +15,7 @@ import androidx.compose.remote.creation.modifiers.RippleModifier
 import androidx.compose.remote.creation.modifiers.RoundedRectShape
 import androidx.compose.remote.creation.modifiers.WidthInModifier
 import androidx.compose.remote.creation.modifiers.ZIndexModifier
+import androidx.compose.remote.core.operations.DrawTextOnCircle
 import java.io.File
 
 fun main(args: Array<String>) {
@@ -668,6 +669,23 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF6A1B9A.toInt()).commit()
     writer.drawRect(105f, 150f, 130f, 170f) // full rect; only the clipped triangle should paint
     writer.restore()
+
+    // DRAW_TEXT_ON_CIRCLE: the real DrawTextOnCircle.paint() itself throws
+    // UnsupportedOperationException in this SDK version, so there is no real curved-text
+    // algorithm to reverse-engineer — this parser decodes the full wire format (real byte
+    // coverage) but only renders a straight-line approximation anchored at the point
+    // (centerX + radius*cos(startAngle), centerY + radius*sin(startAngle)) = (100, 185 - 10) =
+    // (100, 175), i.e. straight up from a center 10 units below it. Kept well clear of the
+    // canvas's bottom edge (unlike an earlier, since-moved placement at y=183): platform default
+    // font metrics differ enough between Desktop/Android/iOS that text anchored close to a hard
+    // clip edge shows a real, expected amount of clipped-glyph difference across platforms, which
+    // isn't this opcode's own byte-coverage or anchor-math concern.
+    writer.getRcPaint().setColor(0xFF212121.toInt()).commit()
+    val circleTextId = writer.textCreateId("Curved")
+    writer.drawTextOnCircle(
+        circleTextId, 100f, 185f, 10f, 270f, 0f,
+        DrawTextOnCircle.Alignment.CENTER, DrawTextOnCircle.Placement.OUTSIDE,
+    )
 
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)

@@ -78,7 +78,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `writer.getBuffer().drawBitmap(id, 0, 0, srcLeft, srcTop, srcRight, srcBottom, dstLeft, dstTop,
  * dstRight, dstBottom, 0)` — the only public call path that exercises `DRAW_BITMAP_INT`'s real
  * source-rect cropping, not exposed by any `RemoteComposeWriter.drawBitmap(...)` convenience
- * overload (those always set src == dst) — not by anything in this codebase. Shared by every
+ * overload (those always set src == dst), and the word "Curved" drawn via
+ * `writer.drawTextOnCircle(textId, 100f, 185f, 10f, 270f, 0f, Alignment.CENTER,
+ * Placement.OUTSIDE)` — the real `DrawTextOnCircle.paint()` itself throws
+ * `UnsupportedOperationException` in this SDK version, so there is no real curved-text algorithm
+ * to reverse-engineer; this parser fully decodes the wire format but renders only a straight-line
+ * approximation anchored where `startAngle` points on the circle (here, straight up from a center
+ * 10 units below it) — not by anything in this codebase. Shared by every
  * platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -136,6 +142,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAAAAAAADJ////oygAAAACAAAABP84jjwqQAAAAEK0AABBQAAAQsgAANbW1tbL////ov////8AAAAGAAAAAgAAAAAQAAAAAEKgAADJ////ocr///+g" +
             "/////wAAAAAAAAAAyf///58oAAAAAgAAAAT/xigoKkGwAABDFgAAQfAAAEMeAADW1sr///+e/////wAAAAAAAAAAyf///50oAAAAAgAAAAT/+aglKkGw" +
             "AABDFgAAQfAAAEMmAADW1sr///+c/////wAAAAAAAAAAyf///5soAAAAAgAAAAT/AIOPKkGwAABDFgAAQfAAAEMeAADW1tbWgnsAAAA1AAAADv+AAApC" +
-            "0gAAQygAAP+AAAsAAAAAAAAAAEL6AABDFgAA/4AACwAAAAAAAAAAQvoAAEMoAAD/gAAPJgAAADUoAAAAAgAAAAT/ahuaKkLSAABDFgAAQwIAAEMqAACD",
+            "0gAAQygAAP+AAAsAAAAAAAAAAEL6AABDFgAA/4AACwAAAAAAAAAAQvoAAEMoAAD/gAAPJgAAADUoAAAAAgAAAAT/ahuaKkLSAABDFgAAQwIAAEMqAACD" +
+            "KAAAAAIAAAAE/yEhIWYAAAA2AAAABkN1cnZlZDkAAAA2QsgAAEM5AABBIAAAQ4cAAAAAAAABAA==",
     )
 }
