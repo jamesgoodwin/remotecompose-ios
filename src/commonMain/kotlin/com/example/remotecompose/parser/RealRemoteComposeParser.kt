@@ -516,6 +516,24 @@ object RealRemoteComposeParser {
         val bitmapPool = mutableMapOf<Int, ByteArray>()
         val opcodes = mutableListOf<Opcode>()
 
+        // Every real container/action-list scope (LAYOUT_BOX/COLUMN/ROW/etc's own scope, the
+        // LAYOUT_CONTENT children scope, LAYOUT_CANVAS_CONTENT, and MODIFIER_CLICK/MULTI_CLICK/
+        // TOUCH_*'s nested action lists) is closed by exactly one generic CONTAINER_END, and these
+        // scopes nest strictly LIFO in the real byte stream. This stack lets a modifier that needs
+        // real semantic effect (so far: MODIFIER_OFFSET, MODIFIER_VISIBILITY) push cleanup
+        // [Opcode]s onto its *container's own* scope (always the top of this stack at the point the
+        // modifier is parsed, since any nested action-list scope from an earlier modifier in the
+        // same list is always fully opened-and-closed before the next modifier is written) so they
+        // fire when that scope's matching CONTAINER_END is reached — without needing to build a
+        // real component tree.
+        val scopeStack = mutableListOf<MutableList<Opcode>>()
+        fun pushScope() {
+            scopeStack.add(mutableListOf())
+        }
+        fun attachToTopScope(op: Opcode) {
+            scopeStack.lastOrNull()?.add(op)
+        }
+
         while (reader.hasRemaining()) {
             when (val opId = reader.readU8()) {
                 OP_HEADER -> {
@@ -679,6 +697,7 @@ object RealRemoteComposeParser {
                     reader.readS32() // horizontalPositioning
                     reader.readS32() // verticalPositioning
                     reader.readFloat32() // spacedBy
+                    pushScope() // this container's own scope — closed by its outermost CONTAINER_END
                 }
 
                 OP_LAYOUT_FLOW -> {
@@ -689,6 +708,7 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // spacedBy
                     reader.readS32() // maxItemsInMainAxis
                     reader.readS32() // maxLinesInCrossAxis
+                    pushScope()
                 }
 
                 OP_LAYOUT_BOX, OP_LAYOUT_FIT_BOX -> {
@@ -696,9 +716,13 @@ object RealRemoteComposeParser {
                     reader.readS32() // animationId
                     reader.readS32() // horizontalPositioning
                     reader.readS32() // verticalPositioning
+                    pushScope()
                 }
 
-                OP_LAYOUT_ROOT -> reader.readS32() // componentId — no LAYOUT_CONTENT marker follows
+                OP_LAYOUT_ROOT -> {
+                    reader.readS32() // componentId — no LAYOUT_CONTENT marker follows
+                    pushScope() // closed by this container's single CONTAINER_END
+                }
 
                 OP_LAYOUT_STATE -> {
                     reader.readS32() // componentId
@@ -706,13 +730,18 @@ object RealRemoteComposeParser {
                     reader.readS32() // horizontalPositioning
                     reader.readS32() // verticalPositioning
                     reader.readS32() // stateIndex
+                    pushScope()
                 }
 
-                OP_LAYOUT_CONTENT, OP_LAYOUT_CANVAS_CONTENT -> reader.readS32() // componentId
+                OP_LAYOUT_CONTENT, OP_LAYOUT_CANVAS_CONTENT -> {
+                    reader.readS32() // componentId
+                    pushScope() // the children scope itself — no cleanup needed, just consumes one end
+                }
 
                 OP_LAYOUT_CANVAS -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
+                    pushScope()
                 }
 
                 OP_LAYOUT_CUSTOM -> {
@@ -725,6 +754,7 @@ object RealRemoteComposeParser {
                         reader.readU16() // dataType
                         reader.readS32() // value (int or float bit pattern)
                     }
+                    pushScope()
                 }
 
                 OP_LAYOUT_IMAGE -> {
@@ -733,6 +763,7 @@ object RealRemoteComposeParser {
                     reader.readS32() // scaleType
                     reader.readS32() // bitmapId
                     reader.readFloat32() // alpha
+                    pushScope() // a leaf — no LAYOUT_CONTENT, just its own single CONTAINER_END
                 }
 
                 OP_HAPTIC_FEEDBACK -> reader.readS32() // hapticId
@@ -746,9 +777,14 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // value
                 }
 
-                OP_CONTAINER_END -> Unit // no payload
+                OP_CONTAINER_END ->
+                    // Pop this scope's deferred cleanup (e.g. a MatrixRestore queued by
+                    // MODIFIER_OFFSET/MODIFIER_VISIBILITY on the container this end belongs to)
+                    // and splice it into the flat opcode stream right here, closing whatever that
+                    // modifier opened around this container's children.
+                    scopeStack.removeLastOrNull()?.let { opcodes.addAll(it) }
 
-                OP_MODIFIER_CLICK -> Unit // no payload — just opens a nested action list
+                OP_MODIFIER_CLICK -> pushScope() // no payload — opens a nested action list, closed by its own CONTAINER_END
 
                 OP_HOST_ACTION -> reader.readS32() // actionId
 
@@ -756,11 +792,31 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_BACKGROUND -> repeat(9) { reader.readFloat32() }
 
-                OP_MODIFIER_VISIBILITY -> reader.readS32()
+                OP_MODIFIER_VISIBILITY -> {
+                    // Component.Visibility: GONE=0, VISIBLE=1, INVISIBLE=2. Anything but VISIBLE
+                    // is rendered here as an empty clip around this container's children (the
+                    // executor already implements OP_CLIP_RECT via Skia's real clip stack, and an
+                    // empty rect makes every subsequent draw inside it a no-op) — a real semantic
+                    // effect, not just a byte-skip, though it doesn't distinguish GONE (no space
+                    // reserved) from INVISIBLE (space reserved) since this renderer has no layout
+                    // pass to reserve space with.
+                    val visibility = reader.readS32()
+                    if (visibility != 1) {
+                        opcodes += Opcode.MatrixSave
+                        opcodes += Opcode.ClipRect(0f, 0f, 0f, 0f)
+                        attachToTopScope(Opcode.MatrixRestore)
+                    }
+                }
 
                 OP_MODIFIER_OFFSET -> {
-                    reader.readFloat32() // x
-                    reader.readFloat32() // y
+                    // A real semantic effect (not just a byte-skip): translates every subsequent
+                    // draw belonging to this container's children, undone at this container's own
+                    // closing CONTAINER_END via the scope stack above.
+                    val x = reader.readFloat32()
+                    val y = reader.readFloat32()
+                    opcodes += Opcode.MatrixSave
+                    opcodes += Opcode.Translate(x, y)
+                    attachToTopScope(Opcode.MatrixRestore)
                 }
 
                 OP_MODIFIER_BORDER -> {
@@ -773,10 +829,13 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_ROUNDED_CLIP_RECT -> repeat(4) { reader.readFloat32() } // topStart, topEnd, bottomStart, bottomEnd
 
-                OP_MODIFIER_MULTI_CLICK -> reader.readS32() // clickType — just opens a nested action list
+                OP_MODIFIER_MULTI_CLICK -> {
+                    reader.readS32() // clickType
+                    pushScope() // opens a nested action list, closed by its own CONTAINER_END
+                }
 
                 OP_MODIFIER_TOUCH_DOWN, OP_MODIFIER_TOUCH_UP, OP_MODIFIER_TOUCH_CANCEL ->
-                    Unit // no payload — just opens a nested action list
+                    pushScope() // no payload — opens a nested action list, closed by its own CONTAINER_END
 
                 OP_MODIFIER_WIDTH_IN, OP_MODIFIER_HEIGHT_IN -> {
                     reader.readFloat32() // min
