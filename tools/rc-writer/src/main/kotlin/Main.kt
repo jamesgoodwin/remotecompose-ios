@@ -67,6 +67,16 @@ fun main() {
 
     writer.addClickArea(7, "tap target", 20f, 20f, 180f, 180f, "https://example.com/tapped")
 
+    writer.getRcPaint()
+        .setColor(0xFF00838F.toInt())
+        .commit()
+    val curvePath = RemotePath()
+    curvePath.moveTo(2f, 150f)
+    curvePath.quadTo(18f, 150f, 18f, 170f)
+    curvePath.cubicTo(18f, 185f, 10f, 195f, 2f, 195f)
+    curvePath.close()
+    writer.drawPath(curvePath)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

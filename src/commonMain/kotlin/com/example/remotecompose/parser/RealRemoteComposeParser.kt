@@ -104,16 +104,18 @@ object RealRemoteComposeParser {
      * array (see `androidx.compose.remote.core.RemotePathBase` — [Utils.asNan]-style sentinels,
      * not plain floats, mark where each command starts).
      *
-     * Confirmed against real output from a `moveTo`/`lineTo`/`lineTo`/`close()` path: the encoder
-     * has a documented bug (`RemotePathBase.add(int,float,float)`: "THIS IS FLAW in the encoding
-     * TODO FIX ON VERSIONING") that advances the write cursor 2 slots too many before writing a
-     * command's real coordinates, leaving 2 zeroed/garbage floats between a command's tag and its
-     * actual arguments for every non-[PATH_CMD_MOVE]/[PATH_CMD_CLOSE] command — this reader has to
+     * Confirmed against real output from `moveTo`/`lineTo`/`close()`, then separately
+     * `moveTo`/`quadTo`/`cubicTo`/`close()`, paths: the encoder has a documented bug
+     * (`RemotePathBase.add(int,float,float)`: "THIS IS FLAW in the encoding TODO FIX ON
+     * VERSIONING") that advances the write cursor 2 slots too many before writing a command's
+     * real coordinates, leaving 2 zeroed/garbage floats between a command's tag and its actual
+     * arguments for every non-[PATH_CMD_MOVE]/[PATH_CMD_CLOSE] command — this reader has to
      * reproduce that exact padding to stay aligned, not just skip it as a curiosity. Per-command
-     * stride (tag + padding + real args), verified for [PATH_CMD_MOVE]/[PATH_CMD_LINE]/
-     * [PATH_CMD_CLOSE] only — [PATH_CMD_QUADRATIC]/[PATH_CMD_CONIC]/[PATH_CMD_CUBIC] are declared
-     * from source but their exact padded stride hasn't been confirmed against real bytes yet, so
-     * they're a hard parse failure here rather than a guess.
+     * stride (tag + padding + real args) is verified for [PATH_CMD_MOVE]/[PATH_CMD_LINE]/
+     * [PATH_CMD_QUADRATIC]/[PATH_CMD_CUBIC]/[PATH_CMD_CLOSE]; only [PATH_CMD_CONIC] remains
+     * unverified — its 2-word padding is the same bug applied to a same-shaped `add()` overload,
+     * but that specific overload hasn't been exercised against real bytes, so it's still a hard
+     * parse failure here rather than an unverified extrapolation.
      */
     private const val OP_DATA_PATH = 123
 
@@ -368,8 +370,8 @@ object RealRemoteComposeParser {
      * as bits, not as [BufferReader.readFloat32], since a command tag is a specific NaN bit
      * pattern that must be tested before deciding whether a word is a tag or real float data).
      *
-     * @throws RemoteComposeParseException on [PATH_CMD_QUADRATIC]/[PATH_CMD_CONIC]/
-     *   [PATH_CMD_CUBIC] — declared from source but not yet byte-verified (see [OP_DATA_PATH]).
+     * @throws RemoteComposeParseException on [PATH_CMD_CONIC] — declared from source but not yet
+     *   byte-verified (see [OP_DATA_PATH]).
      */
     private fun decodePathArray(reader: BufferReader, floatCount: Int): List<PathCommand> {
         val words = IntArray(floatCount) { reader.readS32() }
@@ -391,13 +393,30 @@ object RealRemoteComposeParser {
                     commands += PathCommand.LineTo(Float.fromBits(words[i + 3]), Float.fromBits(words[i + 4]))
                     i += 5
                 }
+                PATH_CMD_QUADRATIC -> {
+                    // Same 2-word padding bug as LINE, ahead of 4 real floats (x1, y1, x2, y2).
+                    commands += PathCommand.QuadraticTo(
+                        Float.fromBits(words[i + 3]), Float.fromBits(words[i + 4]),
+                        Float.fromBits(words[i + 5]), Float.fromBits(words[i + 6]),
+                    )
+                    i += 7
+                }
+                PATH_CMD_CUBIC -> {
+                    // Same 2-word padding bug, ahead of 6 real floats (x1, y1, x2, y2, x3, y3).
+                    commands += PathCommand.CubicTo(
+                        Float.fromBits(words[i + 3]), Float.fromBits(words[i + 4]),
+                        Float.fromBits(words[i + 5]), Float.fromBits(words[i + 6]),
+                        Float.fromBits(words[i + 7]), Float.fromBits(words[i + 8]),
+                    )
+                    i += 9
+                }
                 PATH_CMD_CLOSE -> {
                     commands += PathCommand.Close
                     i += 1
                 }
                 else -> throw RemoteComposeParseException(
                     "Real path command tag $tag at float index $i is not yet supported " +
-                        "(only MOVE/LINE/CLOSE verified against real output)",
+                        "(MOVE/LINE/QUADRATIC/CUBIC/CLOSE verified against real output; CONIC is not)",
                 )
             }
         }

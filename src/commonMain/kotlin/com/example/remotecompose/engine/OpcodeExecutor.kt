@@ -229,6 +229,7 @@ object OpcodeExecutor {
             when (command) {
                 is PathCommand.MoveTo -> path.moveTo(command.x, command.y)
                 is PathCommand.LineTo -> path.lineTo(command.x, command.y)
+                is PathCommand.QuadraticTo -> path.quadraticTo(command.x1, command.y1, command.x2, command.y2)
                 is PathCommand.CubicTo -> path.cubicTo(
                     command.x1, command.y1,
                     command.x2, command.y2,

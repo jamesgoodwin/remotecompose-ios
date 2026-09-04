@@ -25,11 +25,15 @@ enum class PaintStyleKind {
 /**
  * One segment of a reconstructed path, as emitted by `OP_DRAW_PATH` / `OP_CLIP_PATH`. Mirrors the
  * subset of `androidx.compose.ui.graphics.Path` construction calls the renderer needs to support:
- * move, line, cubic Bézier, and close.
+ * move, line, quadratic and cubic Bézier, and close.
  */
 sealed interface PathCommand {
     data class MoveTo(val x: Float, val y: Float) : PathCommand
     data class LineTo(val x: Float, val y: Float) : PathCommand
+    data class QuadraticTo(
+        val x1: Float, val y1: Float,
+        val x2: Float, val y2: Float,
+    ) : PathCommand
     data class CubicTo(
         val x1: Float, val y1: Float,
         val x2: Float, val y2: Float,
