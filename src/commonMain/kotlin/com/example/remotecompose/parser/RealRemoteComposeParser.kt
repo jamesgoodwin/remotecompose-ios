@@ -265,6 +265,20 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_BORDER = 107
 
     /**
+     * `Operations.MODIFIER_CLIP_RECT` — `RecordingModifier.clip(RectShape(...))` writes only the
+     * opcode tag, no payload — confirmed: the very next byte is the following opcode
+     * (`LAYOUT_CONTENT`'s `0xc9`), with nothing in between.
+     */
+    private const val OP_MODIFIER_CLIP_RECT = 108
+
+    /**
+     * `Operations.MODIFIER_ROUNDED_CLIP_RECT` — `RecordingModifier.clip(RoundedRectShape(topStart,
+     * topEnd, bottomStart, bottomEnd))` writes those 4 raw floats, confirmed via
+     * `RoundedRectShape(4f, 4f, 4f, 4f)` decoding to exactly `[4.0, 4.0, 4.0, 4.0]`.
+     */
+    private const val OP_MODIFIER_ROUNDED_CLIP_RECT = 54
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -489,6 +503,10 @@ object RealRemoteComposeParser {
                     reader.readS32() // shapeType
                 }
 
+                OP_MODIFIER_CLIP_RECT -> Unit // no payload
+
+                OP_MODIFIER_ROUNDED_CLIP_RECT -> repeat(4) { reader.readFloat32() } // topStart, topEnd, bottomStart, bottomEnd
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -496,7 +514,8 @@ object RealRemoteComposeParser {
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
-                        "ModifierVisibility/ModifierOffset/ModifierBorder)",
+                        "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
+                        "ModifierRoundedClipRect)",
                 )
             }
         }
