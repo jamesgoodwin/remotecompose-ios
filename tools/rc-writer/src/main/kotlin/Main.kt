@@ -11,6 +11,21 @@ fun main() {
         .commit()
     writer.drawRect(20f, 20f, 180f, 180f)
 
+    writer.getRcPaint()
+        .setColor(0xFF1E88E5.toInt())
+        .commit()
+    writer.drawCircle(60f, 140f, 30f)
+
+    writer.getRcPaint()
+        .setColor(0xFF43A047.toInt())
+        .commit()
+    writer.drawRoundRect(110f, 110f, 190f, 190f, 12f, 12f)
+
+    writer.getRcPaint()
+        .setColor(0xFF000000.toInt())
+        .commit()
+    writer.drawTextAnchored("Hi", 100f, 20f, 0f, 0f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

@@ -1,6 +1,7 @@
 package com.example.remotecompose.parser
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.example.remotecompose.model.Header
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PaintStyle
@@ -12,11 +13,12 @@ import com.example.remotecompose.model.RemoteDocument
  * official `androidx.compose.remote:remote-creation-jvm` writer — not the placeholder format
  * [RemoteComposeParser] was built against.
  *
- * This is deliberately narrow: it understands exactly the five real opcodes a minimal
- * `RemoteComposeWriter(width, height, contentDescription, platform)` +
- * `getRcPaint().setColor(...).commit()` + `drawRect(...)` document produces, reverse-engineered
- * by hex-dumping actual output from the official writer (see the byte table in this class's
- * companion). Real documents in general use 100+ opcodes across versioned "profiles"
+ * This is deliberately narrow: it understands exactly the real opcodes a minimal
+ * `RemoteComposeWriter(width, height, contentDescription, platform)` document produces when built
+ * from `getRcPaint().setColor(...).commit()` plus `drawRect`/`drawCircle`/`drawRoundRect`/
+ * `drawTextAnchored` calls, reverse-engineered by hex-dumping actual output from the official
+ * writer (see the opcode constants below and `tools/rc-writer`, which generates the payloads this
+ * was verified against). Real documents in general use 100+ opcodes across versioned "profiles"
  * (`androidx.compose.remote.core.Operations`), each with its own fixed field layout dispatched by
  * a per-opcode `CompanionOperation` — there is no generic length-prefix that would let a reader
  * skip an opcode it doesn't recognize (unlike the skippable framing [RemoteComposeParser] assumes).
@@ -60,6 +62,27 @@ object RealRemoteComposeParser {
 
     /** `Operations.DRAW_RECT` — `[left,top,right,bottom]` as four raw floats, no length prefix. */
     private const val OP_DRAW_RECT = 42
+
+    /** `Operations.DRAW_CIRCLE` — `[centerX,centerY,radius]` as three raw floats. */
+    private const val OP_DRAW_CIRCLE = 46
+
+    /** `Operations.DRAW_ROUND_RECT` — `[left,top,right,bottom,radiusX,radiusY]` as six raw floats. */
+    private const val OP_DRAW_ROUND_RECT = 51
+
+    /**
+     * The real op `drawTextAnchored(text, x, y, panX, panY, flags)` writes: a `DATA_TEXT` entry
+     * for the string, then this opcode (observed id 133) referencing it. Payload:
+     * `[textId:i32][x:f32][y:f32][panX:f32][panY:f32][flags:i32]` — panX/panY/flags are read to
+     * stay aligned with the stream but not modeled by [Opcode.DrawText], which has no anchor or
+     * flags concept.
+     */
+    private const val OP_DRAW_TEXT_ANCHORED = 133
+
+    /**
+     * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
+     * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
+     */
+    private const val DEFAULT_TEXT_SIZE_SP = 16f
 
     /**
      * Parses [bytes] as a real `.rc` document containing only the opcode subset documented above.
@@ -115,9 +138,49 @@ object RealRemoteComposeParser {
                     )
                 }
 
+                OP_DRAW_CIRCLE -> {
+                    val centerX = reader.readFloat32()
+                    val centerY = reader.readFloat32()
+                    val radius = reader.readFloat32()
+                    opcodes += Opcode.DrawCircle(
+                        centerX, centerY, radius,
+                        PaintStyle(currentColor, PaintStyleKind.FILL),
+                    )
+                }
+
+                OP_DRAW_ROUND_RECT -> {
+                    val left = reader.readFloat32()
+                    val top = reader.readFloat32()
+                    val right = reader.readFloat32()
+                    val bottom = reader.readFloat32()
+                    val radiusX = reader.readFloat32()
+                    val radiusY = reader.readFloat32()
+                    opcodes += Opcode.DrawRoundRect(
+                        left, top, right, bottom, radiusX, radiusY,
+                        PaintStyle(currentColor, PaintStyleKind.FILL),
+                    )
+                }
+
+                OP_DRAW_TEXT_ANCHORED -> {
+                    val textId = reader.readS32()
+                    val x = reader.readFloat32()
+                    val y = reader.readFloat32()
+                    reader.readFloat32() // panX — no anchor concept in Opcode.DrawText
+                    reader.readFloat32() // panY
+                    reader.readS32() // flags
+                    opcodes += Opcode.DrawText(
+                        stringIndex = textId,
+                        x = x,
+                        y = y,
+                        fontSize = DEFAULT_TEXT_SIZE_SP,
+                        colorArgb = currentColor.toArgb(),
+                    )
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
-                        "(Header/DataText/RootContentDescription/PaintBundle/DrawRect)",
+                        "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
+                        "DrawRoundRect/DrawTextAnchored)",
                 )
             }
         }
@@ -131,7 +194,7 @@ object RealRemoteComposeParser {
                 backgroundColor = Color.Transparent,
                 capabilities = 0L,
             ),
-            strings = StringPool.EMPTY,
+            strings = StringPool.fromEntries(textPool),
             variables = VariablePool.EMPTY,
             bitmaps = BitmapPool.EMPTY,
             opcodes = opcodes,

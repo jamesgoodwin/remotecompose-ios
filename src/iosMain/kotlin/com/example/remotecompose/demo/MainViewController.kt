@@ -7,14 +7,17 @@ import platform.UIKit.UIViewController
 
 /**
  * Base64 of `tools/rc-writer/sample.rc` — a real `.rc` payload produced by the official
- * `androidx.compose.remote:remote-creation-jvm:1.0.0-alpha18` writer (one red `drawRect`), not by
- * anything in this codebase. Embedded as a constant rather than bundled as a resource so this
- * proof-of-concept app has zero resource-loading setup to get wrong on first run.
+ * `androidx.compose.remote:remote-creation-jvm:1.0.0-alpha18` writer (a red `drawRect`, a blue
+ * `drawCircle`, a green `drawRoundRect`, and a `drawTextAnchored`), not by anything in this
+ * codebase. Embedded as a constant rather than bundled as a resource so this proof-of-concept app
+ * has zero resource-loading setup to get wrong on first run.
  */
 @OptIn(ExperimentalEncodingApi::class)
 private val SAMPLE_RC_BYTES: ByteArray by lazy {
     Base64.decode(
-        "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAARkZW1vZwAAACooAAAAAgAAAAT/5Tk1KkGgAABBoAAAQzQAAEM0AAA="
+        "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAARkZW1vZwAAACooAAAAAgAAAAT/5Tk1KkGgAABBoAAAQzQAAEM0AAAo" +
+            "AAAAAgAAAAT/HojlLkJwAABDDAAAQfAAACgAAAACAAAABP9DoEczQtwAAELcAABDPgAAQz4AAEFAAABBQAAAKAAAAAIAAAAE/wAA" +
+            "AGYAAAArAAAAAkhphQAAACtCyAAAQaAAAAAAAAAAAAAAAAAAAA=="
     )
 }
 
