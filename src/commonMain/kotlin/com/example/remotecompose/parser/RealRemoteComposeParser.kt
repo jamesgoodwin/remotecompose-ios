@@ -150,6 +150,15 @@ object RealRemoteComposeParser {
     private const val OP_DRAW_BITMAP = 44
 
     /**
+     * `Operations.CLICK_AREA` — `addClickArea(actionId, contentDescription, left, top, right,
+     * bottom, metadata)` writes `[actionId:i32][contentDescriptionTextId:i32][left:f32][top:f32]
+     * [right:f32][bottom:f32][metadataTextId:i32]`. `metadata` is exactly the target-URL string
+     * [Opcode.ActionClick.targetUrlStringIndex] expects; `contentDescription` is read to stay
+     * aligned but not modeled, same pattern as [OP_DRAW_BITMAP]'s.
+     */
+    private const val OP_CLICK_AREA = 64
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -318,11 +327,22 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.DrawBitmap(bitmapId, left, top, right, bottom)
                 }
 
+                OP_CLICK_AREA -> {
+                    val actionId = reader.readS32()
+                    reader.readS32() // content-description text-pool id — not needed for hit-testing
+                    val left = reader.readFloat32()
+                    val top = reader.readFloat32()
+                    val right = reader.readFloat32()
+                    val bottom = reader.readFloat32()
+                    val metadataTextId = reader.readS32()
+                    opcodes += Opcode.ActionClick(actionId, metadataTextId, left, top, right, bottom)
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
-                        "DataPath/DrawPath/DataBitmap/DrawBitmap)",
+                        "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea)",
                 )
             }
         }

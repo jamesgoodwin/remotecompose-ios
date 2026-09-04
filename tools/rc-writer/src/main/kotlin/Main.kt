@@ -65,6 +65,8 @@ fun main() {
     }
     writer.drawBitmap(checkerImage, 70f, 65f, 110f, 105f, "checker")
 
+    writer.addClickArea(7, "tap target", 20f, 20f, 180f, 180f, "https://example.com/tapped")
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
