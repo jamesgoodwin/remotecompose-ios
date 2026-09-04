@@ -510,6 +510,38 @@ object RealRemoteComposeParser {
     private const val OP_VALUE_FLOAT_EXPRESSION_CHANGE = 227
 
     /**
+     * `Operations.MATRIX_SAVE` / `MATRIX_RESTORE` — bare opcode bytes, no payload (confirmed via
+     * `writer.save()`/`writer.restore()` decoding to a single byte each, `82`/`83` hex). Unlike
+     * [OP_MODIFIER_OFFSET]'s scope-attached synthetic save/restore pair, these are top-level draw
+     * ops the document author placed directly in the stream, so they map straight onto the
+     * existing [Opcode.MatrixSave]/[Opcode.MatrixRestore] with no scope-stack bookkeeping needed.
+     */
+    private const val OP_MATRIX_SAVE = 130
+    private const val OP_MATRIX_RESTORE = 131
+
+    /** `Operations.MATRIX_TRANSLATE` — `[dx:f32][dy:f32]`, confirmed via `writer.translate(130f,41f)`. */
+    private const val OP_MATRIX_TRANSLATE = 127
+
+    /**
+     * `Operations.MATRIX_SCALE` — `[scaleX:f32][scaleY:f32][pivotX:f32][pivotY:f32]`, confirmed
+     * via `writer.scale(2f,2f,145f,46f)` decoding to exactly those four floats in that order.
+     */
+    private const val OP_MATRIX_SCALE = 126
+
+    /**
+     * `Operations.MATRIX_ROTATE` — `[degrees:f32][pivotX:f32][pivotY:f32]`, confirmed via
+     * `writer.rotate(45f,175f,46f)` decoding to exactly those three floats in that order.
+     */
+    private const val OP_MATRIX_ROTATE = 129
+
+    /**
+     * `Operations.CLIP_RECT` — the top-level draw-context clip (distinct from
+     * [OP_MODIFIER_CLIP_RECT]'s modifier-attached one): `[left:f32][top:f32][right:f32][bottom:f32]`,
+     * confirmed via `writer.clipRect(190f,41f,205f,51f)` decoding to exactly those four floats.
+     */
+    private const val OP_CLIP_RECT = 39
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -941,6 +973,39 @@ object RealRemoteComposeParser {
                     reader.readS32() // value (expression/id reference)
                 }
 
+                OP_MATRIX_SAVE -> opcodes += Opcode.MatrixSave
+
+                OP_MATRIX_RESTORE -> opcodes += Opcode.MatrixRestore
+
+                OP_MATRIX_TRANSLATE -> {
+                    val dx = reader.readFloat32()
+                    val dy = reader.readFloat32()
+                    opcodes += Opcode.Translate(dx, dy)
+                }
+
+                OP_MATRIX_SCALE -> {
+                    val sx = reader.readFloat32()
+                    val sy = reader.readFloat32()
+                    val pivotX = reader.readFloat32()
+                    val pivotY = reader.readFloat32()
+                    opcodes += Opcode.Scale(sx, sy, pivotX, pivotY)
+                }
+
+                OP_MATRIX_ROTATE -> {
+                    val degrees = reader.readFloat32()
+                    val pivotX = reader.readFloat32()
+                    val pivotY = reader.readFloat32()
+                    opcodes += Opcode.Rotate(degrees, pivotX, pivotY)
+                }
+
+                OP_CLIP_RECT -> {
+                    val left = reader.readFloat32()
+                    val top = reader.readFloat32()
+                    val right = reader.readFloat32()
+                    val bottom = reader.readFloat32()
+                    opcodes += Opcode.ClipRect(left, top, right, bottom)
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -957,7 +1022,8 @@ object RealRemoteComposeParser {
                         "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex/ModifierRipple/" +
                         "ModifierDrawContent/ModifierMarquee/ModifierGraphicsLayer/" +
                         "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
-                        "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange)",
+                        "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
+                        "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect)",
                 )
             }
         }

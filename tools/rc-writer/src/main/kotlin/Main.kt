@@ -380,6 +380,30 @@ fun main() {
     writer.drawRect(110f, 41f, 125f, 51f)
     writer.endBox()
 
+    writer.save()
+    writer.translate(130f, 41f)
+    writer.getRcPaint().setColor(0xFF00ACC1.toInt()).commit()
+    writer.drawRect(0f, 0f, 15f, 10f)
+    writer.restore()
+
+    writer.save()
+    writer.scale(2f, 2f, 145f, 46f)
+    writer.getRcPaint().setColor(0xFFF57F17.toInt()).commit()
+    writer.drawRect(145f, 41f, 152f, 46f)
+    writer.restore()
+
+    writer.save()
+    writer.rotate(45f, 175f, 46f)
+    writer.getRcPaint().setColor(0xFF6A1B9A.toInt()).commit()
+    writer.drawRect(168f, 41f, 183f, 51f)
+    writer.restore()
+
+    writer.save()
+    writer.clipRect(190f, 41f, 205f, 51f)
+    writer.getRcPaint().setColor(0xFFAA00FF.toInt()).commit()
+    writer.drawRect(185f, 36f, 210f, 56f)
+    writer.restore()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
