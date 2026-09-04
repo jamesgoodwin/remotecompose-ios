@@ -329,6 +329,13 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_ZINDEX = 223
 
     /**
+     * `Operations.MODIFIER_RIPPLE` — reached via `.then(RippleModifier())` (also not a direct
+     * `RecordingModifier` method) — writes only the opcode tag, no payload, confirmed: the very
+     * next byte is [OP_LAYOUT_CONTENT]'s `0xc9`.
+     */
+    private const val OP_MODIFIER_RIPPLE = 229
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -579,6 +586,8 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_ZINDEX -> reader.readFloat32() // z-index value
 
+                OP_MODIFIER_RIPPLE -> Unit // no payload
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -589,7 +598,7 @@ object RealRemoteComposeParser {
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
                         "ModifierRoundedClipRect/ModifierMultiClick/ModifierTouchDown/" +
                         "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn/" +
-                        "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex)",
+                        "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex/ModifierRipple)",
                 )
             }
         }

@@ -4,6 +4,7 @@ import androidx.compose.remote.creation.RemotePath
 import androidx.compose.remote.creation.actions.HostAction
 import androidx.compose.remote.creation.modifiers.RecordingModifier
 import androidx.compose.remote.creation.modifiers.RectShape
+import androidx.compose.remote.creation.modifiers.RippleModifier
 import androidx.compose.remote.creation.modifiers.RoundedRectShape
 import androidx.compose.remote.creation.modifiers.ZIndexModifier
 import java.io.File
@@ -228,6 +229,13 @@ fun main() {
         .setColor(0xFF3E2723.toInt())
         .commit()
     writer.drawRect(128f, 15f, 143f, 25f)
+    writer.endBox()
+
+    writer.startBox(RecordingModifier().then(RippleModifier()), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF1976D2.toInt())
+        .commit()
+    writer.drawRect(146f, 15f, 161f, 25f)
     writer.endBox()
 
     val bytes = writer.encodeToByteArray()
