@@ -332,6 +332,13 @@ fun main() {
     writer.drawRect(2f, 41f, 17f, 51f)
     writer.endFlow()
 
+    writer.startFitBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFFE64A19.toInt())
+        .commit()
+    writer.drawRect(20f, 41f, 35f, 51f)
+    writer.endFitBox()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

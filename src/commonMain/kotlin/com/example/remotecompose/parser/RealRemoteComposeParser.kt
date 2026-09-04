@@ -201,6 +201,14 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_FLOW = 240
 
     /**
+     * `Operations.LAYOUT_FIT_BOX` — `startFitBox` writes `[componentId:i32][animationId:i32]
+     * [horizontalPositioning:i32][verticalPositioning:i32]`, the exact same 4-int shape as
+     * [OP_LAYOUT_BOX] (no `spacedBy`, confirmed against real output), closed the same way as the
+     * other layout containers.
+     */
+    private const val OP_LAYOUT_FIT_BOX = 176
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -627,7 +635,7 @@ object RealRemoteComposeParser {
                     reader.readS32() // maxLinesInCrossAxis
                 }
 
-                OP_LAYOUT_BOX -> {
+                OP_LAYOUT_BOX, OP_LAYOUT_FIT_BOX -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
                     reader.readS32() // horizontalPositioning
@@ -744,7 +752,7 @@ object RealRemoteComposeParser {
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
-                        "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/" +
+                        "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/LayoutFitBox/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
