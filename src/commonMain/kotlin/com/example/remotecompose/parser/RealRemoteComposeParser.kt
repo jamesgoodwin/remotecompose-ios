@@ -568,18 +568,84 @@ object RealRemoteComposeParser {
         // LAYOUT_CONTENT children scope, LAYOUT_CANVAS_CONTENT, and MODIFIER_CLICK/MULTI_CLICK/
         // TOUCH_*'s nested action lists) is closed by exactly one generic CONTAINER_END, and these
         // scopes nest strictly LIFO in the real byte stream. This stack lets a modifier that needs
-        // real semantic effect (so far: MODIFIER_OFFSET, MODIFIER_VISIBILITY) push cleanup
-        // [Opcode]s onto its *container's own* scope (always the top of this stack at the point the
-        // modifier is parsed, since any nested action-list scope from an earlier modifier in the
-        // same list is always fully opened-and-closed before the next modifier is written) so they
-        // fire when that scope's matching CONTAINER_END is reached — without needing to build a
-        // real component tree.
-        val scopeStack = mutableListOf<MutableList<Opcode>>()
+        // real semantic effect (so far: MODIFIER_OFFSET, MODIFIER_VISIBILITY, MODIFIER_BACKGROUND)
+        // push cleanup [Opcode]s — or, for MODIFIER_BACKGROUND, a pending fill color — onto its
+        // *container's own* scope (always the top of this stack at the point the modifier is
+        // parsed, since any nested action-list scope from an earlier modifier in the same list is
+        // always fully opened-and-closed before the next modifier is written) so they fire/resolve
+        // when that scope's matching CONTAINER_END is reached — without needing to build a real
+        // component tree.
+        // Regular draw opcodes are appended straight to [opcodes] the moment they're parsed, not
+        // buffered per-scope — so a [ScopeFrame] only tracks (a) [startIndex], the [opcodes] size
+        // at the moment this scope was pushed (everything from there to the current size when this
+        // scope's CONTAINER_END fires is "this container's content", used by MODIFIER_BACKGROUND's
+        // bounds inference below), and (b) [cleanupOpcodes], ops queued by attachToTopScope to be
+        // appended *after* that content once the scope closes (MODIFIER_OFFSET/VISIBILITY/
+        // GRAPHICS_LAYER's MatrixRestore).
+        class ScopeFrame(val startIndex: Int) {
+            val cleanupOpcodes = mutableListOf<Opcode>()
+            var backgroundColor: Color? = null
+        }
+        val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
-            scopeStack.add(mutableListOf())
+            scopeStack.add(ScopeFrame(opcodes.size))
         }
         fun attachToTopScope(op: Opcode) {
-            scopeStack.lastOrNull()?.add(op)
+            scopeStack.lastOrNull()?.cleanupOpcodes?.add(op)
+        }
+
+        /**
+         * This renderer has no measure/layout pass, so a container's "bounds" for
+         * [OP_MODIFIER_BACKGROUND] are inferred as the tight bounding box of every draw call
+         * inside it — an approximation that ignores padding/insets around the content, but a real
+         * visual improvement over not drawing a background at all. Returns null if [ops] contains
+         * no boundable draw opcode.
+         */
+        fun contentBounds(ops: List<Opcode>): FloatArray? {
+            var left = Float.POSITIVE_INFINITY
+            var top = Float.POSITIVE_INFINITY
+            var right = Float.NEGATIVE_INFINITY
+            var bottom = Float.NEGATIVE_INFINITY
+            fun expand(l: Float, t: Float, r: Float, b: Float) {
+                if (l < left) left = l
+                if (t < top) top = t
+                if (r > right) right = r
+                if (b > bottom) bottom = b
+            }
+            fun expandPoint(x: Float, y: Float) = expand(x, y, x, y)
+            for (op in ops) {
+                when (op) {
+                    is Opcode.DrawRect -> expand(op.left, op.top, op.right, op.bottom)
+                    is Opcode.DrawRoundRect -> expand(op.left, op.top, op.right, op.bottom)
+                    is Opcode.DrawOval -> expand(op.left, op.top, op.right, op.bottom)
+                    is Opcode.DrawArc -> expand(op.left, op.top, op.right, op.bottom)
+                    is Opcode.DrawBitmap -> expand(op.left, op.top, op.right, op.bottom)
+                    is Opcode.DrawCircle -> expand(
+                        op.centerX - op.radius, op.centerY - op.radius,
+                        op.centerX + op.radius, op.centerY + op.radius,
+                    )
+                    is Opcode.DrawLine -> expand(
+                        minOf(op.x1, op.x2), minOf(op.y1, op.y2),
+                        maxOf(op.x1, op.x2), maxOf(op.y1, op.y2),
+                    )
+                    is Opcode.DrawPath -> for (command in op.commands) when (command) {
+                        is PathCommand.MoveTo -> expandPoint(command.x, command.y)
+                        is PathCommand.LineTo -> expandPoint(command.x, command.y)
+                        is PathCommand.QuadraticTo -> {
+                            expandPoint(command.x1, command.y1)
+                            expandPoint(command.x2, command.y2)
+                        }
+                        is PathCommand.CubicTo -> {
+                            expandPoint(command.x1, command.y1)
+                            expandPoint(command.x2, command.y2)
+                            expandPoint(command.x3, command.y3)
+                        }
+                        PathCommand.Close -> Unit
+                    }
+                    else -> Unit
+                }
+            }
+            return if (left.isFinite()) floatArrayOf(left, top, right, bottom) else null
         }
 
         while (reader.hasRemaining()) {
@@ -835,12 +901,30 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // value
                 }
 
-                OP_CONTAINER_END ->
-                    // Pop this scope's deferred cleanup (e.g. a MatrixRestore queued by
-                    // MODIFIER_OFFSET/MODIFIER_VISIBILITY on the container this end belongs to)
-                    // and splice it into the flat opcode stream right here, closing whatever that
-                    // modifier opened around this container's children.
-                    scopeStack.removeLastOrNull()?.let { opcodes.addAll(it) }
+                OP_CONTAINER_END -> {
+                    // Close this scope: if it carried a MODIFIER_BACKGROUND, insert an inferred
+                    // background DrawRect *before* this container's own content (everything
+                    // appended to [opcodes] since [ScopeFrame.startIndex]); then append this
+                    // scope's deferred cleanup (e.g. a MatrixRestore queued by MODIFIER_OFFSET/
+                    // MODIFIER_VISIBILITY/MODIFIER_GRAPHICS_LAYER) right after that content,
+                    // closing whatever that modifier opened around it.
+                    val frame = scopeStack.removeLastOrNull()
+                    if (frame != null) {
+                        val bg = frame.backgroundColor
+                        if (bg != null) {
+                            contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
+                                opcodes.add(
+                                    frame.startIndex,
+                                    Opcode.DrawRect(
+                                        bounds[0], bounds[1], bounds[2], bounds[3],
+                                        PaintStyle(bg, PaintStyleKind.FILL),
+                                    ),
+                                )
+                            }
+                        }
+                        opcodes.addAll(frame.cleanupOpcodes)
+                    }
+                }
 
                 OP_MODIFIER_CLICK -> pushScope() // no payload — opens a nested action list, closed by its own CONTAINER_END
 
@@ -848,7 +932,15 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_PADDING -> repeat(4) { reader.readFloat32() }
 
-                OP_MODIFIER_BACKGROUND -> repeat(9) { reader.readFloat32() }
+                OP_MODIFIER_BACKGROUND -> {
+                    repeat(4) { reader.readFloat32() } // corner radii — not modeled (no rounded-fill Opcode variant used here)
+                    val r = reader.readFloat32()
+                    val g = reader.readFloat32()
+                    val b = reader.readFloat32()
+                    val a = reader.readFloat32()
+                    reader.readFloat32() // trailing float — role unconfirmed
+                    scopeStack.lastOrNull()?.backgroundColor = Color(r, g, b, a)
+                }
 
                 OP_MODIFIER_VISIBILITY -> {
                     // Component.Visibility: GONE=0, VISIBLE=1, INVISIBLE=2. Anything but VISIBLE

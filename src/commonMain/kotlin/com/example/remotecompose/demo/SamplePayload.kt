@@ -49,7 +49,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `writer.save()`/`writer.scale(2f, 2f, 145f, 46f)`/`writer.restore()`, a purple rect drawn after a
  * raw `writer.save()`/`writer.rotate(45f, 175f, 46f)`/`writer.restore()`, and a magenta rect drawn
  * oversized then clipped by a raw `writer.save()`/`writer.clipRect(190f, 41f, 205f, 51f)`/
- * `writer.restore()`), not by anything in this codebase. Shared by every platform demo entry point
+ * `writer.restore()`, and a blue rect plus a separate green circle wrapped in a
+ * `startBox`/`endBox` carrying a `background(0xFFFF6F00)` modifier — with a gap between the two
+ * shapes deliberately left unpainted by either, so an orange background rect inferred from their
+ * combined bounding box (this renderer has no measure/layout pass, so real content-position
+ * knowledge is the closest available substitute) is visually distinguishable from either shape's
+ * own fill), not by anything in this codebase. Shared by every platform demo entry point
  * (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -97,6 +102,8 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "QtYAAEJMAADW1ur///+z/////wAAAAMAAAABP0AAANaxAAAABD8AAAABQQAAAAEAAAACAAAAAwAAAATK////sv////8AAAAAAAAAAA4AAAADQ5YAAAAA" +
             "AAFDlgAAAAAAAQAAAAAAAAAByf///7EoAAAAAgAAAAT/XUA3KkLcAABCJAAAQvoAAEJMAADW1oJ/QwIAAEIkAAAoAAAAAgAAAAT/AKzBKgAAAAAAAAAA" +
             "QXAAAEEgAACDgn5AAAAAQAAAAEMRAABCOAAAKAAAAAIAAAAE//V/FypDEQAAQiQAAEMYAABCOAAAg4KBQjQAAEMvAABCOAAAKAAAAAIAAAAE/2obmipD" +
-            "KAAAQiQAAEM3AABCTAAAg4InQz4AAEIkAABDTQAAQkwAACgAAAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIM="
+            "KAAAQiQAAEM3AABCTAAAg4InQz4AAEIkAABDTQAAQkwAACgAAAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIPK////sP////8AAAAAAAAAADcAAAAA" +
+            "AAAAAAAAAAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////rygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4AACgAAAACAAAABP8ufTIuQgwAAEKc" +
+            "AABAwAAA1tY="
     )
 }
