@@ -314,6 +314,14 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_COLLAPSIBLE_PRIORITY = 235
 
     /**
+     * `Operations.MODIFIER_ALIGN_BY` — `RecordingModifier.alignByBaseline()` writes
+     * `[line:f32][flag:i32]` (line is a NaN-tagged baseline-kind constant, not a plain coordinate;
+     * flag observed `0`), confirmed via `alignByBaseline()` decoding to a NaN-payload float
+     * followed by `[0]`.
+     */
+    private const val OP_MODIFIER_ALIGN_BY = 237
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -557,6 +565,11 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // priority
                 }
 
+                OP_MODIFIER_ALIGN_BY -> {
+                    reader.readFloat32() // line (NaN-tagged baseline-kind constant)
+                    reader.readS32() // flag
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -567,7 +580,7 @@ object RealRemoteComposeParser {
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
                         "ModifierRoundedClipRect/ModifierMultiClick/ModifierTouchDown/" +
                         "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn/" +
-                        "ModifierCollapsiblePriority)",
+                        "ModifierCollapsiblePriority/ModifierAlignBy)",
                 )
             }
         }
