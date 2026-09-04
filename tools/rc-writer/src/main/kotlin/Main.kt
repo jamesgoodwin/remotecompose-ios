@@ -2,7 +2,9 @@ import androidx.compose.remote.creation.JvmRcPlatformServices
 import androidx.compose.remote.creation.RemoteComposeWriter
 import androidx.compose.remote.creation.RemotePath
 import androidx.compose.remote.creation.actions.HostAction
+import androidx.compose.remote.creation.actions.ValueFloatChange
 import androidx.compose.remote.creation.actions.ValueIntegerChange
+import androidx.compose.remote.creation.actions.ValueStringChange
 import androidx.compose.remote.creation.modifiers.RecordingModifier
 import androidx.compose.remote.creation.modifiers.GraphicsLayerModifier
 import androidx.compose.remote.creation.modifiers.MarqueeModifier
@@ -277,6 +279,20 @@ fun main() {
         .setColor(0xFF00695C.toInt())
         .commit()
     writer.drawRect(56f, 28f, 71f, 38f)
+    writer.endBox()
+
+    writer.startBox(RecordingModifier().onClick(ValueFloatChange(4, 2.5f)), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFFD84315.toInt())
+        .commit()
+    writer.drawRect(74f, 28f, 89f, 38f)
+    writer.endBox()
+
+    writer.startBox(RecordingModifier().onClick(ValueStringChange(5, "hi")), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF283593.toInt())
+        .commit()
+    writer.drawRect(92f, 28f, 107f, 38f)
     writer.endBox()
 
     val bytes = writer.encodeToByteArray()

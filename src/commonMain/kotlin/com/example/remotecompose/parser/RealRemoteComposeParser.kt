@@ -378,6 +378,22 @@ object RealRemoteComposeParser {
     private const val OP_VALUE_INTEGER_CHANGE = 212
 
     /**
+     * `Operations.VALUE_STRING_CHANGE_ACTION` — `ValueStringChange(valueId, string)` first
+     * registers the string via a normal [OP_DATA_TEXT] op (the same text pool `DrawTextAnchored`
+     * uses), then writes `[valueId:i32][stringId:i32]` referencing it. Confirmed via
+     * `ValueStringChange(5, "hi")` decoding to a `DATA_TEXT` registration followed by `[5, <that
+     * id>]`.
+     */
+    private const val OP_VALUE_STRING_CHANGE = 213
+
+    /**
+     * `Operations.VALUE_FLOAT_CHANGE_ACTION` — `ValueFloatChange(valueId, value)` writes
+     * `[valueId:i32][value:f32]`, confirmed via `ValueFloatChange(4, 2.5f)` decoding to exactly
+     * `[4, 2.5]`.
+     */
+    private const val OP_VALUE_FLOAT_CHANGE = 222
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -657,6 +673,16 @@ object RealRemoteComposeParser {
                     reader.readS32() // value
                 }
 
+                OP_VALUE_STRING_CHANGE -> {
+                    reader.readS32() // valueId
+                    reader.readS32() // stringId (text-pool reference)
+                }
+
+                OP_VALUE_FLOAT_CHANGE -> {
+                    reader.readS32() // valueId
+                    reader.readFloat32() // value
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -669,7 +695,8 @@ object RealRemoteComposeParser {
                         "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn/" +
                         "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex/ModifierRipple/" +
                         "ModifierDrawContent/ModifierMarquee/ModifierGraphicsLayer/" +
-                        "ModifierDimensionConstraints/ValueIntegerChange)",
+                        "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
+                        "ValueFloatChange)",
                 )
             }
         }
