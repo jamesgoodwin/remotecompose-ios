@@ -401,6 +401,14 @@ object RealRemoteComposeParser {
     private const val OP_VALUE_INTEGER_EXPRESSION_CHANGE = 218
 
     /**
+     * `Operations.VALUE_FLOAT_EXPRESSION_CHANGE_ACTION` — `ValueFloatExpressionChange(valueId,
+     * value)` writes `[valueId:i32][value:i32]` (both plain ints, despite the name — `value` here
+     * is an expression/id reference, not a float bit pattern). Confirmed via
+     * `ValueFloatExpressionChange(7, 9)` decoding to exactly `[7, 9]`.
+     */
+    private const val OP_VALUE_FLOAT_EXPRESSION_CHANGE = 227
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -695,6 +703,11 @@ object RealRemoteComposeParser {
                     reader.readS64() // value
                 }
 
+                OP_VALUE_FLOAT_EXPRESSION_CHANGE -> {
+                    reader.readS32() // valueId
+                    reader.readS32() // value (expression/id reference)
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -708,7 +721,7 @@ object RealRemoteComposeParser {
                         "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex/ModifierRipple/" +
                         "ModifierDrawContent/ModifierMarquee/ModifierGraphicsLayer/" +
                         "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
-                        "ValueFloatChange/ValueIntegerExpressionChange)",
+                        "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange)",
                 )
             }
         }
