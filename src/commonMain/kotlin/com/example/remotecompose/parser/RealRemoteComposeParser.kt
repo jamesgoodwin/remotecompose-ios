@@ -176,6 +176,17 @@ object RealRemoteComposeParser {
      */
     private const val OP_LAYOUT_COLUMN = 204
 
+    /** `Operations.LAYOUT_ROW` — identical shape to [OP_LAYOUT_COLUMN]'s (source-confirmed: same `apply()` structure). */
+    private const val OP_LAYOUT_ROW = 203
+
+    /**
+     * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
+     * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
+     * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
+     * rather than distributing them along an axis).
+     */
+    private const val OP_LAYOUT_BOX = 202
+
     /**
      * `Operations.LAYOUT_CONTENT` — `[componentId:i32]`, marking the start of a container's
      * children (a `LAYOUT_COLUMN`/`LAYOUT_ROW`/`LAYOUT_BOX`'s body). See [OP_LAYOUT_COLUMN]'s KDoc
@@ -370,12 +381,19 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.ActionClick(actionId, metadataTextId, left, top, right, bottom)
                 }
 
-                OP_LAYOUT_COLUMN -> {
+                OP_LAYOUT_COLUMN, OP_LAYOUT_ROW -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
                     reader.readS32() // horizontalPositioning
                     reader.readS32() // verticalPositioning
                     reader.readFloat32() // spacedBy
+                }
+
+                OP_LAYOUT_BOX -> {
+                    reader.readS32() // componentId
+                    reader.readS32() // animationId
+                    reader.readS32() // horizontalPositioning
+                    reader.readS32() // verticalPositioning
                 }
 
                 OP_LAYOUT_CONTENT -> reader.readS32() // componentId
@@ -386,8 +404,8 @@ object RealRemoteComposeParser {
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
-                        "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/" +
-                        "LayoutContent/ContainerEnd)",
+                        "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
+                        "LayoutBox/LayoutContent/ContainerEnd)",
                 )
             }
         }

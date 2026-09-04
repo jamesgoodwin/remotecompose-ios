@@ -10,10 +10,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `drawOval`, a cyan `drawArc`, a pink `drawSector`, an indigo `drawPath` triangle, an 8x8
  * checkerboard `drawBitmap`, an `addClickArea` tap target over the red rect, a teal `drawPath`
  * combining a quadratic and a cubic Bézier segment, and a yellow rect + brown circle wrapped in a
- * real `startColumn`/`endColumn` layout container), not by anything in this codebase. Shared by
- * every platform demo entry point (iOS, Android) so they render byte-identical input — the point
- * of the cross-platform comparison is to catch *rendering* differences, not to accidentally
- * compare two different payloads.
+ * `startColumn`/`endColumn`, a teal rect + pink circle wrapped in a `startRow`/`endRow`, and an
+ * olive rect wrapped in a `startBox`/`endBox`), not by anything in this codebase. Shared by every
+ * platform demo entry point (iOS, Android) so they render byte-identical input — the point of the
+ * cross-platform comparison is to catch *rendering* differences, not to accidentally compare two
+ * different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
@@ -28,6 +29,8 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAALmYAAAAvAAAACnRhcCB0YXJnZXRmAAAAMAAAABpodHRwczovL2V4YW1wbGUuY29tL3RhcHBlZEAAAAAHAAAAL0GgAABBoAAAQzQA" +
             "AEM0AAAAAAAwKAAAAAIAAAAE/wCDj3sAAAAxAAAAFP+AAApAAAAAQxYAAP+AAAwAAAAAAAAAAEGQAABDFgAAQZAAAEMqAAD/gAAOAAAA" +
             "AAAAAABBkAAAQzkAAEEgAABDQwAAQAAAAENDAAD/gAAPfAAAADHM/////v////8AAAAAAAAAAAAAAADJ/////SgAAAACAAAABP/92DUq" +
-            "QqoAAEMWAABC0gAAQyUAACgAAAACAAAABP9tTEEuQr4AAEMvAABBAAAA1tY="
+            "QqoAAEMWAABC0gAAQyUAACgAAAACAAAABP9tTEEuQr4AAEMvAABBAAAA1tbL/////P////8AAAAAAAAAAAAAAADJ////+ygAAAACAAAA" +
+            "BP8AaVwqQuYAAEMWAABDAgAAQyUAACgAAAACAAAABP/wYpIuQwwAAEMdAABA4AAA1tbK////+v////8AAAAAAAAAAMn////5KAAAAAIA" +
+            "AAAE/56dJCpDFgAAQxQAAEMlAABDIwAA1tY="
     )
 }
