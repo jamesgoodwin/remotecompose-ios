@@ -143,6 +143,18 @@ object OpcodeExecutor {
                         )
                     }
 
+                    is Opcode.DrawArc -> withPaintStyles(opcode.paint) { style ->
+                        drawScope.drawArc(
+                            color = opcode.paint.color,
+                            startAngle = opcode.startAngleDegrees,
+                            sweepAngle = opcode.sweepAngleDegrees,
+                            useCenter = opcode.useCenter,
+                            topLeft = Offset(opcode.left, opcode.top),
+                            size = rectSize(opcode.left, opcode.top, opcode.right, opcode.bottom),
+                            style = style,
+                        )
+                    }
+
                     is Opcode.DrawText -> drawScope.drawText(
                         textMeasurer = context.textMeasurer,
                         text = context.document.strings[opcode.stringIndex],

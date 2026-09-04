@@ -75,6 +75,19 @@ sealed interface Opcode {
     ) : Opcode
 
     /**
+     * Draws an arc of the ellipse inscribed in `(left, top, right, bottom)`, starting at
+     * [startAngleDegrees] and sweeping [sweepAngleDegrees] clockwise. When [useCenter] is true the
+     * arc is closed back to the ellipse's center (a pie/sector slice); when false it's just the
+     * curved stroke/fill between the two arc endpoints.
+     */
+    data class DrawArc(
+        val left: Float, val top: Float, val right: Float, val bottom: Float,
+        val startAngleDegrees: Float, val sweepAngleDegrees: Float,
+        val useCenter: Boolean,
+        val paint: PaintStyle,
+    ) : Opcode
+
+    /**
      * Draws text at ([x], [y]).
      *
      * @property stringIndex Index into the document's [com.example.remotecompose.parser.StringPool].

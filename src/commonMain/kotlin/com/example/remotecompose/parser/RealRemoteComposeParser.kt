@@ -85,6 +85,19 @@ object RealRemoteComposeParser {
     private const val OP_DRAW_OVAL = 56
 
     /**
+     * `Operations.DRAW_ARC` — `[left,top,right,bottom,startAngle,sweepAngle]` as six raw floats,
+     * an open arc (no line back to center — `Opcode.DrawArc.useCenter = false`).
+     */
+    private const val OP_DRAW_ARC = 152
+
+    /**
+     * `Operations.DRAW_SECTOR` — same six-float shape as [OP_DRAW_ARC], but a closed pie slice
+     * (`Opcode.DrawArc.useCenter = true`). The real format distinguishes arc-vs-sector by opcode
+     * id, not by a flag in the payload.
+     */
+    private const val OP_DRAW_SECTOR = 52
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -205,10 +218,24 @@ object RealRemoteComposeParser {
                     )
                 }
 
+                OP_DRAW_ARC, OP_DRAW_SECTOR -> {
+                    val left = reader.readFloat32()
+                    val top = reader.readFloat32()
+                    val right = reader.readFloat32()
+                    val bottom = reader.readFloat32()
+                    val startAngle = reader.readFloat32()
+                    val sweepAngle = reader.readFloat32()
+                    opcodes += Opcode.DrawArc(
+                        left, top, right, bottom, startAngle, sweepAngle,
+                        useCenter = opId == OP_DRAW_SECTOR,
+                        paint = PaintStyle(currentColor, PaintStyleKind.FILL),
+                    )
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
-                        "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval)",
+                        "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector)",
                 )
             }
         }

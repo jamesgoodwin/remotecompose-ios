@@ -6,17 +6,19 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 /**
  * Base64 of `tools/rc-writer/sample.rc` — a real `.rc` payload produced by the official
  * `androidx.compose.remote:remote-creation-jvm:1.0.0-alpha18` writer (a red `drawRect`, a blue
- * `drawCircle`, a green `drawRoundRect`, a `drawTextAnchored`, a purple `drawLine`, and an orange
- * `drawOval`), not by anything in this codebase. Shared by every platform demo entry point (iOS,
- * Android) so they render byte-identical input — the point of the cross-platform comparison is to
- * catch *rendering* differences, not to accidentally compare two different payloads.
+ * `drawCircle`, a green `drawRoundRect`, a `drawTextAnchored`, a purple `drawLine`, an orange
+ * `drawOval`, a cyan `drawArc`, and a pink `drawSector`), not by anything in this codebase. Shared
+ * by every platform demo entry point (iOS, Android) so they render byte-identical input — the
+ * point of the cross-platform comparison is to catch *rendering* differences, not to accidentally
+ * compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
     Base64.decode(
-        "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAARkZW1vZwAAACooAAAAAgAAAAT/5Tk1KkGgAABBoAAAQzQAAEM0AAAo" +
-            "AAAAAgAAAAT/HojlLkJwAABDDAAAQfAAACgAAAACAAAABP9DoEczQtwAAELcAABDPgAAQz4AAEFAAABBQAAAKAAAAAIAAAAE/wAA" +
-            "AGYAAAArAAAAAkhphQAAACtCyAAAQaAAAAAAAAAAAAAAAAAAACgAAAACAAAABP+OJKovQSAAAENDAABDPgAAQ0MAACgAAAACAAAABP/7jAA4QwwAAEHwAABD" +
-            "QwAAQnAAAA=="
+        "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAARkZW1vZwAAACooAAAAAgAAAAT/5Tk1KkGgAABBoAAAQzQAAEM0AAAoAAAA" +
+            "AgAAAAT/HojlLkJwAABDDAAAQfAAACgAAAACAAAABP9DoEczQtwAAELcAABDPgAAQz4AAEFAAABBQAAAKAAAAAIAAAAE/wAAAGYAAAAr" +
+            "AAAAAkhphQAAACtCyAAAQaAAAAAAAAAAAAAAAAAAACgAAAACAAAABP+OJKovQSAAAENDAABDPgAAQ0MAACgAAAACAAAABP/7jAA4QwwA" +
+            "AEHwAABDQwAAQnAAACgAAAACAAAABP8ArMGYQAAAAEAAAABCIAAAQiAAAAAAAABCtAAAKAAAAAIAAAAE/9gbYDRDDAAAQwwAAENGAABD" +
+            "RgAAQ0gAAELIAAA="
     )
 }

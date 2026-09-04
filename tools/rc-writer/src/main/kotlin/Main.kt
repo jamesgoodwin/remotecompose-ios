@@ -36,6 +36,16 @@ fun main() {
         .commit()
     writer.drawOval(140f, 30f, 195f, 60f)
 
+    writer.getRcPaint()
+        .setColor(0xFF00ACC1.toInt())
+        .commit()
+    writer.drawArc(2f, 2f, 40f, 40f, 0f, 90f)
+
+    writer.getRcPaint()
+        .setColor(0xFFD81B60.toInt())
+        .commit()
+    writer.drawSector(140f, 140f, 198f, 198f, 200f, 100f)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
