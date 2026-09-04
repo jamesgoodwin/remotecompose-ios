@@ -248,6 +248,9 @@ object RealRemoteComposeParser {
      */
     private const val OP_MODIFIER_BACKGROUND = 55
 
+    /** `Operations.MODIFIER_VISIBILITY` — `RecordingModifier.visibility(int)` writes a single raw int. */
+    private const val OP_MODIFIER_VISIBILITY = 211
+
     /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
@@ -460,13 +463,16 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_BACKGROUND -> repeat(9) { reader.readFloat32() }
 
+                OP_MODIFIER_VISIBILITY -> reader.readS32()
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
-                        "ModifierClick/HostAction/ModifierPadding/ModifierBackground)",
+                        "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
+                        "ModifierVisibility)",
                 )
             }
         }

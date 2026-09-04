@@ -13,11 +13,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `startColumn`/`endColumn`, a teal rect + pink circle wrapped in a `startRow`/`endRow`, an olive
  * rect wrapped in a `startBox`/`endBox`, a dark-brown rect wrapped in a `startBox`/`endBox`
  * carrying explicit `width()`/`height()` modifiers, a small pink rect wrapped in a
- * `startBox`/`endBox` carrying an `onClick(HostAction(9))` modifier, and a small purple rect
- * wrapped in a `startBox`/`endBox` carrying `padding()`/`background()` modifiers), not by anything
- * in this codebase. Shared by every platform demo entry point (iOS, Android) so they render
- * byte-identical input — the point of the cross-platform comparison is to catch *rendering*
- * differences, not to accidentally compare two different payloads.
+ * `startBox`/`endBox` carrying an `onClick(HostAction(9))` modifier, a small purple rect wrapped
+ * in a `startBox`/`endBox` carrying `padding()`/`background()` modifiers, and a small green rect
+ * wrapped in a `startBox`/`endBox` carrying a `visibility()` modifier), not by anything in this
+ * codebase. Shared by every platform demo entry point (iOS, Android) so they render byte-identical
+ * input — the point of the cross-platform comparison is to catch *rendering* differences, not to
+ * accidentally compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
@@ -36,6 +37,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "BP/wYpIuQwwAAEMdAABA4AAA1tbK////+v////8AAAAAAAAAAMn////5KAAAAAIAAAAE/56dJCpDFgAAQxQAAEMlAABDIwAA1tbK////+P//" +
             "//8AAAAAAAAAABAAAAAAQaAAAEMAAAAAQSAAAMn////3KAAAAAIAAAAE/11ANypDKgAAQxQAAEM+AABDIwAA1tbK////9v////8AAAAAAAAA" +
             "ADvRAAAACdbJ////9SgAAAACAAAABP/sQHoqQz4AAEAAAABDRwAAQTAAANbWyv////T/////AAAAAAAAAAA6QEAAAEBAAABAQAAAQEAAADcA" +
-            "AAAAAAAAAAAAAAAAAAAAPvb29z34+Pk/IqKjP4AAAAAAAADJ////8ygAAAACAAAABP97H6IqQjQAAEAAAABCcAAAQUAAANbW"
+            "AAAAAAAAAAAAAAAAAAAAPvb29z34+Pk/IqKjP4AAAAAAAADJ////8ygAAAACAAAABP97H6IqQjQAAEAAAABCcAAAQUAAANbWyv////L/////" +
+            "AAAAAAAAAADTAAAAAMn////xKAAAAAIAAAAE/ziOPCpCggAAQAAAAEKgAABBQAAA1tY="
     )
 }
