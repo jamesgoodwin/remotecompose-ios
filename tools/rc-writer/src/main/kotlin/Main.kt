@@ -360,6 +360,13 @@ fun main() {
     writer.drawRect(74f, 41f, 89f, 51f)
     writer.endCanvas()
 
+    writer.startCustom(RecordingModifier(), "myCustom", emptyList())
+    writer.getRcPaint()
+        .setColor(0xFF4E342E.toInt())
+        .commit()
+    writer.drawRect(92f, 41f, 107f, 51f)
+    writer.endCustom()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

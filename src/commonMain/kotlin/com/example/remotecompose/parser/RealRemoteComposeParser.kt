@@ -236,6 +236,17 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_CANVAS_CONTENT = 207
 
     /**
+     * `Operations.LAYOUT_CUSTOM` — `startCustom(modifier, name, properties)` first registers
+     * `name` via a normal `DATA_TEXT` op, then writes `[componentId:i32][animationId:i32]
+     * [nameTextId:i32][propertyCount:i32]` followed by `propertyCount` entries of `[type:i16]
+     * [dataType:i16][value:4 bytes]` (int or float depending on `dataType`). Confirmed via
+     * `startCustom(RecordingModifier(), "myCustom", emptyList())`: componentId decodes as literal
+     * `-1` (not auto-numbered like other containers — `Custom.apply()` uses the modifier's raw
+     * `getComponentId()` directly, bypassing the usual auto-assign-next-negative-id helper).
+     */
+    private const val OP_LAYOUT_CUSTOM = 93
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -686,6 +697,18 @@ object RealRemoteComposeParser {
                     reader.readS32() // animationId
                 }
 
+                OP_LAYOUT_CUSTOM -> {
+                    reader.readS32() // componentId
+                    reader.readS32() // animationId
+                    reader.readS32() // nameTextId
+                    val propertyCount = reader.readS32()
+                    repeat(propertyCount) {
+                        reader.readU16() // type
+                        reader.readU16() // dataType
+                        reader.readS32() // value (int or float bit pattern)
+                    }
+                }
+
                 OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
                     reader.readS32() // mode
                     reader.readFloat32() // value
@@ -795,7 +818,7 @@ object RealRemoteComposeParser {
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/LayoutFitBox/" +
-                        "LayoutRoot/LayoutState/LayoutCanvas/LayoutCanvasContent/" +
+                        "LayoutRoot/LayoutState/LayoutCanvas/LayoutCanvasContent/LayoutCustom/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
