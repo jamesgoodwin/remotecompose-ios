@@ -9,28 +9,29 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `drawCircle`, a green `drawRoundRect`, a `drawTextAnchored`, a purple `drawLine`, an orange
  * `drawOval`, a cyan `drawArc`, a pink `drawSector`, an indigo `drawPath` triangle, an 8x8
  * checkerboard `drawBitmap`, an `addClickArea` tap target over the red rect, a teal `drawPath`
- * combining a quadratic and a cubic Bézier segment, and a yellow rect + brown circle wrapped in a
- * `startColumn`/`endColumn`, a teal rect + pink circle wrapped in a `startRow`/`endRow`, and an
- * olive rect wrapped in a `startBox`/`endBox`), not by anything in this codebase. Shared by every
- * platform demo entry point (iOS, Android) so they render byte-identical input — the point of the
- * cross-platform comparison is to catch *rendering* differences, not to accidentally compare two
- * different payloads.
+ * combining a quadratic and a cubic Bézier segment, a yellow rect + brown circle wrapped in a
+ * `startColumn`/`endColumn`, a teal rect + pink circle wrapped in a `startRow`/`endRow`, an olive
+ * rect wrapped in a `startBox`/`endBox`, and a dark-brown rect wrapped in a `startBox`/`endBox`
+ * carrying explicit `width()`/`height()` modifiers), not by anything in this codebase. Shared by
+ * every platform demo entry point (iOS, Android) so they render byte-identical input — the point
+ * of the cross-platform comparison is to catch *rendering* differences, not to accidentally
+ * compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
     Base64.decode(
         "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAARkZW1vZwAAACooAAAAAgAAAAT/5Tk1KkGgAABBoAAAQzQAAEM0AAAoAAAA" +
-            "AgAAAAT/HojlLkJwAABDDAAAQfAAACgAAAACAAAABP9DoEczQtwAAELcAABDPgAAQz4AAEFAAABBQAAAKAAAAAIAAAAE/wAAAGYAAAAr" +
-            "AAAAAkhphQAAACtCyAAAQaAAAAAAAAAAAAAAAAAAACgAAAACAAAABP+OJKovQSAAAENDAABDPgAAQ0MAACgAAAACAAAABP/7jAA4QwwA" +
-            "AEHwAABDQwAAQnAAACgAAAACAAAABP8ArMGYQAAAAEAAAABCIAAAQiAAAAAAAABCtAAAKAAAAAIAAAAE/9gbYDRDDAAAQwwAAENGAABD" +
-            "RgAAQ0gAAELIAAAoAAAAAgAAAAT/OUmrewAAACwAAAAO/4AACkMbAABDMgAA/4AACwAAAAAAAAAAQ0YAAEMyAAD/gAALAAAAAAAAAABD" +
-            "MAAAQ0cAAP+AAA98AAAALGUAAAAtAAAACAAAAAgAAABWiVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAHUlEQVR4XmP4" +
-            "DwSKioogCivNgE0QmWbAJjjkTAAAa5Crwb4olnUAAAAASUVORK5CYIJmAAAALgAAAAdjaGVja2VyLAAAAC1CjAAAQoIAAELcAABC0gAA" +
-            "AAAALmYAAAAvAAAACnRhcCB0YXJnZXRmAAAAMAAAABpodHRwczovL2V4YW1wbGUuY29tL3RhcHBlZEAAAAAHAAAAL0GgAABBoAAAQzQA" +
-            "AEM0AAAAAAAwKAAAAAIAAAAE/wCDj3sAAAAxAAAAFP+AAApAAAAAQxYAAP+AAAwAAAAAAAAAAEGQAABDFgAAQZAAAEMqAAD/gAAOAAAA" +
-            "AAAAAABBkAAAQzkAAEEgAABDQwAAQAAAAENDAAD/gAAPfAAAADHM/////v////8AAAAAAAAAAAAAAADJ/////SgAAAACAAAABP/92DUq" +
-            "QqoAAEMWAABC0gAAQyUAACgAAAACAAAABP9tTEEuQr4AAEMvAABBAAAA1tbL/////P////8AAAAAAAAAAAAAAADJ////+ygAAAACAAAA" +
-            "BP8AaVwqQuYAAEMWAABDAgAAQyUAACgAAAACAAAABP/wYpIuQwwAAEMdAABA4AAA1tbK////+v////8AAAAAAAAAAMn////5KAAAAAIA" +
-            "AAAE/56dJCpDFgAAQxQAAEMlAABDIwAA1tY="
+            "AgAAAAT/HojlLkJwAABDDAAAQfAAACgAAAACAAAABP9DoEczQtwAAELcAABDPgAAQz4AAEFAAABBQAAAKAAAAAIAAAAE/wAAAGYAAAArAAAA" +
+            "AkhphQAAACtCyAAAQaAAAAAAAAAAAAAAAAAAACgAAAACAAAABP+OJKovQSAAAENDAABDPgAAQ0MAACgAAAACAAAABP/7jAA4QwwAAEHwAABD" +
+            "QwAAQnAAACgAAAACAAAABP8ArMGYQAAAAEAAAABCIAAAQiAAAAAAAABCtAAAKAAAAAIAAAAE/9gbYDRDDAAAQwwAAENGAABDRgAAQ0gAAELI" +
+            "AAAoAAAAAgAAAAT/OUmrewAAACwAAAAO/4AACkMbAABDMgAA/4AACwAAAAAAAAAAQ0YAAEMyAAD/gAALAAAAAAAAAABDMAAAQ0cAAP+AAA98" +
+            "AAAALGUAAAAtAAAACAAAAAgAAABWiVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAHUlEQVR4XmP4DwSKioogCivNgE0QmWbA" +
+            "JjjkTAAAa5Crwb4olnUAAAAASUVORK5CYIJmAAAALgAAAAdjaGVja2VyLAAAAC1CjAAAQoIAAELcAABC0gAAAAAALmYAAAAvAAAACnRhcCB0" +
+            "YXJnZXRmAAAAMAAAABpodHRwczovL2V4YW1wbGUuY29tL3RhcHBlZEAAAAAHAAAAL0GgAABBoAAAQzQAAEM0AAAAAAAwKAAAAAIAAAAE/wCD" +
+            "j3sAAAAxAAAAFP+AAApAAAAAQxYAAP+AAAwAAAAAAAAAAEGQAABDFgAAQZAAAEMqAAD/gAAOAAAAAAAAAABBkAAAQzkAAEEgAABDQwAAQAAA" +
+            "AENDAAD/gAAPfAAAADHM/////v////8AAAAAAAAAAAAAAADJ/////SgAAAACAAAABP/92DUqQqoAAEMWAABC0gAAQyUAACgAAAACAAAABP9t" +
+            "TEEuQr4AAEMvAABBAAAA1tbL/////P////8AAAAAAAAAAAAAAADJ////+ygAAAACAAAABP8AaVwqQuYAAEMWAABDAgAAQyUAACgAAAACAAAA" +
+            "BP/wYpIuQwwAAEMdAABA4AAA1tbK////+v////8AAAAAAAAAAMn////5KAAAAAIAAAAE/56dJCpDFgAAQxQAAEMlAABDIwAA1tbK////+P//" +
+            "//8AAAAAAAAAABAAAAAAQaAAAEMAAAAAQSAAAMn////3KAAAAAIAAAAE/11ANypDKgAAQxQAAEM+AABDIwAA1tY="
     )
 }

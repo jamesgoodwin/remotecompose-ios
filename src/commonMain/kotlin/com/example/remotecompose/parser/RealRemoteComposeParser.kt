@@ -202,6 +202,19 @@ object RealRemoteComposeParser {
     private const val OP_CONTAINER_END = 214
 
     /**
+     * `Operations.MODIFIER_WIDTH` — `RecordingModifier.width(float)` writes `[mode:i32][value:f32]`
+     * (mode observed as 0 for a fixed-size `width(float)`; other modes presumably exist for
+     * wrap-content/fill-parent, unconfirmed). Written immediately after its component's own layout
+     * op (e.g. [OP_LAYOUT_BOX]) and before [OP_LAYOUT_CONTENT]. Consumed as a pass-through, same
+     * rationale as the layout container opcodes: it would only affect rendering through a real
+     * measure/layout pass this renderer doesn't have.
+     */
+    private const val OP_MODIFIER_WIDTH = 16
+
+    /** `Operations.MODIFIER_HEIGHT` — same `[mode:i32][value:f32]` shape as [OP_MODIFIER_WIDTH]. */
+    private const val OP_MODIFIER_HEIGHT = 67
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -398,6 +411,11 @@ object RealRemoteComposeParser {
 
                 OP_LAYOUT_CONTENT -> reader.readS32() // componentId
 
+                OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
+                    reader.readS32() // mode
+                    reader.readFloat32() // value
+                }
+
                 OP_CONTAINER_END -> Unit // no payload
 
                 else -> throw RemoteComposeParseException(
@@ -405,7 +423,7 @@ object RealRemoteComposeParser {
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
-                        "LayoutBox/LayoutContent/ContainerEnd)",
+                        "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight)",
                 )
             }
         }
