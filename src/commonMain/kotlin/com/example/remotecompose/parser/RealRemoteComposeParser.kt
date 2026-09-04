@@ -232,6 +232,23 @@ object RealRemoteComposeParser {
     private const val OP_HOST_ACTION = 209
 
     /**
+     * `Operations.MODIFIER_PADDING` — `RecordingModifier.padding(float)` writes four raw floats
+     * (all equal to the single value passed, for the one-arg overload — presumably
+     * top/bottom/left/right independently for the four-arg overload, unconfirmed order).
+     */
+    private const val OP_MODIFIER_PADDING = 58
+
+    /**
+     * `Operations.MODIFIER_BACKGROUND` — `RecordingModifier.background(Int)` writes nine raw
+     * floats: four leading values (observed all `0.0` here — presumably per-corner radii,
+     * unconfirmed since this call used no rounding), then the color as four **normalized `0f..1f`
+     * channel floats** (not a packed ARGB int — confirmed: `0xFF7B1FA2` decoded here as
+     * `[0.4824, 0.1216, 0.6353, 1.0]`, exactly `R/255, G/255, B/255, A/255`), then one trailing
+     * `0.0` whose role isn't confirmed.
+     */
+    private const val OP_MODIFIER_BACKGROUND = 55
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -439,13 +456,17 @@ object RealRemoteComposeParser {
 
                 OP_HOST_ACTION -> reader.readS32() // actionId
 
+                OP_MODIFIER_PADDING -> repeat(4) { reader.readFloat32() }
+
+                OP_MODIFIER_BACKGROUND -> repeat(9) { reader.readFloat32() }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
-                        "ModifierClick/HostAction)",
+                        "ModifierClick/HostAction/ModifierPadding/ModifierBackground)",
                 )
             }
         }
