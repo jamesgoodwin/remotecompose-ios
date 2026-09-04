@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.DrawStyle
@@ -65,6 +66,17 @@ object OpcodeExecutor {
                             canvas.restore()
                             saveDepth--
                         }
+                    }
+
+                    is Opcode.SaveLayerAlpha -> {
+                        // A generous sentinel layer rect, since this renderer has no measure/
+                        // layout pass to compute the container's real bounds from — large enough
+                        // to cover any plausible document content without needing them.
+                        canvas.saveLayer(
+                            bounds = SENTINEL_LAYER_BOUNDS,
+                            paint = Paint().apply { alpha = opcode.alpha.coerceIn(0f, 1f) },
+                        )
+                        saveDepth++
                     }
 
                     is Opcode.Translate -> transform.translate(opcode.dx, opcode.dy)
@@ -200,6 +212,13 @@ object OpcodeExecutor {
             saveDepth--
         }
     }
+
+    /**
+     * A layer-bounds rect for [Opcode.SaveLayerAlpha] far larger than any real document could
+     * draw outside of, standing in for the container's real bounds this renderer has no
+     * measure/layout pass to compute.
+     */
+    private val SENTINEL_LAYER_BOUNDS = Rect(-100_000f, -100_000f, 100_000f, 100_000f)
 
     /** Builds a non-negative [Size] for a possibly-degenerate `(left, top, right, bottom)` rect. */
     private fun rectSize(left: Float, top: Float, right: Float, bottom: Float): Size =

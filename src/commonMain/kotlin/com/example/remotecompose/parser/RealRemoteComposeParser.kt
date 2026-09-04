@@ -455,6 +455,13 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_GRAPHICS_LAYER = 224
 
     /**
+     * `GraphicsLayerModifierOperation.ALPHA` (`= 11`) OR'd with the float-value tag bit
+     * (`0x400`) — the tag [OP_MODIFIER_GRAPHICS_LAYER] uses to mark an entry as the layer's
+     * opacity, the one attribute this parser gives real effect to (see [Opcode.SaveLayerAlpha]).
+     */
+    private const val GRAPHICS_LAYER_ALPHA_TAG = 11 or 0x400
+
+    /**
      * `Operations.MODIFIER_DIMENSION_CONSTRAINTS` — reached via `.then(WidthInModifier(type, min,
      * max))`'s 3-arg constructor (the public 2-arg `widthIn(min, max)` always takes the
      * [OP_MODIFIER_WIDTH_IN] path instead) — writes `[type:byte][min:f32][max:f32]`, a single raw
@@ -884,10 +891,22 @@ object RealRemoteComposeParser {
                 }
 
                 OP_MODIFIER_GRAPHICS_LAYER -> {
+                    // Real semantic effect for the ALPHA attribute specifically (tag ==
+                    // GRAPHICS_LAYER_ALPHA_TAG): opens a real compositing layer around this
+                    // container's children, closed by a MatrixRestore queued on this container's
+                    // own scope — the same mechanism MODIFIER_OFFSET/MODIFIER_VISIBILITY use.
+                    // Every other attribute (scale/rotation/shadow/blur/etc.) is still just
+                    // byte-consumed, since those need real box bounds this renderer doesn't have.
                     val count = reader.readS32()
+                    var alpha: Float? = null
                     repeat(count) {
-                        reader.readS32() // tag (attribute key, OR'd with 0x400 if float-valued)
-                        reader.readS32() // value (int or float bit pattern)
+                        val tag = reader.readS32() // attribute key, OR'd with 0x400 if float-valued
+                        val rawValue = reader.readS32() // int or float bit pattern
+                        if (tag == GRAPHICS_LAYER_ALPHA_TAG) alpha = Float.fromBits(rawValue)
+                    }
+                    alpha?.let {
+                        opcodes += Opcode.SaveLayerAlpha(it)
+                        attachToTopScope(Opcode.MatrixRestore)
                     }
                 }
 

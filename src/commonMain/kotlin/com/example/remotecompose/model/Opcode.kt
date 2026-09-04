@@ -17,8 +17,17 @@ sealed interface Opcode {
     /** Pushes the current transform/clip state; paired with [MatrixRestore]. */
     data object MatrixSave : Opcode
 
-    /** Pops back to the state at the most recent unmatched [MatrixSave]. */
+    /** Pops back to the state at the most recent unmatched [MatrixSave] *or* [SaveLayerAlpha]. */
     data object MatrixRestore : Opcode
+
+    /**
+     * Pushes a new compositing layer with overall opacity [alpha] (`0f`..`1f`), so everything
+     * drawn until the matching [MatrixRestore] is blended as one group instead of each draw call
+     * fading independently — the real effect `MODIFIER_GRAPHICS_LAYER`'s `ALPHA` attribute has.
+     * Uses a generous sentinel layer size rather than this container's real bounds, since this
+     * renderer has no measure/layout pass to compute those from.
+     */
+    data class SaveLayerAlpha(val alpha: Float) : Opcode
 
     /** Shifts the local coordinate origin by ([dx], [dy]), in DP. */
     data class Translate(val dx: Float, val dy: Float) : Opcode
