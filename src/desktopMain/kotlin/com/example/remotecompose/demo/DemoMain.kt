@@ -23,8 +23,15 @@ import java.io.File
  * an off-screen Skia surface so it runs without a display server; the same
  * [OpcodeExecutor.render] call is what backs the on-screen iOS composable.
  */
-fun main() {
-    val bytes = File("tools/rc-writer/sample.rc").readBytes()
+/**
+ * @param args optional `[inputRcPath] [outputPngPath]`, defaulting to the opcode-coverage sample
+ *   used by the cross-platform demo apps — passing an alternate `.rc` (e.g. a hand-built showcase
+ *   document) renders it the exact same way without touching that shared coverage fixture.
+ */
+fun main(args: Array<String>) {
+    val inputPath = args.getOrElse(0) { "tools/rc-writer/sample.rc" }
+    val outputPath = args.getOrElse(1) { "real-payload-render.png" }
+    val bytes = File(inputPath).readBytes()
     val document = RealRemoteComposeParser.parse(bytes)
     println("Parsed real payload: ${document.header.width}x${document.header.height}, ${document.opcodes.size} opcode(s): ${document.opcodes}")
 
@@ -47,7 +54,7 @@ fun main() {
     }
 
     val pngBytes = surface.makeImageSnapshot().encodeToData(EncodedImageFormat.PNG)!!.bytes
-    val outFile = File("real-payload-render.png")
+    val outFile = File(outputPath)
     outFile.writeBytes(pngBytes)
     println("Wrote ${pngBytes.size} bytes to ${outFile.absolutePath}")
 }

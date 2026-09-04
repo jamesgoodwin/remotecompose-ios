@@ -677,34 +677,78 @@ object RealRemoteComposeParser {
                 if (b > bottom) bottom = b
             }
             fun expandPoint(x: Float, y: Float) = expand(x, y, x, y)
+            // A draw opcode's own fields are always in *local* coordinates — arrangeChildren (and
+            // MODIFIER_OFFSET before it) move content by wrapping it in MatrixSave/Translate/.../
+            // MatrixRestore rather than rewriting those fields, so a range being measured here can
+            // easily contain an already-arranged nested Column/Row whose children only look right
+            // once that accumulated translation is added back in. Track it with a plain offset
+            // stack — SaveLayerAlpha pushes one same as MatrixSave, since both are popped by a
+            // MatrixRestore; Scale/Rotate/ClipRect don't affect a translation-only offset and are
+            // deliberately left unhandled (this parser's own arrangement code never emits them).
+            var offsetX = 0f
+            var offsetY = 0f
+            val offsetStack = mutableListOf<FloatArray>()
             for (op in ops) {
                 when (op) {
-                    is Opcode.DrawRect -> expand(op.left, op.top, op.right, op.bottom)
-                    is Opcode.DrawRoundRect -> expand(op.left, op.top, op.right, op.bottom)
-                    is Opcode.DrawOval -> expand(op.left, op.top, op.right, op.bottom)
-                    is Opcode.DrawArc -> expand(op.left, op.top, op.right, op.bottom)
-                    is Opcode.DrawBitmap -> expand(op.left, op.top, op.right, op.bottom)
+                    Opcode.MatrixSave, is Opcode.SaveLayerAlpha -> offsetStack.add(floatArrayOf(offsetX, offsetY))
+                    Opcode.MatrixRestore -> offsetStack.removeLastOrNull()?.let {
+                        offsetX = it[0]
+                        offsetY = it[1]
+                    }
+                    is Opcode.Translate -> {
+                        offsetX += op.dx
+                        offsetY += op.dy
+                    }
+                    is Opcode.DrawRect -> expand(
+                        op.left + offsetX, op.top + offsetY, op.right + offsetX, op.bottom + offsetY,
+                    )
+                    is Opcode.DrawRoundRect -> expand(
+                        op.left + offsetX, op.top + offsetY, op.right + offsetX, op.bottom + offsetY,
+                    )
+                    is Opcode.DrawOval -> expand(
+                        op.left + offsetX, op.top + offsetY, op.right + offsetX, op.bottom + offsetY,
+                    )
+                    is Opcode.DrawArc -> expand(
+                        op.left + offsetX, op.top + offsetY, op.right + offsetX, op.bottom + offsetY,
+                    )
+                    is Opcode.DrawBitmap -> expand(
+                        op.left + offsetX, op.top + offsetY, op.right + offsetX, op.bottom + offsetY,
+                    )
                     is Opcode.DrawCircle -> expand(
-                        op.centerX - op.radius, op.centerY - op.radius,
-                        op.centerX + op.radius, op.centerY + op.radius,
+                        op.centerX - op.radius + offsetX, op.centerY - op.radius + offsetY,
+                        op.centerX + op.radius + offsetX, op.centerY + op.radius + offsetY,
                     )
                     is Opcode.DrawLine -> expand(
-                        minOf(op.x1, op.x2), minOf(op.y1, op.y2),
-                        maxOf(op.x1, op.x2), maxOf(op.y1, op.y2),
+                        minOf(op.x1, op.x2) + offsetX, minOf(op.y1, op.y2) + offsetY,
+                        maxOf(op.x1, op.x2) + offsetX, maxOf(op.y1, op.y2) + offsetY,
                     )
                     is Opcode.DrawPath -> for (command in op.commands) when (command) {
-                        is PathCommand.MoveTo -> expandPoint(command.x, command.y)
-                        is PathCommand.LineTo -> expandPoint(command.x, command.y)
+                        is PathCommand.MoveTo -> expandPoint(command.x + offsetX, command.y + offsetY)
+                        is PathCommand.LineTo -> expandPoint(command.x + offsetX, command.y + offsetY)
                         is PathCommand.QuadraticTo -> {
-                            expandPoint(command.x1, command.y1)
-                            expandPoint(command.x2, command.y2)
+                            expandPoint(command.x1 + offsetX, command.y1 + offsetY)
+                            expandPoint(command.x2 + offsetX, command.y2 + offsetY)
                         }
                         is PathCommand.CubicTo -> {
-                            expandPoint(command.x1, command.y1)
-                            expandPoint(command.x2, command.y2)
-                            expandPoint(command.x3, command.y3)
+                            expandPoint(command.x1 + offsetX, command.y1 + offsetY)
+                            expandPoint(command.x2 + offsetX, command.y2 + offsetY)
+                            expandPoint(command.x3 + offsetX, command.y3 + offsetY)
                         }
                         PathCommand.Close -> Unit
+                    }
+                    is Opcode.DrawText -> {
+                        // No real glyph metrics are available at parse time (text measurement
+                        // needs a platform font resolver this parser doesn't have), so width is a
+                        // rough average-character-advance estimate — good enough for a child to
+                        // participate in real Column/Row arrangement without being ignored
+                        // entirely, not a claim of pixel-accurate text bounds.
+                        val text = textPool[op.stringIndex] ?: ""
+                        val estimatedWidth = text.length * op.fontSize * 0.55f
+                        val estimatedHeight = op.fontSize * 1.2f
+                        expand(
+                            op.x + offsetX, op.y + offsetY,
+                            op.x + estimatedWidth + offsetX, op.y + estimatedHeight + offsetY,
+                        )
                     }
                     else -> Unit
                 }
