@@ -279,6 +279,14 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_ROUNDED_CLIP_RECT = 54
 
     /**
+     * `Operations.MODIFIER_MULTI_CLICK` — `RecordingModifier.onLongClick`/`onDoubleClick` write a
+     * single raw int (the click-type discriminant: long=1, double=2 — confirmed via
+     * `onLongClick(HostAction(9))` decoding to `[1]`) before opening the same nested
+     * action-list-closed-by-[OP_CONTAINER_END] shape as [OP_MODIFIER_CLICK].
+     */
+    private const val OP_MODIFIER_MULTI_CLICK = 83
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -507,6 +515,8 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_ROUNDED_CLIP_RECT -> repeat(4) { reader.readFloat32() } // topStart, topEnd, bottomStart, bottomEnd
 
+                OP_MODIFIER_MULTI_CLICK -> reader.readS32() // clickType — just opens a nested action list
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -515,7 +525,7 @@ object RealRemoteComposeParser {
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
-                        "ModifierRoundedClipRect)",
+                        "ModifierRoundedClipRect/ModifierMultiClick)",
                 )
             }
         }
