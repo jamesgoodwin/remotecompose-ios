@@ -40,11 +40,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `startFlow`/`endFlow`, a deep-orange rect wrapped in a `startFitBox`/`endFitBox`, and a dark-blue
  * rect wrapped in a `startRoot`/`endRoot`, and a magenta rect wrapped in a `startStateLayout`/
  * `endStateLayout`, an olive rect wrapped in a `startCanvas`/`endCanvas`, and a dark-brown rect
- * wrapped in a `startCustom`/`endCustom`, and a `writer.image(...)` leaf component — not yet
- * rendered by this engine's `Image` opcode support, only byte-consumed), not by anything in this
- * codebase. Shared by every platform demo entry point (iOS, Android) so they render byte-identical
- * input — the point of the cross-platform comparison is to catch *rendering* differences, not to
- * accidentally compare two different payloads.
+ * wrapped in a `startCustom`/`endCustom`, a `writer.image(...)` leaf component — not yet rendered
+ * by this engine's `Image` opcode support, only byte-consumed — and three top-level document
+ * metadata ops: `performHaptic(4)`, `setTheme(1)`, `setRootContentBehavior(1, 2, 3, 4)`), not by
+ * anything in this codebase. Shared by every platform demo entry point (iOS, Android) so they
+ * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
+ * differences, not to accidentally compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
@@ -89,6 +90,6 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AEIkAABCDAAAQkwAANbWyP///7ooAAAAAgAAAAT/GiN+KkIYAABCJAAAQlQAAEJMAADW2f///7n/////AAAAAAAAAAAAAAAAyf///7goAAAA" +
             "AgAAAAT/rRRXKkJgAABCJAAAQo4AAEJMAADW1s3///+3/////8n///+2z////7UoAAAAAgAAAAT/VYsvKkKUAABCJAAAQrIAAEJMAADW1tZm" +
             "AAAAMwAAAAhteUN1c3RvbV3//////////wAAADMAAAAAyf///7QoAAAAAgAAAAT/TjQuKkK4AABCJAAAQtYAAEJMAADW1ur///+z/////wAA" +
-            "AAMAAAABP0AAANY="
+            "AAMAAAABP0AAANaxAAAABD8AAAABQQAAAAEAAAACAAAAAwAAAAQ="
     )
 }

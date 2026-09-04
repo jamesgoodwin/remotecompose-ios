@@ -369,6 +369,10 @@ fun main() {
 
     writer.image(RecordingModifier(), 3, 1, 0.75f)
 
+    writer.performHaptic(4)
+    writer.setTheme(1)
+    writer.setRootContentBehavior(1, 2, 3, 4)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

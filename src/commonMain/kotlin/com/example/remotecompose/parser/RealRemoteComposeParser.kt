@@ -255,6 +255,16 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_IMAGE = 234
 
     /**
+     * `Operations.HAPTIC_FEEDBACK`/`THEME`/`ROOT_CONTENT_BEHAVIOR` — top-level document metadata
+     * ops (not nested in any container). `performHaptic(id)` writes `[id:i32]`; `setTheme(theme)`
+     * writes `[theme:i32]`; `setRootContentBehavior(a, b, c, d)` writes `[a:i32][b:i32][c:i32]
+     * [d:i32]`. Confirmed via real output for all three.
+     */
+    private const val OP_HAPTIC_FEEDBACK = 177
+    private const val OP_THEME = 63
+    private const val OP_ROOT_CONTENT_BEHAVIOR = 65
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -725,6 +735,12 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // alpha
                 }
 
+                OP_HAPTIC_FEEDBACK -> reader.readS32() // hapticId
+
+                OP_THEME -> reader.readS32() // theme
+
+                OP_ROOT_CONTENT_BEHAVIOR -> repeat(4) { reader.readS32() }
+
                 OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
                     reader.readS32() // mode
                     reader.readFloat32() // value
@@ -835,7 +851,7 @@ object RealRemoteComposeParser {
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/LayoutFitBox/" +
                         "LayoutRoot/LayoutState/LayoutCanvas/LayoutCanvasContent/LayoutCustom/" +
-                        "LayoutImage/" +
+                        "LayoutImage/HapticFeedback/Theme/RootContentBehavior/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
