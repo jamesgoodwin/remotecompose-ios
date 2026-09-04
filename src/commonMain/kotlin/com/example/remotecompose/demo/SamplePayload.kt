@@ -39,9 +39,10 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `startCollapsibleRow`/`endCollapsibleRow` respectively, and a teal rect wrapped in a
  * `startFlow`/`endFlow`, a deep-orange rect wrapped in a `startFitBox`/`endFitBox`, and a dark-blue
  * rect wrapped in a `startRoot`/`endRoot`, and a magenta rect wrapped in a `startStateLayout`/
- * `endStateLayout`), not by anything in this codebase. Shared by every platform demo entry point
- * (iOS, Android) so they render byte-identical input — the point of the cross-platform comparison
- * is to catch *rendering* differences, not to accidentally compare two different payloads.
+ * `endStateLayout`, and an olive rect wrapped in a `startCanvas`/`endCanvas`), not by anything in
+ * this codebase. Shared by every platform demo entry point (iOS, Android) so they render
+ * byte-identical input — the point of the cross-platform comparison is to catch *rendering*
+ * differences, not to accidentally compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
@@ -84,6 +85,6 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "////wP////8AAAAAAAAAAAAAAADJ////vygAAAACAAAABP+IDk8qQyQAAEHgAABDMwAAQhgAANbW8P///77/////AAAAAAAAAAAAAAAAf///" +
             "/3/////J////vSgAAAACAAAABP8Ag48qQAAAAEIkAABBiAAAQkwAANbWsP///7z/////AAAAAAAAAADJ////uygAAAACAAAABP/mShkqQaAA" +
             "AEIkAABCDAAAQkwAANbWyP///7ooAAAAAgAAAAT/GiN+KkIYAABCJAAAQlQAAEJMAADW2f///7n/////AAAAAAAAAAAAAAAAyf///7goAAAA" +
-            "AgAAAAT/rRRXKkJgAABCJAAAQo4AAEJMAADW1g=="
+            "AgAAAAT/rRRXKkJgAABCJAAAQo4AAEJMAADW1s3///+3/////8n///+2z////7UoAAAAAgAAAAT/VYsvKkKUAABCJAAAQrIAAEJMAADW1tY="
     )
 }

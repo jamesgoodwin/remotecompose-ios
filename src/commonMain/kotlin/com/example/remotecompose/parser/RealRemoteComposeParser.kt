@@ -225,6 +225,17 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_STATE = 217
 
     /**
+     * `Operations.LAYOUT_CANVAS` — `startCanvas` writes only `[componentId:i32][animationId:i32]`
+     * (2 ints, no positioning/spacing — confirmed against real output), followed by a
+     * `LAYOUT_CONTENT` marker, then `Operations.LAYOUT_CANVAS_CONTENT` (opcode 207,
+     * [OP_LAYOUT_CANVAS_CONTENT] below) wrapping a single auto-assigned `[componentId:i32]`.
+     * `endCanvas()` closes with **three** [OP_CONTAINER_END]s (one per nested scope), not the
+     * usual two.
+     */
+    private const val OP_LAYOUT_CANVAS = 205
+    private const val OP_LAYOUT_CANVAS_CONTENT = 207
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -668,7 +679,12 @@ object RealRemoteComposeParser {
                     reader.readS32() // stateIndex
                 }
 
-                OP_LAYOUT_CONTENT -> reader.readS32() // componentId
+                OP_LAYOUT_CONTENT, OP_LAYOUT_CANVAS_CONTENT -> reader.readS32() // componentId
+
+                OP_LAYOUT_CANVAS -> {
+                    reader.readS32() // componentId
+                    reader.readS32() // animationId
+                }
 
                 OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
                     reader.readS32() // mode
@@ -779,7 +795,7 @@ object RealRemoteComposeParser {
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/LayoutFitBox/" +
-                        "LayoutRoot/LayoutState/" +
+                        "LayoutRoot/LayoutState/LayoutCanvas/LayoutCanvasContent/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
