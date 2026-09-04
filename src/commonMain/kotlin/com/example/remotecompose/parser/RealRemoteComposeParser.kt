@@ -247,6 +247,14 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_CUSTOM = 93
 
     /**
+     * `Operations.LAYOUT_IMAGE` — `writer.image(modifier, scaleType, bitmapId, alpha)` writes
+     * `[componentId:i32][animationId:i32][scaleType:i32][bitmapId:i32][alpha:f32]` (confirmed via
+     * `image(modifier, 3, 1, 0.75f)` decoding to exactly `[3, 1, 0.75]`). A leaf component — no
+     * `LAYOUT_CONTENT` children marker — closed by a single [OP_CONTAINER_END].
+     */
+    private const val OP_LAYOUT_IMAGE = 234
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -709,6 +717,14 @@ object RealRemoteComposeParser {
                     }
                 }
 
+                OP_LAYOUT_IMAGE -> {
+                    reader.readS32() // componentId
+                    reader.readS32() // animationId
+                    reader.readS32() // scaleType
+                    reader.readS32() // bitmapId
+                    reader.readFloat32() // alpha
+                }
+
                 OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
                     reader.readS32() // mode
                     reader.readFloat32() // value
@@ -819,6 +835,7 @@ object RealRemoteComposeParser {
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/LayoutFitBox/" +
                         "LayoutRoot/LayoutState/LayoutCanvas/LayoutCanvasContent/LayoutCustom/" +
+                        "LayoutImage/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +

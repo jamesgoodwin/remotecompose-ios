@@ -367,6 +367,8 @@ fun main() {
     writer.drawRect(92f, 41f, 107f, 51f)
     writer.endCustom()
 
+    writer.image(RecordingModifier(), 3, 1, 0.75f)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
