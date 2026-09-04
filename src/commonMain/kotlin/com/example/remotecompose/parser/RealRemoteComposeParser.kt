@@ -287,6 +287,17 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_MULTI_CLICK = 83
 
     /**
+     * `Operations.MODIFIER_TOUCH_DOWN`/`_UP`/`_CANCEL` — `RecordingModifier.onTouchDown`/
+     * `onTouchUp`/`onTouchCancel` each write only the opcode tag (no payload) before opening the
+     * same nested action-list-closed-by-[OP_CONTAINER_END] shape as [OP_MODIFIER_CLICK], confirmed
+     * via `onTouchDown/Up/Cancel(HostAction(9))` each decoding to the opcode immediately followed
+     * by [OP_HOST_ACTION]'s `[9]` then [OP_CONTAINER_END].
+     */
+    private const val OP_MODIFIER_TOUCH_DOWN = 219
+    private const val OP_MODIFIER_TOUCH_UP = 220
+    private const val OP_MODIFIER_TOUCH_CANCEL = 225
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -517,6 +528,9 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_MULTI_CLICK -> reader.readS32() // clickType — just opens a nested action list
 
+                OP_MODIFIER_TOUCH_DOWN, OP_MODIFIER_TOUCH_UP, OP_MODIFIER_TOUCH_CANCEL ->
+                    Unit // no payload — just opens a nested action list
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -525,7 +539,8 @@ object RealRemoteComposeParser {
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
-                        "ModifierRoundedClipRect/ModifierMultiClick)",
+                        "ModifierRoundedClipRect/ModifierMultiClick/ModifierTouchDown/" +
+                        "ModifierTouchUp/ModifierTouchCancel)",
                 )
             }
         }

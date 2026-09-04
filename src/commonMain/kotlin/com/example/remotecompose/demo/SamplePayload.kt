@@ -19,11 +19,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * wrapped in a `startBox`/`endBox` carrying an `offset()` modifier, a small teal rect wrapped in a
  * `startBox`/`endBox` carrying a `border()` modifier, a small purple rect wrapped in a
  * `startBox`/`endBox` carrying a `clip(RectShape(...))` modifier, a small olive rect wrapped in
- * a `startBox`/`endBox` carrying a `clip(RoundedRectShape(...))` modifier, and a small teal rect
- * wrapped in a `startBox`/`endBox` carrying an `onLongClick(HostAction(9))` modifier), not by
- * anything in this codebase. Shared by every platform demo entry point (iOS, Android) so they
- * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
- * differences, not to accidentally compare two different payloads.
+ * a `startBox`/`endBox` carrying a `clip(RoundedRectShape(...))` modifier, a small teal rect
+ * wrapped in a `startBox`/`endBox` carrying an `onLongClick(HostAction(9))` modifier, and a second
+ * row of a brown/teal/red rect each wrapped in a `startBox`/`endBox` carrying an `onTouchDown`/
+ * `onTouchUp`/`onTouchCancel(HostAction(9))` modifier respectively), not by anything in this
+ * codebase. Shared by every platform demo entry point (iOS, Android) so they render byte-identical
+ * input — the point of the cross-platform comparison is to catch *rendering* differences, not to
+ * accidentally compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
@@ -47,6 +49,9 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "KAAAAAIAAAAE//9XIipCqgAAQAAAAELIAABBQAAA1tbK////7v////8AAAAAAAAAAGsAAAAAAAAAAAAAAAAAAAAAQAAAAECAAAAAAAAAAAAA" +
             "AAAAAAA/gAAAAAAAAMn////tKAAAAAIAAAAE/wCWiCpC0gAAQAAAAELwAABBQAAA1tbK////7P////8AAAAAAAAAAGzJ////6ygAAAACAAAA" +
             "BP9eNbEqQvoAAEAAAABDDAAAQUAAANbWyv///+r/////AAAAAAAAAAA2QIAAAECAAABAgAAAQIAAAMn////pKAAAAAIAAAAE/8DKMypDEQAA" +
-            "QAAAAEMgAABBQAAA1tbK////6P////8AAAAAAAAAAFMAAAAB0QAAAAnWyf///+coAAAAAgAAAAT/AIOPKkMlAABAAAAAQzQAAEFAAADW1g=="
+            "QAAAAEMgAABBQAAA1tbK////6P////8AAAAAAAAAAFMAAAAB0QAAAAnWyf///+coAAAAAgAAAAT/AIOPKkMlAABAAAAAQzQAAEFAAADW1sr/" +
+            "///m/////wAAAAAAAAAA29EAAAAJ1sn////lKAAAAAIAAAAE/41uYypAAAAAQXAAAEGIAABByAAA1tbK////5P////8AAAAAAAAAANzRAAAA" +
+            "CdbJ////4ygAAAACAAAABP8mppoqQaAAAEFwAABCDAAAQcgAANbWyv///+L/////AAAAAAAAAADh0QAAAAnWyf///+EoAAAAAgAAAAT/71NQ" +
+            "KkIYAABBcAAAQlQAAEHIAADW1g=="
     )
 }
