@@ -5,12 +5,27 @@ plugins {
     kotlin("multiplatform") version "2.0.21"
     id("org.jetbrains.compose") version "1.7.0"
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
-    // Uncomment once the Android SDK / AGP is configured in this environment:
-    // id("com.android.library") version "8.5.2"
+    id("com.android.library") version "8.5.2"
 }
 
 group = "com.example.remotecompose"
 version = "0.1.0"
+
+android {
+    namespace = "com.example.remotecompose"
+    compileSdk = 35
+    defaultConfig {
+        minSdk = 24
+    }
+    // No JDK 17/21 toolchain is installed in this environment (only JDK 24), and Kotlin 2.0.21's
+    // compiler caps out at bytecode target 22 — align javac's release with Kotlin's target
+    // instead of letting each default off the running JDK (see the same fix in
+    // tools/rc-writer/build.gradle.kts).
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+}
 
 kotlin {
     jvm("desktop") {
@@ -27,8 +42,12 @@ kotlin {
         }
     }
 
-    // Re-enable once com.android.library is applied above:
-    // androidTarget()
+    androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_21)
+        }
+    }
 
     sourceSets {
         val commonMain by getting {
@@ -67,9 +86,9 @@ kotlin {
             }
         }
 
-        // val androidMain by getting {
-        //     dependsOn(commonMain)
-        // }
+        val androidMain by getting {
+            dependsOn(commonMain)
+        }
     }
 }
 

@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 rootProject.name = "ios-remote-compose"
 
 include(":tools:rc-writer")
+include(":androidApp")
