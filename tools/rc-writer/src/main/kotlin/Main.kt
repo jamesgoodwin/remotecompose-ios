@@ -1,6 +1,7 @@
 import androidx.compose.remote.creation.JvmRcPlatformServices
 import androidx.compose.remote.creation.RemoteComposeWriter
 import androidx.compose.remote.creation.RemotePath
+import androidx.compose.remote.creation.modifiers.RecordingModifier
 import java.io.File
 
 fun main() {
@@ -76,6 +77,17 @@ fun main() {
     curvePath.cubicTo(18f, 185f, 10f, 195f, 2f, 195f)
     curvePath.close()
     writer.drawPath(curvePath)
+
+    writer.startColumn(RecordingModifier(), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFFFDD835.toInt())
+        .commit()
+    writer.drawRect(85f, 150f, 105f, 165f)
+    writer.getRcPaint()
+        .setColor(0xFF6D4C41.toInt())
+        .commit()
+    writer.drawCircle(95f, 175f, 8f)
+    writer.endColumn()
 
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)

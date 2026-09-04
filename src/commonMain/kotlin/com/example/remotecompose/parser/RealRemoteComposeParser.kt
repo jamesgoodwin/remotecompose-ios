@@ -161,6 +161,36 @@ object RealRemoteComposeParser {
     private const val OP_CLICK_AREA = 64
 
     /**
+     * `Operations.LAYOUT_COLUMN` — `startColumn(modifier, horizontalPositioning,
+     * verticalPositioning)` writes `[componentId:i32][animationId:i32]
+     * [horizontalPositioning:i32][verticalPositioning:i32][spacedBy:f32]`.
+     *
+     * This parser treats every layout container opcode ([OP_LAYOUT_COLUMN]/[OP_LAYOUT_CONTENT]/
+     * [OP_CONTAINER_END]) as a **pass-through scope marker**: it consumes exactly the right bytes
+     * to stay aligned, but emits no [Opcode] and does not reposition children. That is correct for
+     * a document whose children carry absolute, already-final coordinates (as `tools/rc-writer`'s
+     * writer calls do here) — real dynamic arrangement (e.g. children sized/positioned relative to
+     * `spacedBy` or `horizontalPositioning`) would need an actual measure/layout pass this flat
+     * opcode-list renderer doesn't have, which is real, deliberately out-of-scope future work, not
+     * an oversight.
+     */
+    private const val OP_LAYOUT_COLUMN = 204
+
+    /**
+     * `Operations.LAYOUT_CONTENT` — `[componentId:i32]`, marking the start of a container's
+     * children (a `LAYOUT_COLUMN`/`LAYOUT_ROW`/`LAYOUT_BOX`'s body). See [OP_LAYOUT_COLUMN]'s KDoc
+     * for why this parser only consumes it rather than modeling it.
+     */
+    private const val OP_LAYOUT_CONTENT = 201
+
+    /**
+     * `Operations.CONTAINER_END` — no payload. `startColumn`/`endColumn` emits this **twice**
+     * (closing [OP_LAYOUT_CONTENT]'s children block, then [OP_LAYOUT_COLUMN]'s own scope) —
+     * confirmed against real output, not assumed from the single `endColumn()` call site.
+     */
+    private const val OP_CONTAINER_END = 214
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -340,11 +370,24 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.ActionClick(actionId, metadataTextId, left, top, right, bottom)
                 }
 
+                OP_LAYOUT_COLUMN -> {
+                    reader.readS32() // componentId
+                    reader.readS32() // animationId
+                    reader.readS32() // horizontalPositioning
+                    reader.readS32() // verticalPositioning
+                    reader.readFloat32() // spacedBy
+                }
+
+                OP_LAYOUT_CONTENT -> reader.readS32() // componentId
+
+                OP_CONTAINER_END -> Unit // no payload
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
-                        "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea)",
+                        "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/" +
+                        "LayoutContent/ContainerEnd)",
                 )
             }
         }
