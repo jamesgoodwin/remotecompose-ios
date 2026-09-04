@@ -24,10 +24,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * of a brown/teal/red rect each wrapped in a `startBox`/`endBox` carrying an `onTouchDown`/
  * `onTouchUp`/`onTouchCancel(HostAction(9))` modifier respectively, an indigo/amber rect carrying a
  * `widthIn()`/`heightIn()` modifier respectively, a blue-grey rect carrying a
- * `collapsiblePriority()` modifier, and a purple rect carrying an `alignByBaseline()` modifier),
- * not by anything in this codebase. Shared by every platform demo entry point (iOS, Android) so
- * they render byte-identical input — the point of the cross-platform comparison is to catch
- * *rendering* differences, not to accidentally compare two different payloads.
+ * `collapsiblePriority()` modifier, a purple rect carrying an `alignByBaseline()` modifier, and a
+ * dark-brown rect carrying a `then(ZIndexModifier(3f))` modifier), not by anything in this
+ * codebase. Shared by every platform demo entry point (iOS, Android) so they render byte-identical
+ * input — the point of the cross-platform comparison is to catch *rendering* differences, not to
+ * accidentally compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
@@ -57,6 +58,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "KkIYAABBcAAAQlQAAEHIAADW1sr////g/////wAAAAAAAAAA50EgAABBoAAAyf///98oAAAAAgAAAAT/eYbLKkJgAABBcAAAQo4AAEHIAADW" +
             "1sr////e/////wAAAAAAAAAA6EBAAABBIAAAyf///90oAAAAAgAAAAT//7MAKkKUAABBcAAAQrIAAEHIAADW1sr////c/////wAAAAAAAAAA" +
             "6wAAAABAAAAAyf///9soAAAAAgAAAAT/VG56KkK4AABBcAAAQtYAAEHIAADW1sr////a/////wAAAAAAAAAA7f+AAAEAAAAAyf///9koAAAA" +
-            "AgAAAAT/jiSqKkLcAABBcAAAQvoAAEHIAADW1g=="
+            "AgAAAAT/jiSqKkLcAABBcAAAQvoAAEHIAADW1sr////Y/////wAAAAAAAAAA30BAAADJ////1ygAAAACAAAABP8+JyMqQwAAAEFwAABDDwAA" +
+            "QcgAANbW"
     )
 }

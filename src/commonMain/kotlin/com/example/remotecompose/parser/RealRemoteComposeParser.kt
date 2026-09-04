@@ -322,6 +322,13 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_ALIGN_BY = 237
 
     /**
+     * `Operations.MODIFIER_ZINDEX` — the (not directly exposed on `RecordingModifier`, reached via
+     * `.then(ZIndexModifier(value))`) z-index modifier writes a single raw float, confirmed via
+     * `ZIndexModifier(3f)` decoding to exactly `[3.0]`.
+     */
+    private const val OP_MODIFIER_ZINDEX = 223
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -570,6 +577,8 @@ object RealRemoteComposeParser {
                     reader.readS32() // flag
                 }
 
+                OP_MODIFIER_ZINDEX -> reader.readFloat32() // z-index value
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -580,7 +589,7 @@ object RealRemoteComposeParser {
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
                         "ModifierRoundedClipRect/ModifierMultiClick/ModifierTouchDown/" +
                         "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn/" +
-                        "ModifierCollapsiblePriority/ModifierAlignBy)",
+                        "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex)",
                 )
             }
         }
