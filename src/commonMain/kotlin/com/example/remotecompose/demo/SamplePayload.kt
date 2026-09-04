@@ -34,10 +34,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `onClick(ValueFloatChange(4, 2.5f))` modifier, and a dark-blue rect carrying an
  * `onClick(ValueStringChange(5, hi))` modifier, and a dark-olive rect carrying an
  * `onClick(ValueIntegerExpressionChange(6L, 42L))` modifier, and a brown rect carrying an
- * `onClick(ValueFloatExpressionChange(7, 9))` modifier), not by anything in this codebase. Shared
- * by every platform demo entry point (iOS, Android) so they render byte-identical input — the
- * point of the cross-platform comparison is to catch *rendering* differences, not to accidentally
- * compare two different payloads.
+ * `onClick(ValueFloatExpressionChange(7, 9))` modifier, and a dark-blue-grey/dark-pink pair of
+ * boxes wrapped in a `startCollapsibleColumn`/`endCollapsibleColumn` and a
+ * `startCollapsibleRow`/`endCollapsibleRow` respectively), not by anything in this codebase.
+ * Shared by every platform demo entry point (iOS, Android) so they render byte-identical input —
+ * the point of the cross-platform comparison is to catch *rendering* differences, not to
+ * accidentally compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
@@ -76,6 +78,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAO94AAAAEQCAAANbJ////ySgAAAACAAAABP/YQxUqQpQAAEHgAABCsgAAQhgAANbWyv///8j/////AAAAAAAAAAA7ZgAAADIAAAACaGnV" +
             "AAAABQAAADLWyf///8coAAAAAgAAAAT/KDWTKkK4AABB4AAAQtYAAEIYAADW1sr////G/////wAAAAAAAAAAO9oAAAAAAAAABgAAAAAAAAAq" +
             "1sn////FKAAAAAIAAAAE/zNpHipC3AAAQeAAAEL6AABCGAAA1tbK////xP////8AAAAAAAAAADvjAAAABwAAAAnWyf///8MoAAAAAgAAAAT/" +
-            "bUxBKkMAAABB4AAAQw8AAEIYAADW1g=="
+            "bUxBKkMAAABB4AAAQw8AAEIYAADW1un////C/////wAAAAAAAAAAAAAAAMn////BKAAAAAIAAAAE/zdHTypDEgAAQeAAAEMhAABCGAAA1tbm" +
+            "////wP////8AAAAAAAAAAAAAAADJ////vygAAAACAAAABP+IDk8qQyQAAEHgAABDMwAAQhgAANbW"
     )
 }

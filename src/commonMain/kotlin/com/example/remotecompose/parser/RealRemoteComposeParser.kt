@@ -180,6 +180,17 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_ROW = 203
 
     /**
+     * `Operations.LAYOUT_COLLAPSIBLE_COLUMN`/`LAYOUT_COLLAPSIBLE_ROW` — `startCollapsibleColumn`/
+     * `startCollapsibleRow` write the exact same `[componentId:i32][animationId:i32]
+     * [horizontalPositioning:i32][verticalPositioning:i32][spacedBy:f32]` shape as
+     * [OP_LAYOUT_COLUMN]/[OP_LAYOUT_ROW] (confirmed byte-for-byte against real output), just under
+     * different opcode numbers, and are closed the same way (a `LAYOUT_CONTENT` children marker,
+     * then two [OP_CONTAINER_END]s).
+     */
+    private const val OP_LAYOUT_COLLAPSIBLE_COLUMN = 233
+    private const val OP_LAYOUT_COLLAPSIBLE_ROW = 230
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -588,7 +599,7 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.ActionClick(actionId, metadataTextId, left, top, right, bottom)
                 }
 
-                OP_LAYOUT_COLUMN, OP_LAYOUT_ROW -> {
+                OP_LAYOUT_COLUMN, OP_LAYOUT_ROW, OP_LAYOUT_COLLAPSIBLE_COLUMN, OP_LAYOUT_COLLAPSIBLE_ROW -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
                     reader.readS32() // horizontalPositioning
@@ -713,6 +724,7 @@ object RealRemoteComposeParser {
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
+                        "LayoutCollapsibleColumn/LayoutCollapsibleRow/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
