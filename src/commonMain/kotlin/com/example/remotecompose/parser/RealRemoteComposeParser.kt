@@ -298,6 +298,15 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_TOUCH_CANCEL = 225
 
     /**
+     * `Operations.MODIFIER_WIDTH_IN`/`MODIFIER_HEIGHT_IN` — `RecordingModifier.widthIn(min, max)`/
+     * `heightIn(min, max)` write `[min:f32][max:f32]`, the same two-float shape as
+     * [OP_MODIFIER_WIDTH]/[OP_MODIFIER_HEIGHT] (which instead carry a leading mode int), confirmed
+     * via `widthIn(10f, 20f)` decoding to exactly `[10.0, 20.0]`.
+     */
+    private const val OP_MODIFIER_WIDTH_IN = 231
+    private const val OP_MODIFIER_HEIGHT_IN = 232
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -531,6 +540,11 @@ object RealRemoteComposeParser {
                 OP_MODIFIER_TOUCH_DOWN, OP_MODIFIER_TOUCH_UP, OP_MODIFIER_TOUCH_CANCEL ->
                     Unit // no payload — just opens a nested action list
 
+                OP_MODIFIER_WIDTH_IN, OP_MODIFIER_HEIGHT_IN -> {
+                    reader.readFloat32() // min
+                    reader.readFloat32() // max
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -540,7 +554,7 @@ object RealRemoteComposeParser {
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
                         "ModifierRoundedClipRect/ModifierMultiClick/ModifierTouchDown/" +
-                        "ModifierTouchUp/ModifierTouchCancel)",
+                        "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn)",
                 )
             }
         }
