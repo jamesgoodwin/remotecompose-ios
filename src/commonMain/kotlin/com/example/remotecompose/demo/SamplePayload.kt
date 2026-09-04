@@ -22,11 +22,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * a `startBox`/`endBox` carrying a `clip(RoundedRectShape(...))` modifier, a small teal rect
  * wrapped in a `startBox`/`endBox` carrying an `onLongClick(HostAction(9))` modifier, a second row
  * of a brown/teal/red rect each wrapped in a `startBox`/`endBox` carrying an `onTouchDown`/
- * `onTouchUp`/`onTouchCancel(HostAction(9))` modifier respectively, and an indigo/amber rect
- * carrying a `widthIn()`/`heightIn()` modifier respectively), not by anything in this codebase.
- * Shared by every platform demo entry point (iOS, Android) so they render byte-identical input —
- * the point of the cross-platform comparison is to catch *rendering* differences, not to
- * accidentally compare two different payloads.
+ * `onTouchUp`/`onTouchCancel(HostAction(9))` modifier respectively, an indigo/amber rect carrying a
+ * `widthIn()`/`heightIn()` modifier respectively, and a blue-grey rect carrying a
+ * `collapsiblePriority()` modifier), not by anything in this codebase. Shared by every platform
+ * demo entry point (iOS, Android) so they render byte-identical input — the point of the
+ * cross-platform comparison is to catch *rendering* differences, not to accidentally compare two
+ * different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
@@ -54,6 +55,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "///m/////wAAAAAAAAAA29EAAAAJ1sn////lKAAAAAIAAAAE/41uYypAAAAAQXAAAEGIAABByAAA1tbK////5P////8AAAAAAAAAANzRAAAA" +
             "CdbJ////4ygAAAACAAAABP8mppoqQaAAAEFwAABCDAAAQcgAANbWyv///+L/////AAAAAAAAAADh0QAAAAnWyf///+EoAAAAAgAAAAT/71NQ" +
             "KkIYAABBcAAAQlQAAEHIAADW1sr////g/////wAAAAAAAAAA50EgAABBoAAAyf///98oAAAAAgAAAAT/eYbLKkJgAABBcAAAQo4AAEHIAADW" +
-            "1sr////e/////wAAAAAAAAAA6EBAAABBIAAAyf///90oAAAAAgAAAAT//7MAKkKUAABBcAAAQrIAAEHIAADW1g=="
+            "1sr////e/////wAAAAAAAAAA6EBAAABBIAAAyf///90oAAAAAgAAAAT//7MAKkKUAABBcAAAQrIAAEHIAADW1sr////c/////wAAAAAAAAAA" +
+            "6wAAAABAAAAAyf///9soAAAAAgAAAAT/VG56KkK4AABBcAAAQtYAAEHIAADW1g=="
     )
 }

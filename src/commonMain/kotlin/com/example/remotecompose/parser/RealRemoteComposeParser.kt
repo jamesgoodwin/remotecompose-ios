@@ -307,6 +307,13 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_HEIGHT_IN = 232
 
     /**
+     * `Operations.MODIFIER_COLLAPSIBLE_PRIORITY` — `RecordingModifier.collapsiblePriority(orientation,
+     * priority)` writes `[orientation:i32][priority:f32]`, confirmed via `collapsiblePriority(0, 2f)`
+     * decoding to exactly `[0, 2.0]`.
+     */
+    private const val OP_MODIFIER_COLLAPSIBLE_PRIORITY = 235
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -545,6 +552,11 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // max
                 }
 
+                OP_MODIFIER_COLLAPSIBLE_PRIORITY -> {
+                    reader.readS32() // orientation
+                    reader.readFloat32() // priority
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -554,7 +566,8 @@ object RealRemoteComposeParser {
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
                         "ModifierRoundedClipRect/ModifierMultiClick/ModifierTouchDown/" +
-                        "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn)",
+                        "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn/" +
+                        "ModifierCollapsiblePriority)",
                 )
             }
         }
