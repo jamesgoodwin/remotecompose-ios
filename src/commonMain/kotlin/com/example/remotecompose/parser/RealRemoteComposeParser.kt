@@ -370,6 +370,14 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_DIMENSION_CONSTRAINTS = 243
 
     /**
+     * `Operations.VALUE_INTEGER_CHANGE_ACTION` — `ValueIntegerChange(valueId, value)`, an `Action`
+     * subtype usable anywhere [OP_HOST_ACTION] is (inside `onClick`/`onLongClick`/etc's nested
+     * action list) — writes `[valueId:i32][value:i32]`, confirmed via `ValueIntegerChange(3, 7)`
+     * decoding to exactly `[3, 7]`.
+     */
+    private const val OP_VALUE_INTEGER_CHANGE = 212
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -644,6 +652,11 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // max
                 }
 
+                OP_VALUE_INTEGER_CHANGE -> {
+                    reader.readS32() // valueId
+                    reader.readS32() // value
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -656,7 +669,7 @@ object RealRemoteComposeParser {
                         "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn/" +
                         "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex/ModifierRipple/" +
                         "ModifierDrawContent/ModifierMarquee/ModifierGraphicsLayer/" +
-                        "ModifierDimensionConstraints)",
+                        "ModifierDimensionConstraints/ValueIntegerChange)",
                 )
             }
         }
