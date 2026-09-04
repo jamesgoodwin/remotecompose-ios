@@ -361,6 +361,15 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_GRAPHICS_LAYER = 224
 
     /**
+     * `Operations.MODIFIER_DIMENSION_CONSTRAINTS` — reached via `.then(WidthInModifier(type, min,
+     * max))`'s 3-arg constructor (the public 2-arg `widthIn(min, max)` always takes the
+     * [OP_MODIFIER_WIDTH_IN] path instead) — writes `[type:byte][min:f32][max:f32]`, a single raw
+     * **byte** rather than the usual `i32`, confirmed via `WidthInModifier(1, 5f, 40f)` decoding to
+     * exactly `[1, 5.0, 40.0]` in a 9-byte payload (1+4+4, not 1+4+4+3 padding).
+     */
+    private const val OP_MODIFIER_DIMENSION_CONSTRAINTS = 243
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -629,6 +638,12 @@ object RealRemoteComposeParser {
                     }
                 }
 
+                OP_MODIFIER_DIMENSION_CONSTRAINTS -> {
+                    reader.readS8() // type
+                    reader.readFloat32() // min
+                    reader.readFloat32() // max
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -640,7 +655,8 @@ object RealRemoteComposeParser {
                         "ModifierRoundedClipRect/ModifierMultiClick/ModifierTouchDown/" +
                         "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn/" +
                         "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex/ModifierRipple/" +
-                        "ModifierDrawContent/ModifierMarquee/ModifierGraphicsLayer)",
+                        "ModifierDrawContent/ModifierMarquee/ModifierGraphicsLayer/" +
+                        "ModifierDimensionConstraints)",
                 )
             }
         }
