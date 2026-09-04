@@ -255,6 +255,16 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_OFFSET = 221
 
     /**
+     * `Operations.MODIFIER_BORDER` — `RecordingModifier.border(width, roundedCorner, color,
+     * shapeType)` writes 4 raw ints then 6 raw floats then 1 raw int (44 bytes), confirmed via
+     * `border(2f, 4f, 0xFF000000, 0)`: `[0, 0, 0, 0][2.0, 4.0, 0.0, 0.0, 0.0, 1.0][0]` — a
+     * colorId-ref flag/id/legacy-flag/reserved int quad, then borderWidth, roundedCorner, and the
+     * color as normalized r/g/b/a floats (same normalized-channel convention as
+     * [OP_MODIFIER_BACKGROUND]), then a trailing shapeType int.
+     */
+    private const val OP_MODIFIER_BORDER = 107
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -473,6 +483,12 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // y
                 }
 
+                OP_MODIFIER_BORDER -> {
+                    repeat(4) { reader.readS32() } // colorId-ref flag / colorId / legacy flag / reserved
+                    repeat(6) { reader.readFloat32() } // borderWidth, roundedCorner, r, g, b, a
+                    reader.readS32() // shapeType
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -480,7 +496,7 @@ object RealRemoteComposeParser {
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
-                        "ModifierVisibility/ModifierOffset)",
+                        "ModifierVisibility/ModifierOffset/ModifierBorder)",
                 )
             }
         }
