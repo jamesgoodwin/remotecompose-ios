@@ -217,6 +217,14 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_ROOT = 200
 
     /**
+     * `Operations.LAYOUT_STATE` — `startStateLayout` writes `[componentId:i32][animationId:i32]
+     * [horizontalPositioning:i32][verticalPositioning:i32][stateIndex:i32]` (5 ints, confirmed
+     * against real output), closed the same way as most other layout containers (a
+     * `LAYOUT_CONTENT` children marker, then two [OP_CONTAINER_END]s).
+     */
+    private const val OP_LAYOUT_STATE = 217
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -652,6 +660,14 @@ object RealRemoteComposeParser {
 
                 OP_LAYOUT_ROOT -> reader.readS32() // componentId — no LAYOUT_CONTENT marker follows
 
+                OP_LAYOUT_STATE -> {
+                    reader.readS32() // componentId
+                    reader.readS32() // animationId
+                    reader.readS32() // horizontalPositioning
+                    reader.readS32() // verticalPositioning
+                    reader.readS32() // stateIndex
+                }
+
                 OP_LAYOUT_CONTENT -> reader.readS32() // componentId
 
                 OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
@@ -763,7 +779,7 @@ object RealRemoteComposeParser {
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/LayoutFitBox/" +
-                        "LayoutRoot/" +
+                        "LayoutRoot/LayoutState/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
