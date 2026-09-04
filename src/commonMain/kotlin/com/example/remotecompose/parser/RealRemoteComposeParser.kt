@@ -209,6 +209,14 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_FIT_BOX = 176
 
     /**
+     * `Operations.LAYOUT_ROOT` — `startRoot()`/`endRoot()` write only `[componentId:i32]` (no
+     * `LAYOUT_CONTENT` children marker, unlike every other container here — children follow
+     * directly), closed by a single [OP_CONTAINER_END] (not two, confirmed against real output —
+     * `endRoot()` calls `addContainerEnd()` exactly once).
+     */
+    private const val OP_LAYOUT_ROOT = 200
+
+    /**
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
@@ -642,6 +650,8 @@ object RealRemoteComposeParser {
                     reader.readS32() // verticalPositioning
                 }
 
+                OP_LAYOUT_ROOT -> reader.readS32() // componentId — no LAYOUT_CONTENT marker follows
+
                 OP_LAYOUT_CONTENT -> reader.readS32() // componentId
 
                 OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
@@ -753,6 +763,7 @@ object RealRemoteComposeParser {
                         "DrawRoundRect/DrawTextAnchored/DrawLine/DrawOval/DrawArc/DrawSector/" +
                         "DataPath/DrawPath/DataBitmap/DrawBitmap/ClickArea/LayoutColumn/LayoutRow/" +
                         "LayoutCollapsibleColumn/LayoutCollapsibleRow/LayoutFlow/LayoutFitBox/" +
+                        "LayoutRoot/" +
                         "LayoutBox/LayoutContent/ContainerEnd/ModifierWidth/ModifierHeight/" +
                         "ModifierClick/HostAction/ModifierPadding/ModifierBackground/" +
                         "ModifierVisibility/ModifierOffset/ModifierBorder/ModifierClipRect/" +
