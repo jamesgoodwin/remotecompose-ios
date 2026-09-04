@@ -3,6 +3,7 @@ import androidx.compose.remote.creation.RemoteComposeWriter
 import androidx.compose.remote.creation.RemotePath
 import androidx.compose.remote.creation.actions.HostAction
 import androidx.compose.remote.creation.modifiers.RecordingModifier
+import androidx.compose.remote.creation.modifiers.GraphicsLayerModifier
 import androidx.compose.remote.creation.modifiers.MarqueeModifier
 import androidx.compose.remote.creation.modifiers.RectShape
 import androidx.compose.remote.creation.modifiers.RippleModifier
@@ -251,6 +252,15 @@ fun main() {
         .setColor(0xFF827717.toInt())
         .commit()
     writer.drawRect(2f, 28f, 17f, 38f)
+    writer.endBox()
+
+    val graphicsLayer = GraphicsLayerModifier()
+    graphicsLayer.setFloatAttribute(11, 0.5f)
+    writer.startBox(RecordingModifier().then(graphicsLayer), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF6A1B9A.toInt())
+        .commit()
+    writer.drawRect(20f, 28f, 35f, 38f)
     writer.endBox()
 
     val bytes = writer.encodeToByteArray()

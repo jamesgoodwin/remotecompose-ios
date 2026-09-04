@@ -27,10 +27,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `collapsiblePriority()` modifier, a purple rect carrying an `alignByBaseline()` modifier, and a
  * dark-brown rect carrying a `then(ZIndexModifier(3f))` modifier, a blue rect carrying a
  * `then(RippleModifier())` modifier, a magenta rect carrying a `drawContent()` modifier, and an
- * olive rect carrying a `then(MarqueeModifier(...))` modifier), not by anything in this codebase.
- * Shared by every platform demo entry point (iOS, Android) so they render byte-identical input —
- * the point of the cross-platform comparison is to catch *rendering* differences, not to
- * accidentally compare two different payloads.
+ * olive rect carrying a `then(MarqueeModifier(...))` modifier, and a purple rect carrying a
+ * `then(GraphicsLayerModifier().apply { setFloatAttribute(ALPHA, 0.5f) })` modifier), not by
+ * anything in this codebase. Shared by every platform demo entry point (iOS, Android) so they
+ * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
+ * differences, not to accidentally compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
 val SAMPLE_RC_BYTES: ByteArray by lazy {
@@ -63,6 +64,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AgAAAAT/jiSqKkLcAABBcAAAQvoAAEHIAADW1sr////Y/////wAAAAAAAAAA30BAAADJ////1ygAAAACAAAABP8+JyMqQwAAAEFwAABDDwAA" +
             "QcgAANbWyv///9b/////AAAAAAAAAADlyf///9UoAAAAAgAAAAT/GXbSKkMSAABBcAAAQyEAAEHIAADW1sr////U/////wAAAAAAAAAArsn/" +
             "///TKAAAAAIAAAAE/60UVypDJAAAQXAAAEMzAABByAAA1tbK////0v////8AAAAAAAAAAOQAAAABAAAAAER6AABD+gAAQQAAAEHwAADJ////" +
-            "0SgAAAACAAAABP+CdxcqQAAAAEHgAABBiAAAQhgAANbW"
+            "0SgAAAACAAAABP+CdxcqQAAAAEHgAABBiAAAQhgAANbWyv///9D/////AAAAAAAAAADgAAAAAQAABAs/AAAAyf///88oAAAAAgAAAAT/ahua" +
+            "KkGgAABB4AAAQgwAAEIYAADW1g=="
     )
 }

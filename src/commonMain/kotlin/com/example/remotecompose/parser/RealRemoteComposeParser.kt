@@ -352,6 +352,15 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_MARQUEE = 228
 
     /**
+     * `Operations.MODIFIER_GRAPHICS_LAYER` — reached via `.then(GraphicsLayerModifier().apply {
+     * setFloatAttribute(key, value) })` (a `HashMap<Int, Any>` of attributes, not a direct method)
+     * — writes `[count:i32]` then `count` entries of `[tag:i32][value:4 bytes]`, where `tag` is the
+     * attribute key OR'd with `0x400` for a float value (else a plain int). Confirmed via
+     * `setFloatAttribute(11 /* ALPHA */, 0.5f)` decoding to `[1, [0x40B, 0.5]]`.
+     */
+    private const val OP_MODIFIER_GRAPHICS_LAYER = 224
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -612,6 +621,14 @@ object RealRemoteComposeParser {
                     repeat(4) { reader.readFloat32() } // repeatDelay, initialDelay, spacing, velocity
                 }
 
+                OP_MODIFIER_GRAPHICS_LAYER -> {
+                    val count = reader.readS32()
+                    repeat(count) {
+                        reader.readS32() // tag (attribute key, OR'd with 0x400 if float-valued)
+                        reader.readS32() // value (int or float bit pattern)
+                    }
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -623,7 +640,7 @@ object RealRemoteComposeParser {
                         "ModifierRoundedClipRect/ModifierMultiClick/ModifierTouchDown/" +
                         "ModifierTouchUp/ModifierTouchCancel/ModifierWidthIn/ModifierHeightIn/" +
                         "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex/ModifierRipple/" +
-                        "ModifierDrawContent/ModifierMarquee)",
+                        "ModifierDrawContent/ModifierMarquee/ModifierGraphicsLayer)",
                 )
             }
         }
