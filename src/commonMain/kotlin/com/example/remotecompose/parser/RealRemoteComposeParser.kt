@@ -394,6 +394,13 @@ object RealRemoteComposeParser {
     private const val OP_VALUE_FLOAT_CHANGE = 222
 
     /**
+     * `Operations.VALUE_INTEGER_EXPRESSION_CHANGE_ACTION` — `ValueIntegerExpressionChange(valueId,
+     * value)` writes `[valueId:i64][value:i64]` — the first action using 64-bit fields instead of
+     * 32-bit. Confirmed via `ValueIntegerExpressionChange(6L, 42L)` decoding to exactly `[6, 42]`.
+     */
+    private const val OP_VALUE_INTEGER_EXPRESSION_CHANGE = 218
+
+    /**
      * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
      * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
      */
@@ -683,6 +690,11 @@ object RealRemoteComposeParser {
                     reader.readFloat32() // value
                 }
 
+                OP_VALUE_INTEGER_EXPRESSION_CHANGE -> {
+                    reader.readS64() // valueId
+                    reader.readS64() // value
+                }
+
                 else -> throw RemoteComposeParseException(
                     "Real opcode $opId is outside the minimal subset this demo parser supports " +
                         "(Header/DataText/RootContentDescription/PaintBundle/DrawRect/DrawCircle/" +
@@ -696,7 +708,7 @@ object RealRemoteComposeParser {
                         "ModifierCollapsiblePriority/ModifierAlignBy/ModifierZIndex/ModifierRipple/" +
                         "ModifierDrawContent/ModifierMarquee/ModifierGraphicsLayer/" +
                         "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
-                        "ValueFloatChange)",
+                        "ValueFloatChange/ValueIntegerExpressionChange)",
                 )
             }
         }
