@@ -300,11 +300,14 @@ object RealRemoteComposeParser {
 
     /**
      * `Operations.MODIFIER_WIDTH` — `RecordingModifier.width(float)` writes `[mode:i32][value:f32]`
-     * (mode observed as 0 for a fixed-size `width(float)`; other modes presumably exist for
-     * wrap-content/fill-parent, unconfirmed). Written immediately after its component's own layout
-     * op (e.g. [OP_LAYOUT_BOX]) and before [OP_LAYOUT_CONTENT]. Consumed as a pass-through, same
-     * rationale as the layout container opcodes: it would only affect rendering through a real
-     * measure/layout pass this renderer doesn't have.
+     * (mode observed as 0/[DIMENSION_MODE_EXACT] for a fixed-size `width(float)`; the other
+     * [DIMENSION_MODE_EXACT] siblings are sizing *strategies* — FILL/WRAP/WEIGHT/INTRINSIC_* —
+     * this renderer has no layout pass to resolve). Written immediately after its component's own
+     * layout op (e.g. [OP_LAYOUT_BOX]) and before [OP_LAYOUT_CONTENT]. When the mode is a real
+     * target size, the value is captured onto the current container's [ScopeFrame] as
+     * [ScopeFrame.explicitWidthPx] — used by `arrangeChildren` (a LAYOUT_COLUMN/LAYOUT_ROW's real
+     * child arrangement) as the container's known main/cross-axis extent; otherwise ignored, same
+     * rationale as most other layout container opcodes.
      */
     private const val OP_MODIFIER_WIDTH = 16
 
@@ -464,6 +467,26 @@ object RealRemoteComposeParser {
      */
     private const val GRAPHICS_LAYER_ALPHA_TAG = 11 or 0x400
 
+    // `RowLayout`/`ColumnLayout`'s shared positioning-mode ordinals (source-confirmed identical in
+    // both classes) — the raw ints `horizontalPositioning`/`verticalPositioning` carry. TOP/BOTTOM
+    // are only meaningful on Row's verticalPositioning (cross axis); START/END are only meaningful
+    // on Column's horizontalPositioning (cross axis); CENTER and the three SPACE_* modes apply to
+    // either axis. See arrangeChildren's KDoc for how each is actually honored.
+    private const val POS_START = 1
+    private const val POS_CENTER = 2
+    private const val POS_END = 3
+    private const val POS_TOP = 4
+    private const val POS_BOTTOM = 5
+    private const val POS_SPACE_BETWEEN = 6
+    private const val POS_SPACE_EVENLY = 7
+    private const val POS_SPACE_AROUND = 8
+
+    // `DimensionModifierOperation.Type` ordinals for the two modes where MODIFIER_WIDTH/HEIGHT's
+    // value is a real target size in this renderer's own coordinate units, rather than a sizing
+    // *strategy* (FILL/WRAP/WEIGHT/INTRINSIC_*) this parser has no layout pass to resolve.
+    private const val DIMENSION_MODE_EXACT = 0
+    private const val DIMENSION_MODE_EXACT_DP = 6
+
     /**
      * `Operations.MODIFIER_DIMENSION_CONSTRAINTS` — reached via `.then(WidthInModifier(type, min,
      * max))`'s 3-arg constructor (the public 2-arg `widthIn(min, max)` always takes the
@@ -605,7 +628,20 @@ object RealRemoteComposeParser {
             var backgroundColor: Color? = null
             var layoutAxis: Char? = null // 'V' (LAYOUT_COLUMN) or 'H' (LAYOUT_ROW); null otherwise
             var spacedBy: Float = 0f
+            // RowLayout/ColumnLayout.{START,CENTER,END,TOP,BOTTOM,SPACE_BETWEEN,SPACE_EVENLY,
+            // SPACE_AROUND} ordinals (see arrangeChildren's KDoc) — only meaningful when
+            // layoutAxis != null; default POS_START matches this parser's original always-packed
+            // behavior when a document doesn't set these explicitly.
+            var horizontalPositioning: Int = POS_START
+            var verticalPositioning: Int = POS_START
             val childRanges = mutableListOf<IntArray>() // only populated/consumed when layoutAxis != null
+            // Captured from a MODIFIER_WIDTH/MODIFIER_HEIGHT with an EXACT(_DP) mode directly on
+            // *this* frame (i.e. this container's own declared size, not a child's) — read by
+            // arrangeChildren on the LAYOUT_CONTENT frame this one is the parent of, since only a
+            // real declared container extent (not just "however much space the children take up")
+            // makes CENTER/END/SPACE_* along the main axis mean anything.
+            var explicitWidthPx: Float? = null
+            var explicitHeightPx: Float? = null
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
@@ -619,6 +655,8 @@ object RealRemoteComposeParser {
         // LAYOUT_CONTENT themselves — between the two, so nothing else can consume this first).
         var pendingLayoutAxis: Char? = null
         var pendingSpacedBy = 0f
+        var pendingHorizontalPositioning = POS_START
+        var pendingVerticalPositioning = POS_START
 
         /**
          * This renderer has no measure/layout pass, so a container's "bounds" for
@@ -675,14 +713,49 @@ object RealRemoteComposeParser {
         }
 
         /**
+         * Returns `(leadingGap, betweenGap)` for [mode] given [extraSpace] (container main-axis
+         * extent minus the children's own packed-together size; 0 or negative when the container
+         * has no known extent bigger than its content, in which case every mode below correctly
+         * degenerates to plain start-packing since there's no slack to distribute) and [count]
+         * children. [POS_TOP]/[POS_BOTTOM] have no main-axis meaning and fall back to start/end.
+         */
+        fun mainAxisGaps(mode: Int, extraSpace: Float, count: Int): FloatArray {
+            val extra = extraSpace.coerceAtLeast(0f)
+            return when (mode) {
+                POS_CENTER -> floatArrayOf(extra / 2f, 0f)
+                POS_END, POS_BOTTOM -> floatArrayOf(extra, 0f)
+                POS_SPACE_BETWEEN -> floatArrayOf(0f, if (count > 1) extra / (count - 1) else 0f)
+                POS_SPACE_EVENLY -> (extra / (count + 1)).let { floatArrayOf(it, it) }
+                POS_SPACE_AROUND -> (extra / count).let { floatArrayOf(it / 2f, it) }
+                else -> floatArrayOf(0f, 0f) // POS_START/POS_TOP, or unrecognized
+            }
+        }
+
+        /** Cross-axis offset of a child of [childExtent] within a container of [containerExtent]. */
+        fun crossAxisOffset(mode: Int, containerExtent: Float, childExtent: Float): Float = when (mode) {
+            POS_CENTER -> (containerExtent - childExtent) / 2f
+            POS_END, POS_BOTTOM -> containerExtent - childExtent
+            else -> 0f // POS_START/POS_TOP, or unrecognized
+        }
+
+        /**
          * Real arrangement for a LAYOUT_COLUMN/LAYOUT_ROW's direct children, run once — from
          * [OP_CONTAINER_END] — when [frame] (a LAYOUT_CONTENT frame carrying [ScopeFrame.layoutAxis])
          * closes and every entry in [ScopeFrame.childRanges] is final. Each child's natural size
-         * comes from [contentBounds] over its own already-authored (absolute-coordinate) content;
-         * children are then stacked from the first child's own position along the container's main
-         * axis, [ScopeFrame.spacedBy] apart, cross-axis-aligned to the first child's own edge (this
-         * parser discards `horizontalPositioning`/`verticalPositioning`, so it can't honor real
-         * start/center/end/space-between alignment modes — every arrangement here is start-aligned).
+         * comes from [contentBounds] over its own already-authored (absolute-coordinate) content —
+         * there's still no real measure pass computing a size *before* a child is drawn.
+         *
+         * Both axes are real, within an honest limit: this parser has no notion of the container's
+         * own extent unless the document explicitly gave it one via a MODIFIER_WIDTH/HEIGHT with an
+         * EXACT(_DP) mode (captured as [ScopeFrame.explicitWidthPx]/[explicitHeightPx] on [frame]'s
+         * *parent*, the container's own outer scope — see that field's KDoc). Without one, this
+         * falls back to real "wrap content" semantics — the container's extent is exactly what its
+         * children need — under which [POS_CENTER]/[POS_END]/the `SPACE_*` modes have no slack to
+         * work with and correctly collapse to plain start-packing, same as real Compose would do.
+         * Cross-axis alignment always has a meaningful reference even with no declared size: the
+         * *tallest* (Row) or *widest* (Column) child, exactly how Compose sizes an unconstrained
+         * Row/Column's cross axis by default.
+         *
          * A child is moved into place the same way [OP_MODIFIER_OFFSET] moves content: a
          * MatrixSave/Translate pair spliced immediately before its content, MatrixRestore right
          * after. Splicing is done in *reverse* document order specifically so that an earlier
@@ -693,30 +766,42 @@ object RealRemoteComposeParser {
         fun arrangeChildren(frame: ScopeFrame) {
             val axis = frame.layoutAxis ?: return
             val children = frame.childRanges.sortedBy { it[0] }
-            if (children.size < 2) return // 0 or 1 child needs no repositioning
+            if (children.isEmpty()) return
             val naturalBounds = children.map { range -> contentBounds(opcodes.subList(range[0], range[1])) }
             val anchorIndex = naturalBounds.indexOfFirst { it != null }
             if (anchorIndex == -1) return
             val anchor = naturalBounds[anchorIndex]!!
-            var cursorMain = if (axis == 'V') anchor[1] else anchor[0] // top (Column) or left (Row)
-            val crossAnchor = if (axis == 'V') anchor[0] else anchor[1] // left (Column) or top (Row), held fixed
+            val anchorMainStart = if (axis == 'V') anchor[1] else anchor[0] // top (Column) or left (Row)
+            val crossAnchor = if (axis == 'V') anchor[0] else anchor[1] // left (Column) or top (Row)
+
+            val mainMode = if (axis == 'V') frame.verticalPositioning else frame.horizontalPositioning
+            val crossMode = if (axis == 'V') frame.horizontalPositioning else frame.verticalPositioning
+
+            val mainSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[3] - it[1] else it[2] - it[0] } ?: 0f }
+            val crossSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[2] - it[0] else it[3] - it[1] } ?: 0f }
+            val packedMainSize = mainSizes.sum() + frame.spacedBy * (children.size - 1).coerceAtLeast(0)
+            val declaredMainExtent = if (axis == 'V') frame.parent?.explicitHeightPx else frame.parent?.explicitWidthPx
+            val declaredCrossExtent = if (axis == 'V') frame.parent?.explicitWidthPx else frame.parent?.explicitHeightPx
+            val mainExtent = declaredMainExtent ?: packedMainSize
+            val crossExtent = declaredCrossExtent ?: (crossSizes.maxOrNull() ?: 0f)
+
+            val (leadingGap, betweenGap) = mainAxisGaps(mainMode, mainExtent - packedMainSize, children.size)
+            var cursorMain = anchorMainStart + leadingGap
             val deltas = arrayOfNulls<FloatArray>(children.size)
             for (i in children.indices) {
                 val bounds = naturalBounds[i] ?: continue
-                val width = bounds[2] - bounds[0]
-                val height = bounds[3] - bounds[1]
+                val crossOffset = crossAxisOffset(crossMode, crossExtent, crossSizes[i])
                 val dx: Float
                 val dy: Float
                 if (axis == 'V') {
-                    dx = crossAnchor - bounds[0]
+                    dx = (crossAnchor + crossOffset) - bounds[0]
                     dy = cursorMain - bounds[1]
-                    cursorMain += height + frame.spacedBy
                 } else {
                     dx = cursorMain - bounds[0]
-                    dy = crossAnchor - bounds[1]
-                    cursorMain += width + frame.spacedBy
+                    dy = (crossAnchor + crossOffset) - bounds[1]
                 }
                 deltas[i] = floatArrayOf(dx, dy)
+                cursorMain += mainSizes[i] + frame.spacedBy + betweenGap
             }
             for (i in children.indices.reversed()) {
                 val delta = deltas[i] ?: continue
@@ -887,14 +972,16 @@ object RealRemoteComposeParser {
                 OP_LAYOUT_COLUMN, OP_LAYOUT_ROW -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
-                    reader.readS32() // horizontalPositioning — discarded; see arrangeChildren's KDoc
-                    reader.readS32() // verticalPositioning — discarded; see arrangeChildren's KDoc
+                    val horizontalPositioning = reader.readS32()
+                    val verticalPositioning = reader.readS32()
                     val spacedBy = reader.readFloat32()
                     pushScope() // this container's own scope — closed by its outermost CONTAINER_END
                     // Consumed by this container's own LAYOUT_CONTENT next, so its content frame
                     // (where the real children live) knows to arrange them — see arrangeChildren.
                     pendingLayoutAxis = if (opId == OP_LAYOUT_COLUMN) 'V' else 'H'
                     pendingSpacedBy = spacedBy
+                    pendingHorizontalPositioning = horizontalPositioning
+                    pendingVerticalPositioning = verticalPositioning
                 }
 
                 OP_LAYOUT_COLLAPSIBLE_COLUMN, OP_LAYOUT_COLLAPSIBLE_ROW -> {
@@ -948,6 +1035,8 @@ object RealRemoteComposeParser {
                     if (axis != null) {
                         scopeStack.last().layoutAxis = axis
                         scopeStack.last().spacedBy = pendingSpacedBy
+                        scopeStack.last().horizontalPositioning = pendingHorizontalPositioning
+                        scopeStack.last().verticalPositioning = pendingVerticalPositioning
                         pendingLayoutAxis = null
                     }
                 }
@@ -997,8 +1086,16 @@ object RealRemoteComposeParser {
                 }
 
                 OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
-                    reader.readS32() // mode
-                    reader.readFloat32() // value
+                    val mode = reader.readS32()
+                    val value = reader.readFloat32()
+                    // Only a real target size (not a sizing *strategy* like FILL/WRAP/WEIGHT this
+                    // parser has no layout pass to resolve) is useful to arrangeChildren's
+                    // main-axis CENTER/END/SPACE_* modes — see ScopeFrame.explicitWidthPx's KDoc.
+                    if (mode == DIMENSION_MODE_EXACT || mode == DIMENSION_MODE_EXACT_DP) {
+                        val frame = scopeStack.lastOrNull()
+                        if (opId == OP_MODIFIER_WIDTH) frame?.explicitWidthPx = value
+                        else frame?.explicitHeightPx = value
+                    }
                 }
 
                 OP_CONTAINER_END -> {

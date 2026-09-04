@@ -430,6 +430,25 @@ fun main() {
     writer.endBox()
     writer.endColumn()
 
+    // A Row with a real declared width (80f) and RowLayout.SPACE_BETWEEN (6) horizontal / .CENTER
+    // (2) vertical positioning. Three children of different heights, all drawn starting at the
+    // *same* raw (22,150) top-left — proving any horizontal spread or vertical centering seen can
+    // only be this parser's real alignment-mode handling, not hand-placed document coordinates.
+    writer.startRow(RecordingModifier().width(80f), 6, 2)
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFFC62828.toInt()).commit()
+    writer.drawRect(22f, 150f, 30f, 158f) // short
+    writer.endBox()
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFFF9A825.toInt()).commit()
+    writer.drawRect(22f, 150f, 30f, 166f) // tall — defines the row's wrap-content cross extent
+    writer.endBox()
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFF00838F.toInt()).commit()
+    writer.drawRect(22f, 150f, 30f, 158f) // short
+    writer.endBox()
+    writer.endRow()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

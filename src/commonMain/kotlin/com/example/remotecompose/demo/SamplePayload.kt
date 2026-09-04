@@ -58,7 +58,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * *identical* raw `(2, 90)-(12, 100)` document coordinates, i.e. not pre-spaced by the document
  * author at all — wrapped in a `startColumn(RecordingModifier().spacedBy(3f), 0, 0)`/`endColumn`,
  * so a render showing them stacked without overlap can only be this renderer's own real Column
- * child-arrangement at work), not by anything in this codebase. Shared by every platform demo entry point
+ * child-arrangement at work, and a `startRow(RecordingModifier().width(80f), 6, 2)`/`endRow`
+ * (`RowLayout.SPACE_BETWEEN`/`.CENTER`) wrapping a short crimson, a tall amber, and a short teal
+ * `startBox`/`endBox` child — all three drawn at the *identical* raw `(22, 150)` top-left, two of
+ * them the same height — so real horizontal spread (using the row's declared 80f width as the
+ * space to distribute) and real vertical centering against the tallest child are both this
+ * renderer's own alignment-mode handling, not document-authored placement), not by anything in
+ * this codebase. Shared by every platform demo entry point
  * (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -110,6 +116,8 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAAAAAAAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////rygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4AACgAAAACAAAABP8ufTIuQgwAAEKc" +
             "AABAwAAA1tbM////rv////8AAAAAAAAAAEBAAADJ////rcr///+s/////wAAAAAAAAAAyf///6soAAAAAgAAAAT/0y8vKkAAAABCtAAAQUAAAELIAADW" +
             "1sr///+q/////wAAAAAAAAAAyf///6koAAAAAgAAAAT/GXbSKkAAAABCtAAAQUAAAELIAADW1sr///+o/////wAAAAAAAAAAyf///6coAAAAAgAAAAT/" +
-            "OI48KkAAAABCtAAAQUAAAELIAADW1tbW"
+            "OI48KkAAAABCtAAAQUAAAELIAADW1tbWy////6b/////AAAABgAAAAIAAAAAEAAAAABCoAAAyf///6XK////pP////8AAAAAAAAAAMn///+jKAAAAAIA" +
+            "AAAE/8YoKCpBsAAAQxYAAEHwAABDHgAA1tbK////ov////8AAAAAAAAAAMn///+hKAAAAAIAAAAE//moJSpBsAAAQxYAAEHwAABDJgAA1tbK////oP//" +
+            "//8AAAAAAAAAAMn///+fKAAAAAIAAAAE/wCDjypBsAAAQxYAAEHwAABDHgAA1tbW1g=="
     )
 }
