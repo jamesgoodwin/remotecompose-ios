@@ -620,7 +620,16 @@ object RealRemoteComposeParser {
     /**
      * `Operations.MODIFIER_COLLAPSIBLE_PRIORITY` — `RecordingModifier.collapsiblePriority(orientation,
      * priority)` writes `[orientation:i32][priority:f32]`, confirmed via `collapsiblePriority(0, 2f)`
-     * decoding to exactly `[0, 2.0]`.
+     * decoding to exactly `[0, 2.0]` — `priority` is actually a `readNanId`-tagged [floatPool]
+     * reference on the real `CollapsiblePriorityModifierOperation` (javap-confirmed), resolved
+     * through [resolveFloat] the same way [OP_MODIFIER_PADDING]'s floats already are. Gets a real
+     * effect: stashed on this modifier's own frame, read when it registers into its parent
+     * `LAYOUT_COLLAPSIBLE_COLUMN`/`ROW`'s [ScopeFrame.childCollapsiblePriorities] — see
+     * `arrangeChildren`'s `isCollapsible` handling. `orientation` (`HORIZONTAL=0`/`VERTICAL=1`,
+     * javap-confirmed on the real `CollapsiblePriority` class) must match the parent's own main
+     * axis for this priority to apply at all (real Compose's own filter, source-confirmed via
+     * javap on `CollapsiblePriority.getPriority`) — a priority declared for the wrong orientation
+     * is silently ignored, same as real Compose.
      */
     private const val OP_MODIFIER_COLLAPSIBLE_PRIORITY = 235
 
@@ -977,14 +986,36 @@ object RealRemoteComposeParser {
             // same mechanism OP_MODIFIER_VISIBILITY uses) every child whose computed row index
             // would reach this line count, matching the real FlowLayout's own measure logic.
             var flowMaxLines: Int? = null
+            // Set (from pendingIsCollapsible) only for a LAYOUT_COLLAPSIBLE_COLUMN/ROW content
+            // frame; false for plain LAYOUT_COLUMN/LAYOUT_ROW/LAYOUT_FLOW content frames.
+            // arrangeChildren hides children by ascending MODIFIER_COLLAPSIBLE_PRIORITY (lowest
+            // priority collapses first) once their cumulative main-axis size would exceed this
+            // frame's own parent's declared extent — matching CollapsibleRowLayout/
+            // CollapsibleColumnLayout's real computeVisibleChildren logic (source-confirmed via
+            // javap), only possible when that extent is actually known (an explicit width()/
+            // height() on the CollapsibleColumn/Row itself), the same "no measure pass" gate
+            // MODIFIER_WIDTH_IN/HEIGHT_IN's real effect already needs.
+            var isCollapsible: Boolean = false
             val childRanges = mutableListOf<IntArray>() // only populated/consumed when layoutAxis != null
             // Parallel to childRanges (same index correspondence) — each entry is the
             // corresponding child's own OP_MODIFIER_ZINDEX value (default 0f), read by
             // arrangeChildren to reorder sibling paint order after positioning.
             val childZIndices = mutableListOf<Float>()
+            // Parallel to childRanges — each entry is the corresponding child's own
+            // MODIFIER_COLLAPSIBLE_PRIORITY value already resolved against *this* (the parent
+            // container's) axis (Float.MAX_VALUE, meaning "never collapse", when the child either
+            // carries no such modifier or one whose own orientation doesn't match this container's
+            // axis — see CollapsiblePriority.getPriority's own orientation filter, source-confirmed
+            // via javap). Only consulted by arrangeChildren when [isCollapsible].
+            val childCollapsiblePriorities = mutableListOf<Float>()
             // Set by OP_MODIFIER_ZINDEX on this frame itself; read when *this* frame registers
             // into its own parent's childZIndices at OP_CONTAINER_END.
             var zIndex: Float = 0f
+            // Set by OP_MODIFIER_COLLAPSIBLE_PRIORITY on this frame itself (its own priority/
+            // orientation, not a child's) — read the same way [zIndex] is, when *this* frame
+            // registers into its own parent's childCollapsiblePriorities at OP_CONTAINER_END.
+            var collapsiblePriority: Float = Float.MAX_VALUE
+            var collapsiblePriorityOrientation: Int? = null
             // Captured from a MODIFIER_WIDTH/MODIFIER_HEIGHT with an EXACT(_DP) mode directly on
             // *this* frame (i.e. this container's own declared size, not a child's) — read by
             // arrangeChildren on the LAYOUT_CONTENT frame this one is the parent of, since only a
@@ -1081,6 +1112,10 @@ object RealRemoteComposeParser {
         // arrangeChildren actually shows, hiding (not just leaving unpositioned) every child past
         // that row count — see ScopeFrame.flowMaxLines's KDoc.
         var pendingFlowMaxLines: Int? = null
+        // Set by OP_LAYOUT_COLLAPSIBLE_COLUMN/ROW alongside pendingLayoutAxis; tells the very next
+        // OP_LAYOUT_CONTENT frame to set ScopeFrame.isCollapsible, same handoff shape as
+        // pendingFlowMaxItemsPerLine/pendingFlowMaxLines.
+        var pendingIsCollapsible = false
 
         /**
          * This renderer has no measure/layout pass, so a container's "bounds" for
@@ -1321,17 +1356,43 @@ object RealRemoteComposeParser {
                     // behavior-preserving for Column/Row/CollapsibleColumn/Row.
                     val perLineCap = frame.flowMaxItemsPerLine ?: children.size
                     val deltas = arrayOfNulls<FloatArray>(children.size)
-                    // LAYOUT_FLOW's maxLinesInCrossAxis (flowMaxLines != null): every child whose
-                    // row index reaches this line count is hidden below, matching the real
-                    // FlowLayout's own GONE-marking behavior instead of adding another row.
+                    // LAYOUT_FLOW's maxLinesInCrossAxis (flowMaxLines != null) or
+                    // isCollapsible's real priority-based collapsing: every index added here is
+                    // skipped from packing/positioning below and wrapped in an empty ClipRect at
+                    // the very end, matching real Compose's Component.Visibility.GONE (no space
+                    // reserved) for both mechanisms.
                     val hiddenChildIndices = mutableSetOf<Int>()
+                    // LAYOUT_COLLAPSIBLE_COLUMN/ROW's real collapsing (source-confirmed via javap
+                    // on CollapsibleRowLayout/CollapsibleColumnLayout's computeVisibleChildren):
+                    // only possible once this frame's own parent's declared main-axis extent is
+                    // known — real Compose's own available-space constraint this parser otherwise
+                    // has no measure pass to provide. Children are visited highest-priority-first
+                    // (childCollapsiblePriorities' Float.MAX_VALUE default sorts first, meaning
+                    // "no modifier" never collapses); each is kept only if its own size still fits
+                    // the *remaining* budget — real Compose's own per-child comparison ignores
+                    // spacedBy entirely here (confirmed via javap: it compares running-total plus
+                    // this child's raw width against the available extent, with no gap term), so
+                    // this mirrors that exactly rather than a more "correct"-looking accounting.
+                    if (frame.isCollapsible && declaredMainExtent != null) {
+                        val priorities = children.indices.map { i -> frame.childCollapsiblePriorities.getOrElse(i) { Float.MAX_VALUE } }
+                        val priorityOrder = children.indices.sortedByDescending { priorities[it] }
+                        var used = 0f
+                        for (i in priorityOrder) {
+                            val size = mainSizes[i]
+                            if (used + size > declaredMainExtent) {
+                                hiddenChildIndices.add(i)
+                            } else {
+                                used += size
+                            }
+                        }
+                    }
                     var lineCrossCursor = crossAnchor
                     var lineStart = 0
                     var lineIndex = 0
                     while (lineStart < children.size) {
                         val lineEnd = (lineStart + perLineCap).coerceAtMost(children.size)
-                        val lineIndices = lineStart until lineEnd
-                        val lineCount = lineEnd - lineStart
+                        val lineIndices = (lineStart until lineEnd).filter { it !in hiddenChildIndices }
+                        val lineCount = lineIndices.size
                         val maxLines = frame.flowMaxLines
                         if (maxLines != null && lineIndex >= maxLines) hiddenChildIndices.addAll(lineIndices)
                         val lineMainSizes = lineIndices.map { mainSizes[it] }
@@ -1681,6 +1742,7 @@ object RealRemoteComposeParser {
                     pendingSpacedBy = spacedBy
                     pendingHorizontalPositioning = horizontalPositioning
                     pendingVerticalPositioning = verticalPositioning
+                    pendingIsCollapsible = true
                 }
 
                 OP_LAYOUT_FLOW -> {
@@ -1740,9 +1802,11 @@ object RealRemoteComposeParser {
                         scopeStack.last().verticalPositioning = pendingVerticalPositioning
                         scopeStack.last().flowMaxItemsPerLine = pendingFlowMaxItemsPerLine
                         scopeStack.last().flowMaxLines = pendingFlowMaxLines
+                        scopeStack.last().isCollapsible = pendingIsCollapsible
                         pendingLayoutAxis = null
                         pendingFlowMaxItemsPerLine = null
                         pendingFlowMaxLines = null
+                        pendingIsCollapsible = false
                     }
                 }
 
@@ -2031,6 +2095,20 @@ object RealRemoteComposeParser {
                             // paints children at their own document-authored position).
                             parent.childRanges.add(intArrayOf(frame.startIndex, opcodes.size))
                             parent.childZIndices.add(frame.zIndex)
+                            // Resolved against *this* registration's own parent axis now, while
+                            // both this frame's own collapsiblePriorityOrientation and the parent's
+                            // layoutAxis are known — CollapsiblePriority.getPriority's real
+                            // orientation filter (javap-confirmed): a priority whose own
+                            // orientation doesn't match is treated as Float.MAX_VALUE (never
+                            // collapse), same as no modifier at all.
+                            val expectedOrientation = if (parent.layoutAxis == 'V') 1 else 0
+                            parent.childCollapsiblePriorities.add(
+                                if (frame.collapsiblePriorityOrientation == expectedOrientation) {
+                                    frame.collapsiblePriority
+                                } else {
+                                    Float.MAX_VALUE
+                                },
+                            )
                         }
                     }
                 }
@@ -2194,8 +2272,11 @@ object RealRemoteComposeParser {
                 }
 
                 OP_MODIFIER_COLLAPSIBLE_PRIORITY -> {
-                    reader.readS32() // orientation
-                    reader.readFloat32() // priority
+                    val orientation = reader.readS32()
+                    val priority = resolveFloat(reader.readFloat32())
+                    val frame = scopeStack.lastOrNull()
+                    frame?.collapsiblePriority = priority
+                    frame?.collapsiblePriorityOrientation = orientation
                 }
 
                 OP_MODIFIER_ALIGN_BY -> {

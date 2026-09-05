@@ -671,6 +671,32 @@ private fun buildCoverageSample() {
     writer.drawRect(164f, 28f, 179f, 38f)
     writer.endCollapsibleRow()
 
+    // MODIFIER_COLLAPSIBLE_PRIORITY real-effect proof: a startCollapsibleRow declaring an explicit
+    // width(30f) — real Compose's own available-width constraint, known here only because it's
+    // explicit — with 3 Box children each drawing an identical raw (72, 52)-(87, 62) 15x10 rect
+    // (deliberately overlapping, same proof-of-real-arrangement pattern as the plain Row tests):
+    // the first carries no collapsiblePriority modifier (Float.MAX_VALUE default — never
+    // collapses), the second collapsiblePriority(0, 2f), the third collapsiblePriority(0, 1f) —
+    // real CollapsibleRowLayout visits highest-priority-first (source-confirmed via javap), so at
+    // 15+15=30 the first two exactly fill the declared width and the third (lowest priority) is
+    // the one that collapses. A render showing only two 15-wide rects packed with no gap where a
+    // third would have been (not three overlapping rects, and not a gap left for the hidden one)
+    // proves this now really collapses by priority instead of staying byte-consumed only.
+    writer.startCollapsibleRow(RecordingModifier().width(30f), 0, 0)
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFF00838F.toInt()).commit()
+    writer.drawRect(72f, 52f, 87f, 62f)
+    writer.endBox()
+    writer.startBox(RecordingModifier().collapsiblePriority(0, 2f), 0, 0)
+    writer.getRcPaint().setColor(0xFF6A1B9A.toInt()).commit()
+    writer.drawRect(72f, 52f, 87f, 62f)
+    writer.endBox()
+    writer.startBox(RecordingModifier().collapsiblePriority(0, 1f), 0, 0)
+    writer.getRcPaint().setColor(0xFFEF6C00.toInt()).commit()
+    writer.drawRect(72f, 52f, 87f, 62f)
+    writer.endBox()
+    writer.endCollapsibleRow()
+
     writer.startFlow(RecordingModifier(), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF00838F.toInt())
