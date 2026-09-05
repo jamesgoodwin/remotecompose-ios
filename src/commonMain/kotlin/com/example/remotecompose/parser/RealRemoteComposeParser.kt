@@ -9,9 +9,11 @@ import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
 import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Parses the **real** `androidx.compose.remote` wire format (v1.0.0-alpha18), as produced by the
@@ -279,6 +281,26 @@ object RealRemoteComposeParser {
      * to attempt either.
      */
     private const val OP_PATH_TWEEN = 158
+
+    /**
+     * `Operations.MATRIX_FROM_PATH` — `RemoteComposeWriter.matrixFromPath(pathId, fraction,
+     * vOffset, flags)` writes `[pathId:i32][fraction:f32(NaN-taggable)][vOffset:f32(NaN-taggable)]
+     * [flags:i32]` (source-confirmed via javap on the real `MatrixFromPath.read()`/`write()`).
+     * Real `paint()` delegates to an abstract `PaintContext.matrixFromPath(...)` with no further
+     * algorithm in this SDK to decompile, but the real semantic (matching Android's own
+     * well-documented `PathMeasure.getPosTan()`) is unambiguous: `fraction` (`0f..1f`) is a
+     * position along the path's own total arc length, `vOffset` a perpendicular offset from it,
+     * and `flags` (`POSITION_MATRIX_FLAG=1`/`TANGENT_MATRIX_FLAG=2`) select whether the resulting
+     * transform includes the position and/or a rotation matching the path's own tangent direction
+     * there. Like [OP_CLIP_PATH], this op has no children/container shape of its own — the real
+     * transform just persists as an ambient effect on whatever draws after it until this frame's
+     * own [OP_CONTAINER_END] undoes it (the same `attachToTopScope`-queued [Opcode.MatrixRestore]
+     * mechanism [OP_MODIFIER_OFFSET] already established). Arc length/position/tangent are
+     * computed here via [pointAndTangentAlongPath] by flattening `QuadraticTo`/`CubicTo` segments
+     * into short line samples (a standard, real curve-length technique — not a guess at the real
+     * SDK's own specific subdivision granularity, which isn't decompilable from an abstract call).
+     */
+    private const val OP_MATRIX_FROM_PATH = 181
 
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
@@ -2128,6 +2150,26 @@ object RealRemoteComposeParser {
                     lerpPath(pathPool[pathId1], pathPool[pathId2], tween)?.let { pathPool[outId] = it }
                 }
 
+                OP_MATRIX_FROM_PATH -> {
+                    val pathId = reader.readS32()
+                    val fraction = resolveFloat(reader.readFloat32())
+                    val vOffset = resolveFloat(reader.readFloat32())
+                    val flags = reader.readS32()
+                    val posTan = pathPool[pathId]?.let { pointAndTangentAlongPath(it, fraction) }
+                    if (posTan != null) {
+                        val (px, py, tx, ty) = posTan
+                        val len = sqrt(tx * tx + ty * ty).takeIf { it > 0f } ?: 1f
+                        val perpX = -ty / len * vOffset
+                        val perpY = tx / len * vOffset
+                        opcodes += Opcode.MatrixSave
+                        opcodes += Opcode.Translate(px + perpX, py + perpY)
+                        if (flags and 2 != 0) { // TANGENT_MATRIX_FLAG
+                            opcodes += Opcode.Rotate(atan2(ty, tx) * 180f / PI.toFloat(), 0f, 0f)
+                        }
+                        attachToTopScope(Opcode.MatrixRestore)
+                    }
+                }
+
                 OP_DRAW_PATH -> {
                     val pathId = reader.readS32()
                     val commands = pathPool[pathId] ?: throw RemoteComposeParseException(
@@ -3379,5 +3421,95 @@ object RealRemoteComposeParser {
                 else -> return null
             }
         }
+    }
+
+    // OP_MATRIX_FROM_PATH's real position-along-path semantic (matching Android's own
+    // PathMeasure.getPosTan()): flattens Quadratic/CubicTo into short line segments (a standard,
+    // real curve-length technique) to build one continuous polyline, walks it by cumulative arc
+    // length to the target fraction, and returns [x, y, tangentDx, tangentDy] at that point — the
+    // tangent an un-normalized direction vector (only its angle matters to the caller). null for
+    // an empty/degenerate (zero-length) path.
+    private fun pointAndTangentAlongPath(commands: List<PathCommand>, fraction: Float): FloatArray? {
+        data class Seg(val x1: Float, val y1: Float, val x2: Float, val y2: Float)
+        val segments = mutableListOf<Seg>()
+        var curX = 0f; var curY = 0f
+        var subpathStartX = 0f; var subpathStartY = 0f
+        val curveSamples = 16
+        fun quadPoint(t: Float, x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float): FloatArray {
+            val u = 1f - t
+            return floatArrayOf(
+                u * u * x0 + 2f * u * t * x1 + t * t * x2,
+                u * u * y0 + 2f * u * t * y1 + t * t * y2,
+            )
+        }
+        fun cubicPoint(
+            t: Float, x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float,
+        ): FloatArray {
+            val u = 1f - t
+            return floatArrayOf(
+                u * u * u * x0 + 3f * u * u * t * x1 + 3f * u * t * t * x2 + t * t * t * x3,
+                u * u * u * y0 + 3f * u * u * t * y1 + 3f * u * t * t * y2 + t * t * t * y3,
+            )
+        }
+        for (command in commands) {
+            when (command) {
+                is PathCommand.MoveTo -> {
+                    curX = command.x; curY = command.y
+                    subpathStartX = curX; subpathStartY = curY
+                }
+                is PathCommand.LineTo -> {
+                    segments += Seg(curX, curY, command.x, command.y)
+                    curX = command.x; curY = command.y
+                }
+                is PathCommand.QuadraticTo -> {
+                    var prevX = curX; var prevY = curY
+                    for (i in 1..curveSamples) {
+                        val p = quadPoint(
+                            i / curveSamples.toFloat(), curX, curY,
+                            command.x1, command.y1, command.x2, command.y2,
+                        )
+                        segments += Seg(prevX, prevY, p[0], p[1])
+                        prevX = p[0]; prevY = p[1]
+                    }
+                    curX = command.x2; curY = command.y2
+                }
+                is PathCommand.CubicTo -> {
+                    var prevX = curX; var prevY = curY
+                    for (i in 1..curveSamples) {
+                        val p = cubicPoint(
+                            i / curveSamples.toFloat(), curX, curY,
+                            command.x1, command.y1, command.x2, command.y2, command.x3, command.y3,
+                        )
+                        segments += Seg(prevX, prevY, p[0], p[1])
+                        prevX = p[0]; prevY = p[1]
+                    }
+                    curX = command.x3; curY = command.y3
+                }
+                PathCommand.Close -> {
+                    segments += Seg(curX, curY, subpathStartX, subpathStartY)
+                    curX = subpathStartX; curY = subpathStartY
+                }
+            }
+        }
+        val lengths = segments.map { sqrt((it.x2 - it.x1) * (it.x2 - it.x1) + (it.y2 - it.y1) * (it.y2 - it.y1)) }
+        val totalLength = lengths.sum()
+        if (totalLength <= 0f) return null
+        val targetDist = fraction.coerceIn(0f, 1f) * totalLength
+        var accumulated = 0f
+        for (i in segments.indices) {
+            val segLen = lengths[i]
+            if (accumulated + segLen >= targetDist || i == segments.lastIndex) {
+                val localT = if (segLen > 0f) ((targetDist - accumulated) / segLen).coerceIn(0f, 1f) else 0f
+                val seg = segments[i]
+                return floatArrayOf(
+                    seg.x1 + (seg.x2 - seg.x1) * localT,
+                    seg.y1 + (seg.y2 - seg.y1) * localT,
+                    seg.x2 - seg.x1,
+                    seg.y2 - seg.y1,
+                )
+            }
+            accumulated += segLen
+        }
+        return null
     }
 }

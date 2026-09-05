@@ -1262,6 +1262,31 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF1A237E.toInt()).commit()
     writer.drawRect(160f, 150f, 176f, 166f)
 
+    // MATRIX_FROM_PATH real position-along-path proof: a horizontal 40-wide line, positioned at
+    // its own fraction=0.5 midpoint with POSITION_MATRIX_FLAG only (no rotation) — a small rect
+    // authored at this leaf's own local (0,0)-(6,6) origin should land at exactly the line's own
+    // midpoint, not the document-authored position the old (MATRIX_FROM_PATH completely
+    // unhandled — would have thrown a parse exception) behavior could never have computed at all.
+    writer.startBox(RecordingModifier().offset(60f, 70f), 0, 0)
+    val hLinePathId = writer.pathCreate(0f, 0f)
+    writer.pathAppendLineTo(hLinePathId, 40f, 0f)
+    writer.matrixFromPath(hLinePathId, 0.5f, 0f, 1) // POSITION_MATRIX_FLAG only
+    writer.getRcPaint().setColor(0xFF00838F.toInt()).commit()
+    writer.drawRect(0f, 0f, 6f, 6f)
+    writer.endBox()
+
+    // MATRIX_FROM_PATH real TANGENT_MATRIX_FLAG proof: a 45-degree diagonal line — a thin
+    // horizontal bar authored at this leaf's own local origin should render *rotated* to follow
+    // the line's own 45-degree tangent direction (a diamond-ish diagonal shape), not the flat
+    // horizontal bar the position-only proof above renders, when both flags are set.
+    writer.startBox(RecordingModifier().offset(60f, 90f), 0, 0)
+    val diagLinePathId = writer.pathCreate(0f, 0f)
+    writer.pathAppendLineTo(diagLinePathId, 28f, 28f)
+    writer.matrixFromPath(diagLinePathId, 0.5f, 0f, 3) // POSITION_MATRIX_FLAG | TANGENT_MATRIX_FLAG
+    writer.getRcPaint().setColor(0xFFD84315.toInt()).commit()
+    writer.drawRect(-8f, -1f, 8f, 1f)
+    writer.endBox()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

@@ -319,7 +319,16 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * of any kind (a pure developer-tools log message, source-confirmed via javap), so the only real
  * thing to prove is that this parser consumes exactly its own `[textId][floatValue][flags]` fields
  * and stays correctly byte-aligned for what follows, confirmed by that `drawRect` landing at its
- * own exact documented position rather than shifted by a misaligned read. Shared by
+ * own exact documented position rather than shifted by a misaligned read, and two real
+ * `MATRIX_FROM_PATH` (`writer.matrixFromPath(pathId, 0.5f, 0f, flags)` — previously a completely
+ * unhandled opcode) proofs: a teal square positioned at the exact midpoint of a horizontal 40-wide
+ * line with `POSITION_MATRIX_FLAG` only (confirmed via the parsed opcode dump: `Translate(dx=20,
+ * dy=0)`, no rotation), and an orange bar positioned at the midpoint of a 45-degree diagonal line
+ * with `POSITION_MATRIX_FLAG | TANGENT_MATRIX_FLAG` — confirmed via the parsed opcode dump
+ * (`Translate(dx=14, dy=14)` then `Rotate(degrees=45, pivotX=0, pivotY=0)`) and visually (a clean
+ * diagonal bar following the line's own tangent, not the axis-aligned rect the position-only proof
+ * renders), proving this op's real arc-length position/tangent computation instead of staying
+ * unsupported entirely. Shared by
  * every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -426,6 +435,9 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAAAAAAEEgAABDJQAAoAAAAEoAAAAB/4AADygAAAACAAAABP/CGFt8AAAASp8AAABLQwwAAEAAAACgAAAASwAAAAX/gAALAAAAAAAAAABDHgAAQAAA" +
             "AKAAAABLAAAABf+AAAsAAAAAAAAAAEMVAABBoAAAoAAAAEsAAAAB/4AAD58AAABMQwwAAEIAAACgAAAATAAAAAX/gAALAAAAAAAAAABDHgAAQgAAAKAA" +
             "AABMAAAABf+AAAsAAAAAAAAAAEMVAABCSAAAoAAAAEwAAAAB/4AAD54AAABNAAAASwAAAEw/AAAAKAAAAAIAAAAE/56ennwAAABLKAAAAAIAAAAE/2Fh" +
-            "YXwAAABMKAAAAAIAAAAE///BB3wAAABNZgAAAE4AAAAFZGVidWezAAAATj+AAAAAAAAAKAAAAAIAAAAE/xojfipDIAAAQxYAAEMwAABDJgAA",
+            "YXwAAABMKAAAAAIAAAAE///BB3wAAABNZgAAAE4AAAAFZGVidWezAAAATj+AAAAAAAAAKAAAAAIAAAAE/xojfipDIAAAQxYAAEMwAABDJgAAyv///zb/" +
+            "////AAAAAAAAAADdQnAAAEKMAADJ////NZ8AAABPAAAAAAAAAACgAAAATwAAAAX/gAALAAAAAAAAAABCIAAAAAAAALUAAABPPwAAAAAAAAAAAAABKAAA" +
+            "AAIAAAAE/wCDjyoAAAAAAAAAAEDAAABAwAAA1tbK////NP////8AAAAAAAAAAN1CcAAAQrQAAMn///8znwAAAFAAAAAAAAAAAKAAAABQAAAABf+AAAsA" +
+            "AAAAAAAAAEHgAABB4AAAtQAAAFA/AAAAAAAAAAAAAAMoAAAAAgAAAAT/2EMVKsEAAAC/gAAAQQAAAD+AAADW1g==",
     )
 }
