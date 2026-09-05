@@ -351,6 +351,29 @@ object RealRemoteComposeParser {
      */
     private const val OP_CANVAS_OPERATIONS = 173
 
+    /**
+     * `Operations.SKIP` — `RemoteComposeWriter.beginSkip(conditionType, value)`/`endSkip(token)`
+     * writes `[conditionType:i32(as a short)][value:i32][skipLength:i32]` (source-confirmed via
+     * javap on the real `Skip.read()`) followed by `skipLength` raw bytes of whatever content the
+     * writer wrapped — a forward-compatibility mechanism letting a document include content only
+     * some client versions understand: real `read()` itself (not `paint()`/`apply()` — this is a
+     * *parse-time* wire-level jump, confirmed via javap on `WireBuffer.setIndex(getIndex() +
+     * skipLength)` running inline inside `read()`) advances the reader past that whole span
+     * unparsed whenever `needsToSkip()` (checked against this *client's* own reported library API
+     * level/profile) is true, so a parser that doesn't understand what's inside never even
+     * attempts to decode it. `SKIP_IF_API_LESS_THAN(1)`/`GREATER_THAN(2)`/`EQUAL_TO(3)`/
+     * `NOT_EQUAL_TO(4)` are given a real, principled effect here: this parser reports its own
+     * library API level as `Int.MAX_VALUE` (an honest "assume the newest, most capable client"
+     * stance — the real numeric level a genuine `alpha18` client reports isn't recoverable from
+     * this SDK's own compiled classes, so a document-specific exact threshold can't be matched,
+     * but greater-than/less-than-style compatibility gating — the mechanism's own actual purpose —
+     * still resolves correctly under this assumption). `SKIP_IF_PROFILE_INCLUDES(5)`/
+     * `EXCLUDES(6)` have no such principled default (this parser has no real "profile" concept at
+     * all) and are treated as "never skip" — the same safe, inclusive default every other
+     * unresolvable condition in this parser already gets.
+     */
+    private const val OP_SKIP = 241
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2446,6 +2469,23 @@ object RealRemoteComposeParser {
                 }
 
                 OP_CANVAS_OPERATIONS -> pushScope() // no payload — closed by a single CONTAINER_END
+
+                OP_SKIP -> {
+                    val conditionType = reader.readS32()
+                    val value = reader.readS32()
+                    val skipLength = reader.readS32()
+                    // This parser's own reported library API level — see OP_SKIP's own KDoc for
+                    // why Int.MAX_VALUE ("assume the newest client") is the honest default.
+                    val ourApiLevel = Int.MAX_VALUE
+                    val needsToSkip = when (conditionType) {
+                        1 -> ourApiLevel < value // SKIP_IF_API_LESS_THAN
+                        2 -> ourApiLevel > value // SKIP_IF_API_GREATER_THAN
+                        3 -> ourApiLevel == value // SKIP_IF_API_EQUAL_TO
+                        4 -> ourApiLevel != value // SKIP_IF_API_NOT_EQUAL_TO
+                        else -> false // SKIP_IF_PROFILE_INCLUDES/EXCLUDES — no profile concept here
+                    }
+                    if (needsToSkip) reader.seek(reader.position + skipLength)
+                }
 
                 OP_LOOP_START -> {
                     reader.readS32() // indexVariableId — no expression evaluator to feed it

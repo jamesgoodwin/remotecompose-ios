@@ -346,8 +346,16 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * (`startCanvasOperations()`/`endCanvasOperations()` — previously a completely unhandled opcode)
  * wrapping a single `drawRect` — real `CanvasOperations` writes no fields at all and its own real
  * `paint()` just applies its children directly, confirmed by that `drawRect` landing at its own
- * exact documented position, not the parse exception the old unhandled behavior would have thrown.
- * Shared by every platform demo entry point (iOS, Android) so they
+ * exact documented position, not the parse exception the old unhandled behavior would have thrown,
+ * and a real `SKIP` (`writer.beginSkip`/`endSkip` — previously a completely unhandled opcode)
+ * proof: a `SKIP_IF_API_GREATER_THAN(2)` block (value `0`) wrapping a bright red rect — since this
+ * parser reports its own library API level as `Int.MAX_VALUE`, that condition is real (`MAX_VALUE
+ * > 0`), so real `Skip.read()` itself jumps clean past that whole span unparsed and the red rect
+ * never renders at all — followed by a `SKIP_IF_API_LESS_THAN(1)` block (value `Int.MAX_VALUE`,
+ * so `MAX_VALUE < MAX_VALUE` is false) wrapping a green rect that *does* render normally right
+ * after, confirmed via the parsed opcode dump (no red rect anywhere; the green one lands at its
+ * own exact documented position), proving the reader stays correctly aligned whether or not the
+ * preceding block was actually skipped. Shared by every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
  */
@@ -463,6 +471,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAPwAAANbWyv///zD/////AAAAAAAAAADdQfAAAEJwAADJ////L58AAABTAAAAAAAAAACgAAAAUwAAAAX/gAALAAAAAAAAAABBoAAAAAAAAKAAAABT" +
             "AAAABf+AAAsAAAAAAAAAAEGgAABBoAAAoAAAAFMAAAAF/4AACwAAAAAAAAAAAAAAAEGgAACgAAAAUwAAAAH/gAAPnwAAAFRBIAAAQSAAAKAAAABUAAAA" +
             "Bf+AAAsAAAAAAAAAAEHwAABBIAAAoAAAAFQAAAAF/4AACwAAAAAAAAAAQfAAAEHwAACgAAAAVAAAAAX/gAALAAAAAAAAAABBIAAAQfAAAKAAAABUAAAA" +
-            "Af+AAA+vAAAAVQAAAFMAAABUASgAAAACAAAABP8ufTJ8AAAAVdbWrSgAAAACAAAABP/vbAAqQsgAAEM5AABC6AAAQ0cAANY=",
+            "Af+AAA+vAAAAVQAAAFMAAABUASgAAAACAAAABP8ufTJ8AAAAVdbWrSgAAAACAAAABP/vbAAqQsgAAEM5AABC6AAAQ0cAANbxAAAAAgAAAAAAAAAeKAAA" +
+            "AAIAAAAE/9UAACpAAAAAQzkAAEHwAABDRwAA8QAAAAF/////AAAAHigAAAACAAAABP84jjwqQgwAAEM5AABCfAAAQ0cAAA==",
     )
 }

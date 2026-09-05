@@ -1345,6 +1345,24 @@ private fun buildCoverageSample() {
     writer.drawRect(100f, 185f, 116f, 199f)
     writer.endCanvasOperations()
 
+    // SKIP real conditional-forward-compatibility proof: a SKIP_IF_API_GREATER_THAN(2) block with
+    // value=0 wraps a bright red rect — since this parser reports its own library API level as
+    // Int.MAX_VALUE (see OP_SKIP's own KDoc), MAX_VALUE > 0 is true, so real Skip.read() itself
+    // jumps the reader clean past this whole span unparsed, and that red rect should never render
+    // at all (not the parse exception the old completely-unhandled behavior would have thrown for
+    // *any* SKIP block, skipped or not). A second SKIP_IF_API_LESS_THAN(1) block with
+    // value=Int.MAX_VALUE wraps a green rect right after — MAX_VALUE < MAX_VALUE is false, so this
+    // one should render normally, proving the reader stays correctly aligned whether or not the
+    // preceding block was actually skipped.
+    val skip1 = writer.beginSkip(2.toShort(), 0) // SKIP_IF_API_GREATER_THAN, value=0 -> skip
+    writer.getRcPaint().setColor(0xFFD50000.toInt()).commit()
+    writer.drawRect(2f, 185f, 30f, 199f)
+    writer.endSkip(skip1)
+    val skip2 = writer.beginSkip(1.toShort(), Int.MAX_VALUE) // SKIP_IF_API_LESS_THAN -> no skip
+    writer.getRcPaint().setColor(0xFF388E3C.toInt()).commit()
+    writer.drawRect(35f, 185f, 63f, 199f)
+    writer.endSkip(skip2)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
