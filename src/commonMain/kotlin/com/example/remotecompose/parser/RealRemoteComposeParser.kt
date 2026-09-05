@@ -282,7 +282,13 @@ object RealRemoteComposeParser {
      * [maxItemsInMainAxis:i32][maxLinesInCrossAxis:i32]` — [OP_LAYOUT_COLUMN]'s shape plus two
      * trailing ints, confirmed via real output (`maxItemsInMainAxis`/`maxLinesInCrossAxis` default
      * to `Int.MAX_VALUE` when unset). Closed the same way as the other layout containers (a
-     * `LAYOUT_CONTENT` children marker, then two [OP_CONTAINER_END]s).
+     * `LAYOUT_CONTENT` children marker, then two [OP_CONTAINER_END]s). Gets real wrapping (not
+     * just [OP_LAYOUT_ROW]'s single-line arrangement): the real `FlowLayout` class extends
+     * `RowLayout` (source-confirmed via javap), so the main axis is always horizontal, wrapping to
+     * a new line after `maxItemsInMainAxis` children — see `arrangeChildren`'s
+     * `flowMaxItemsPerLine` handling. `maxLinesInCrossAxis` isn't modeled: this parser wraps as
+     * many lines as the children need rather than capping and hiding the overflow past a fixed
+     * line count the way real Compose would.
      */
     private const val OP_LAYOUT_FLOW = 240
 
@@ -895,6 +901,10 @@ object RealRemoteComposeParser {
             // behavior when a document doesn't set these explicitly.
             var horizontalPositioning: Int = POS_START
             var verticalPositioning: Int = POS_START
+            // Set (from pendingFlowMaxItemsPerLine) only for a LAYOUT_FLOW content frame; null for
+            // plain LAYOUT_COLUMN/LAYOUT_ROW/LAYOUT_COLLAPSIBLE_* content frames, which always pack
+            // onto a single line regardless of child count.
+            var flowMaxItemsPerLine: Int? = null
             val childRanges = mutableListOf<IntArray>() // only populated/consumed when layoutAxis != null
             // Parallel to childRanges (same index correspondence) — each entry is the
             // corresponding child's own OP_MODIFIER_ZINDEX value (default 0f), read by
@@ -961,6 +971,10 @@ object RealRemoteComposeParser {
         var pendingSpacedBy = 0f
         var pendingHorizontalPositioning = POS_START
         var pendingVerticalPositioning = POS_START
+        // Set by OP_LAYOUT_FLOW alongside pendingLayoutAxis ('H' — FlowLayout extends RowLayout,
+        // source-confirmed via javap); non-null tells arrangeChildren to wrap into multiple lines
+        // instead of packing every child onto one, capping each line at this many children.
+        var pendingFlowMaxItemsPerLine: Int? = null
 
         /**
          * This renderer has no measure/layout pass, so a container's "bounds" for
@@ -1189,29 +1203,49 @@ object RealRemoteComposeParser {
 
                     val mainSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[3] - it[1] else it[2] - it[0] } ?: 0f }
                     val crossSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[2] - it[0] else it[3] - it[1] } ?: 0f }
-                    val packedMainSize = mainSizes.sum() + frame.spacedBy * (children.size - 1).coerceAtLeast(0)
                     val declaredMainExtent = if (axis == 'V') frame.parent?.explicitHeightPx else frame.parent?.explicitWidthPx
                     val declaredCrossExtent = if (axis == 'V') frame.parent?.explicitWidthPx else frame.parent?.explicitHeightPx
-                    val mainExtent = declaredMainExtent ?: packedMainSize
-                    val crossExtent = declaredCrossExtent ?: (crossSizes.maxOrNull() ?: 0f)
 
-                    val (leadingGap, betweenGap) = mainAxisGaps(mainMode, mainExtent - packedMainSize, children.size)
-                    var cursorMain = anchorMainStart + leadingGap
+                    // LAYOUT_FLOW (flowMaxItemsPerLine != null) wraps into multiple "lines" of at
+                    // most that many children each, each line packed/aligned exactly the way a
+                    // plain Row's single line already was, then stacked along the cross axis with
+                    // spacedBy between them. Every other container is always exactly one line
+                    // (perLineCap == children.size), so this loop runs its body once with the
+                    // *same* packedMainSize/crossExtent the original single-line code computed —
+                    // behavior-preserving for Column/Row/CollapsibleColumn/Row.
+                    val perLineCap = frame.flowMaxItemsPerLine ?: children.size
                     val deltas = arrayOfNulls<FloatArray>(children.size)
-                    for (i in children.indices) {
-                        val bounds = naturalBounds[i] ?: continue
-                        val crossOffset = crossAxisOffset(crossMode, crossExtent, crossSizes[i])
-                        val dx: Float
-                        val dy: Float
-                        if (axis == 'V') {
-                            dx = (crossAnchor + crossOffset) - bounds[0]
-                            dy = cursorMain - bounds[1]
-                        } else {
-                            dx = cursorMain - bounds[0]
-                            dy = (crossAnchor + crossOffset) - bounds[1]
+                    var lineCrossCursor = crossAnchor
+                    var lineStart = 0
+                    while (lineStart < children.size) {
+                        val lineEnd = (lineStart + perLineCap).coerceAtMost(children.size)
+                        val lineIndices = lineStart until lineEnd
+                        val lineCount = lineEnd - lineStart
+                        val lineMainSizes = lineIndices.map { mainSizes[it] }
+                        val lineCrossSizes = lineIndices.map { crossSizes[it] }
+                        val packedMainSize = lineMainSizes.sum() + frame.spacedBy * (lineCount - 1).coerceAtLeast(0)
+                        val mainExtent = declaredMainExtent ?: packedMainSize
+                        val crossExtent = declaredCrossExtent ?: (lineCrossSizes.maxOrNull() ?: 0f)
+
+                        val (leadingGap, betweenGap) = mainAxisGaps(mainMode, mainExtent - packedMainSize, lineCount)
+                        var cursorMain = anchorMainStart + leadingGap
+                        for (i in lineIndices) {
+                            val bounds = naturalBounds[i] ?: continue
+                            val crossOffset = crossAxisOffset(crossMode, crossExtent, crossSizes[i])
+                            val dx: Float
+                            val dy: Float
+                            if (axis == 'V') {
+                                dx = (lineCrossCursor + crossOffset) - bounds[0]
+                                dy = cursorMain - bounds[1]
+                            } else {
+                                dx = cursorMain - bounds[0]
+                                dy = (lineCrossCursor + crossOffset) - bounds[1]
+                            }
+                            deltas[i] = floatArrayOf(dx, dy)
+                            cursorMain += mainSizes[i] + frame.spacedBy + betweenGap
                         }
-                        deltas[i] = floatArrayOf(dx, dy)
-                        cursorMain += mainSizes[i] + frame.spacedBy + betweenGap
+                        lineCrossCursor += (lineCrossSizes.maxOrNull() ?: 0f) + frame.spacedBy
+                        lineStart = lineEnd
                     }
                     for (i in children.indices.reversed()) {
                         val delta = deltas[i] ?: continue
@@ -1531,12 +1565,22 @@ object RealRemoteComposeParser {
                 OP_LAYOUT_FLOW -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
-                    reader.readS32() // horizontalPositioning
-                    reader.readS32() // verticalPositioning
-                    reader.readFloat32() // spacedBy
-                    reader.readS32() // maxItemsInMainAxis
-                    reader.readS32() // maxLinesInCrossAxis
+                    val horizontalPositioning = reader.readS32()
+                    val verticalPositioning = reader.readS32()
+                    val spacedBy = reader.readFloat32()
+                    val maxItemsInMainAxis = reader.readS32()
+                    reader.readS32() // maxLinesInCrossAxis — not modeled: this parser wraps as
+                    // many lines as the children need, rather than capping and (like real Compose)
+                    // hiding/collapsing the overflow past a fixed line count.
                     pushScope()
+                    // FlowLayout extends RowLayout (source-confirmed via javap): the main axis is
+                    // always horizontal, wrapping to a new line after maxItemsInMainAxis children —
+                    // see arrangeChildren's flowMaxItemsPerLine handling for the actual wrapping.
+                    pendingLayoutAxis = 'H'
+                    pendingSpacedBy = spacedBy
+                    pendingHorizontalPositioning = horizontalPositioning
+                    pendingVerticalPositioning = verticalPositioning
+                    pendingFlowMaxItemsPerLine = maxItemsInMainAxis.takeIf { it > 0 && it < Int.MAX_VALUE }
                 }
 
                 OP_LAYOUT_BOX, OP_LAYOUT_FIT_BOX -> {
@@ -1570,7 +1614,9 @@ object RealRemoteComposeParser {
                         scopeStack.last().spacedBy = pendingSpacedBy
                         scopeStack.last().horizontalPositioning = pendingHorizontalPositioning
                         scopeStack.last().verticalPositioning = pendingVerticalPositioning
+                        scopeStack.last().flowMaxItemsPerLine = pendingFlowMaxItemsPerLine
                         pendingLayoutAxis = null
+                        pendingFlowMaxItemsPerLine = null
                     }
                 }
 

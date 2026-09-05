@@ -602,6 +602,23 @@ private fun buildCoverageSample() {
     writer.drawRect(2f, 41f, 17f, 51f)
     writer.endFlow()
 
+    // LAYOUT_FLOW real wrapping proof: four Box children, each drawing its 8x8 rect at the
+    // *identical* raw (65, 90)-(73, 98) document coordinates — deliberately overlapping, same
+    // proof-of-real-arrangement pattern as the plain Column/Row tests — wrapped in
+    // startFlow(spacedBy(3f), maxItemsInMainAxis=2). FlowLayout extends RowLayout (source-
+    // confirmed via javap): with 4 children capped at 2 per line, a render showing two rows of
+    // two side-by-side children each (not one packed row of four, and not four still-overlapping
+    // squares) can only be this renderer's own real Flow wrapping at work.
+    writer.startFlow(RecordingModifier().spacedBy(3f), 0, 0, 2, Int.MAX_VALUE)
+    val flowColors = intArrayOf(0xFFD84315.toInt(), 0xFF6A1B9A.toInt(), 0xFF2E7D32.toInt(), 0xFF1565C0.toInt())
+    for (color in flowColors) {
+        writer.startBox(RecordingModifier(), 0, 0)
+        writer.getRcPaint().setColor(color).commit()
+        writer.drawRect(65f, 90f, 73f, 98f)
+        writer.endBox()
+    }
+    writer.endFlow()
+
     writer.startFitBox(RecordingModifier(), 0, 0)
     writer.getRcPaint()
         .setColor(0xFFE64A19.toInt())
