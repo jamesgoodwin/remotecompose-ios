@@ -457,6 +457,22 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_OFFSET = 221
 
     /**
+     * `Operations.DATA_FLOAT` — `RemoteComposeWriter.addFloatConstant(value)` writes
+     * `[id:i32][value:f32]` (source-confirmed via javap on the real `FloatConstant` class).
+     * Registers a real value into [floatPool], the same real-value-pool pattern
+     * [OP_COLOR_CONSTANT] already established. `addFloatConstant(...)` doesn't return `value`
+     * itself but a *NaN-tagged reference* to it (`Float.fromBits(id or -8388608)`, i.e. a NaN or
+     * -Infinity bit pattern with `id` packed into the low 22 mantissa bits) — the same
+     * `idFromNan(rawBits and 0x3FFFFF)` scheme this real SDK uses throughout for any field this
+     * parser already reads as a plain literal float assuming a document never actually resolves
+     * it dynamically (e.g. `DRAW_TEXT_ON_CIRCLE`'s `warpRadiusOffset`, `MODIFIER_PADDING`'s
+     * fields). [floatPool] exists so a future pass can resolve those against it instead of just
+     * assuming a literal; this pass only registers it, matching [OP_COLOR_CONSTANT]'s own
+     * byte-coverage-first scope before it was wired into [OP_MODIFIER_BORDER].
+     */
+    private const val OP_DATA_FLOAT = 80
+
+    /**
      * `Operations.COLOR_CONSTANT` — `RemoteComposeWriter.addColor(argb)` writes
      * `[colorId:i32][colorArgb:i32]` (source-confirmed via javap: a plain packed-ARGB int, the
      * same convention [Opcode.DrawText.colorArgb] already uses). Registers a real color into
@@ -783,6 +799,7 @@ object RealRemoteComposeParser {
         val pathPool = mutableMapOf<Int, List<PathCommand>>()
         val bitmapPool = mutableMapOf<Int, ByteArray>()
         val colorPool = mutableMapOf<Int, Color>()
+        val floatPool = mutableMapOf<Int, Float>()
         val opcodes = mutableListOf<Opcode>()
 
         // Every real container/action-list scope (LAYOUT_BOX/COLUMN/ROW/etc's own scope, the
@@ -1796,6 +1813,12 @@ object RealRemoteComposeParser {
                     }
                 }
 
+                OP_DATA_FLOAT -> {
+                    val id = reader.readS32()
+                    val value = reader.readFloat32()
+                    floatPool[id] = value
+                }
+
                 OP_COLOR_CONSTANT -> {
                     val colorId = reader.readS32()
                     val colorArgb = reader.readS32()
@@ -1990,7 +2013,7 @@ object RealRemoteComposeParser {
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
                         "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
                         "ClipPath/DrawBitmapInt/DrawTextOnCircle/MatrixSkew/DrawTextRun/" +
-                        "DrawTextOnPath/ColorConstant/ModifierScroll/TouchExpression)",
+                        "DrawTextOnPath/ColorConstant/ModifierScroll/TouchExpression/DataFloat)",
                 )
             }
         }

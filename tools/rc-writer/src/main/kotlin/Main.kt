@@ -653,6 +653,13 @@ private fun buildCoverageSample() {
     val imageBitmapId = writer.storeBitmap(imageBitmap)
     writer.image(RecordingModifier().width(16f).height(16f), imageBitmapId, RemoteComposeWriter.IMAGE_SCALE_FIT, 0.8f)
 
+    // DATA_FLOAT: registers a real value into a float pool, the same real-value-pool pattern
+    // COLOR_CONSTANT already established — not yet resolved anywhere a document might reference
+    // it dynamically (this parser has no general NaN-tagged-reference resolution pass yet), so
+    // purely byte-coverage for now, same as COLOR_CONSTANT's own scope before it was wired into
+    // MODIFIER_BORDER.
+    writer.addFloatConstant(42f)
+
     writer.performHaptic(4)
     writer.setTheme(1)
     writer.setRootContentBehavior(1, 2, 3, 4)
