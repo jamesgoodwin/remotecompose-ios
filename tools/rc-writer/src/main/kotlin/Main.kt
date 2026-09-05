@@ -14,8 +14,10 @@ import androidx.compose.remote.creation.modifiers.RectShape
 import androidx.compose.remote.creation.modifiers.RippleModifier
 import androidx.compose.remote.creation.modifiers.RoundedRectShape
 import androidx.compose.remote.creation.modifiers.WidthInModifier
+import androidx.compose.remote.creation.modifiers.WidthModifier
 import androidx.compose.remote.creation.modifiers.ZIndexModifier
 import androidx.compose.remote.core.operations.DrawTextOnCircle
+import androidx.compose.remote.core.operations.layout.modifiers.DimensionModifierOperation
 import java.io.File
 
 /**
@@ -776,6 +778,28 @@ private fun buildCoverageSample() {
         writer.endBox()
     }
     writer.endStateLayout()
+
+    // MODIFIER_WIDTH's real-effect proof for a WEIGHT mode: a startRow declaring an explicit
+    // width(60f) — real Compose's own available-width constraint, known here only because it's
+    // explicit — with two Box children: a 10-wide fixed one, and one carrying
+    // then(WidthModifier(Type.WEIGHT, 1f)) whose own natural content is a small 8-wide placeholder
+    // rect. Real Row/Column weight semantics: the weighted child gets the *remaining* space (here
+    // 60-10=50, the only weight so it gets all of it) instead of its own natural size — this
+    // parser approximates that (no true measure pass) by stretching the weighted child's own
+    // already-positioned content via a real Scale wrap pivoted at its own leading edge, so its
+    // 8-wide placeholder should render 50 wide (from x=10 to x=60) rather than staying 8 wide
+    // (x=10 to x=18) — proving `WEIGHT` now gets a real proportional-space-distribution effect
+    // instead of staying byte-consumed only.
+    writer.startRow(RecordingModifier().width(60f), 0, 0)
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFF00695C.toInt()).commit()
+    writer.drawRect(110f, 90f, 120f, 98f)
+    writer.endBox()
+    writer.startBox(RecordingModifier().then(WidthModifier(DimensionModifierOperation.Type.WEIGHT, 1f)), 0, 0)
+    writer.getRcPaint().setColor(0xFFAD1457.toInt()).commit()
+    writer.drawRect(120f, 90f, 128f, 98f)
+    writer.endBox()
+    writer.endRow()
 
     writer.startCanvas(RecordingModifier())
     writer.getRcPaint()

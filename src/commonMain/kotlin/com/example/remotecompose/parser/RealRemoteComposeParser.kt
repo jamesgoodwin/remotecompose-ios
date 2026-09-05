@@ -421,14 +421,21 @@ object RealRemoteComposeParser {
 
     /**
      * `Operations.MODIFIER_WIDTH` — `RecordingModifier.width(float)` writes `[mode:i32][value:f32]`
-     * (mode observed as 0/[DIMENSION_MODE_EXACT] for a fixed-size `width(float)`; the other
-     * [DIMENSION_MODE_EXACT] siblings are sizing *strategies* — FILL/WRAP/WEIGHT/INTRINSIC_* —
-     * this renderer has no layout pass to resolve). Written immediately after its component's own
-     * layout op (e.g. [OP_LAYOUT_BOX]) and before [OP_LAYOUT_CONTENT]. When the mode is a real
-     * target size, the value is captured onto the current container's [ScopeFrame] as
-     * [ScopeFrame.explicitWidthPx] — used by `arrangeChildren` (a LAYOUT_COLUMN/LAYOUT_ROW's real
-     * child arrangement) as the container's known main/cross-axis extent; otherwise ignored, same
-     * rationale as most other layout container opcodes.
+     * (mode observed as 0/[DIMENSION_MODE_EXACT] for a fixed-size `width(float)`) — `value` is
+     * actually a `readNanId`-tagged [floatPool] reference on the real `WidthModifierOperation`
+     * (javap-confirmed, same as [OP_MODIFIER_PADDING]'s floats), now resolved through
+     * [resolveFloat]. Written immediately after its component's own layout op (e.g.
+     * [OP_LAYOUT_BOX]) and before [OP_LAYOUT_CONTENT]. When the mode is a real target size, the
+     * value is captured onto the current container's [ScopeFrame] as [ScopeFrame.explicitWidthPx]
+     * — used by `arrangeChildren` (a LAYOUT_COLUMN/LAYOUT_ROW's real child arrangement) as the
+     * container's known main/cross-axis extent. `mode`'s other sizing *strategies* — `FILL`(`1`)/
+     * `WRAP`(`2`)/`INTRINSIC_MIN`(`4`)/`INTRINSIC_MAX`(`5`)/`FILL_PARENT_MAX_WIDTH`(`7`)/
+     * `FILL_PARENT_MAX_HEIGHT`(`8`) — still have no equivalent this parser can give real effect to
+     * without a genuine measure pass. `WEIGHT`(`3`) is the one exception: unlike the others, its
+     * `value` is a real, usable weight number (not a sizing strategy with no numeric meaning of its
+     * own) — see [ScopeFrame.widthWeight]/[ScopeFrame.heightWeight] and `arrangeChildren`'s real
+     * proportional-space-distribution effect for it, the same real `Modifier.weight()` concept
+     * real Compose's own `Row`/`Column` give a weighted child.
      */
     private const val OP_MODIFIER_WIDTH = 16
 
@@ -810,6 +817,7 @@ object RealRemoteComposeParser {
     // value is a real target size in this renderer's own coordinate units, rather than a sizing
     // *strategy* (FILL/WRAP/WEIGHT/INTRINSIC_*) this parser has no layout pass to resolve.
     private const val DIMENSION_MODE_EXACT = 0
+    private const val DIMENSION_MODE_WEIGHT = 3
     private const val DIMENSION_MODE_EXACT_DP = 6
 
     /**
@@ -1038,6 +1046,15 @@ object RealRemoteComposeParser {
             // axis — see CollapsiblePriority.getPriority's own orientation filter, source-confirmed
             // via javap). Only consulted by arrangeChildren when [isCollapsible].
             val childCollapsiblePriorities = mutableListOf<Float>()
+            // Parallel to childRanges — each entry is the corresponding child's own real
+            // Modifier.weight() value (null if it has none), already resolved against *this*
+            // container's own axis (a widthWeight only applies in a 'H' — Row-axis — parent, a
+            // heightWeight only in a 'V' one, mirroring how childCollapsiblePriorities resolves
+            // orientation). Consulted by arrangeChildren to distribute this container's own
+            // remaining main-axis space (only known when its declared extent is) proportionally,
+            // the same real `Modifier.weight()` concept real Compose's own Row/Column give a
+            // weighted child.
+            val childWeights = mutableListOf<Float?>()
             // Set by OP_MODIFIER_ZINDEX on this frame itself; read when *this* frame registers
             // into its own parent's childZIndices at OP_CONTAINER_END.
             var zIndex: Float = 0f
@@ -1046,6 +1063,11 @@ object RealRemoteComposeParser {
             // registers into its own parent's childCollapsiblePriorities at OP_CONTAINER_END.
             var collapsiblePriority: Float = Float.MAX_VALUE
             var collapsiblePriorityOrientation: Int? = null
+            // Set by OP_MODIFIER_WIDTH/OP_MODIFIER_HEIGHT with a WEIGHT mode directly on *this*
+            // frame (its own weight, not a child's) — read the same way [zIndex] is, when *this*
+            // frame registers into its own parent's childWeights at OP_CONTAINER_END.
+            var widthWeight: Float? = null
+            var heightWeight: Float? = null
             // Captured from a MODIFIER_WIDTH/MODIFIER_HEIGHT with an EXACT(_DP) mode directly on
             // *this* frame (i.e. this container's own declared size, not a child's) — read by
             // arrangeChildren on the LAYOUT_CONTENT frame this one is the parent of, since only a
@@ -1380,10 +1402,41 @@ object RealRemoteComposeParser {
                     val mainMode = if (axis == 'V') frame.verticalPositioning else frame.horizontalPositioning
                     val crossMode = if (axis == 'V') frame.horizontalPositioning else frame.verticalPositioning
 
-                    val mainSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[3] - it[1] else it[2] - it[0] } ?: 0f }
+                    val mainSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[3] - it[1] else it[2] - it[0] } ?: 0f }.toMutableList()
                     val crossSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[2] - it[0] else it[3] - it[1] } ?: 0f }
                     val declaredMainExtent = if (axis == 'V') frame.parent?.explicitHeightPx else frame.parent?.explicitWidthPx
                     val declaredCrossExtent = if (axis == 'V') frame.parent?.explicitWidthPx else frame.parent?.explicitHeightPx
+
+                    // Real Modifier.weight() effect: only possible once this container's own
+                    // declared main-axis extent is known (same "no measure pass" gate every other
+                    // real-but-approximate effect here needs) and at least one child actually
+                    // carries a weight. Real Compose distributes the *remaining* space (this
+                    // extent minus every non-weighted child's own natural size and every
+                    // in-between spacedBy gap) proportionally among the weighted children — mirrors
+                    // real Row/Column's own weight semantics, not a from-scratch approximation.
+                    // weightScaleFactors is consumed at the very end, after position-shifting, to
+                    // stretch a weighted child's own already-shifted content from its natural size
+                    // up (or down) to its real weighted share via a Scale wrap pivoted at its own
+                    // now-final leading edge — the same MatrixSave/Scale/MatrixRestore mechanism
+                    // MODIFIER_GRAPHICS_LAYER's SCALE_X/Y already uses, just per-child here instead
+                    // of around a whole container's content.
+                    val weightScaleFactors = arrayOfNulls<Float>(children.size)
+                    if (declaredMainExtent != null) {
+                        val weights = children.indices.map { i -> frame.childWeights.getOrElse(i) { null } }
+                        val totalWeight = weights.filterNotNull().sum()
+                        if (totalWeight > 0f) {
+                            val fixedSize = children.indices.filter { weights[it] == null }.sumOf { mainSizes[it].toDouble() }.toFloat()
+                            val totalGaps = frame.spacedBy * (children.size - 1).coerceAtLeast(0)
+                            val remaining = (declaredMainExtent - fixedSize - totalGaps).coerceAtLeast(0f)
+                            for (i in children.indices) {
+                                val w = weights[i] ?: continue
+                                val weightedSize = remaining * (w / totalWeight)
+                                val naturalSize = mainSizes[i]
+                                if (naturalSize > 0f) weightScaleFactors[i] = weightedSize / naturalSize
+                                mainSizes[i] = weightedSize
+                            }
+                        }
+                    }
 
                     // LAYOUT_FLOW (flowMaxItemsPerLine != null) wraps into multiple "lines" of at
                     // most that many children each, each line packed/aligned exactly the way a
@@ -1469,21 +1522,38 @@ object RealRemoteComposeParser {
                             opcodes.addAll(range[0], listOf(Opcode.MatrixSave, Opcode.ClipRect(0f, 0f, 0f, 0f)))
                             continue
                         }
-                        val delta = deltas[i] ?: continue
-                        if (delta[0] == 0f && delta[1] == 0f) continue
-                        // Rewrite every opcode's own coordinates directly instead of wrapping the range in
-                        // MatrixSave/Translate/MatrixRestore. A real on-device Compose Canvas target was
-                        // confirmed (via a minimal, isolated repro) to corrupt DrawText positioning — even
-                        // *unwrapped* DrawText elsewhere in the same render — after two or more repeated
-                        // canvas.save()/translate()/restore() cycles from sibling arranged children, the
-                        // exact shape every stat card's icon-then-value-then-label triplet has. Since a
-                        // shape's own position is just as easy to rewrite directly as text's, arrangeChildren
-                        // never emits real Matrix ops at all — sidestepping the bug at its root rather than
-                        // only where it was first noticed. Nested Translate/MatrixSave/MatrixRestore inside
-                        // this range (from an inner, already-arranged nested Column/Row) pass through
-                        // shiftOpcode unchanged, since a relative delta stays correct under an outer shift.
-                        for (j in range[0] until range[1]) {
-                            opcodes[j] = shiftOpcode(opcodes[j], delta[0], delta[1])
+                        val delta = deltas[i]
+                        if (delta != null && (delta[0] != 0f || delta[1] != 0f)) {
+                            // Rewrite every opcode's own coordinates directly instead of wrapping the range in
+                            // MatrixSave/Translate/MatrixRestore. A real on-device Compose Canvas target was
+                            // confirmed (via a minimal, isolated repro) to corrupt DrawText positioning — even
+                            // *unwrapped* DrawText elsewhere in the same render — after two or more repeated
+                            // canvas.save()/translate()/restore() cycles from sibling arranged children, the
+                            // exact shape every stat card's icon-then-value-then-label triplet has. Since a
+                            // shape's own position is just as easy to rewrite directly as text's, arrangeChildren
+                            // never emits real Matrix ops at all — sidestepping the bug at its root rather than
+                            // only where it was first noticed. Nested Translate/MatrixSave/MatrixRestore inside
+                            // this range (from an inner, already-arranged nested Column/Row) pass through
+                            // shiftOpcode unchanged, since a relative delta stays correct under an outer shift.
+                            for (j in range[0] until range[1]) {
+                                opcodes[j] = shiftOpcode(opcodes[j], delta[0], delta[1])
+                            }
+                        }
+                        // Real Modifier.weight(): stretch this now-repositioned child's content
+                        // from its natural main-axis size up (or down) to its real weighted share,
+                        // via a Scale wrap pivoted at its own now-final leading edge (so that edge
+                        // stays put and only the trailing edge moves) — cross-axis scale stays 1
+                        // (unaffected), matching real Compose's weight only ever redistributing
+                        // the *main*-axis extent.
+                        val scaleFactor = weightScaleFactors[i]
+                        if (scaleFactor != null && delta != null) {
+                            val bounds = naturalBounds[i]!!
+                            val pivotX = bounds[0] + delta[0]
+                            val pivotY = bounds[1] + delta[1]
+                            val sx = if (axis == 'V') 1f else scaleFactor
+                            val sy = if (axis == 'V') scaleFactor else 1f
+                            opcodes.addAll(range[1], listOf(Opcode.MatrixRestore))
+                            opcodes.addAll(range[0], listOf(Opcode.MatrixSave, Opcode.Scale(sx, sy, pivotX, pivotY)))
                         }
                     }
                 }
@@ -1915,14 +1985,19 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_WIDTH, OP_MODIFIER_HEIGHT -> {
                     val mode = reader.readS32()
-                    val value = reader.readFloat32()
-                    // Only a real target size (not a sizing *strategy* like FILL/WRAP/WEIGHT this
-                    // parser has no layout pass to resolve) is useful to arrangeChildren's
-                    // main-axis CENTER/END/SPACE_* modes — see ScopeFrame.explicitWidthPx's KDoc.
+                    val value = resolveFloat(reader.readFloat32())
+                    val frame = scopeStack.lastOrNull()
+                    // Only a real target size (not a sizing *strategy* like FILL/WRAP this parser
+                    // has no layout pass to resolve) is useful to arrangeChildren's main-axis
+                    // CENTER/END/SPACE_* modes — see ScopeFrame.explicitWidthPx's KDoc.
                     if (mode == DIMENSION_MODE_EXACT || mode == DIMENSION_MODE_EXACT_DP) {
-                        val frame = scopeStack.lastOrNull()
                         if (opId == OP_MODIFIER_WIDTH) frame?.explicitWidthPx = value
                         else frame?.explicitHeightPx = value
+                    } else if (mode == DIMENSION_MODE_WEIGHT) {
+                        // A real weight value (not a sizing strategy) — see ScopeFrame.widthWeight
+                        // /heightWeight's KDoc and arrangeChildren's real effect for it.
+                        if (opId == OP_MODIFIER_WIDTH) frame?.widthWeight = value
+                        else frame?.heightWeight = value
                     }
                 }
 
@@ -2184,6 +2259,12 @@ object RealRemoteComposeParser {
                                 } else {
                                     Float.MAX_VALUE
                                 },
+                            )
+                            // A widthWeight only applies in an 'H' (Row-axis) parent, a
+                            // heightWeight only in a 'V' one — same axis-matching rationale as
+                            // collapsiblePriority's own orientation filter above.
+                            parent.childWeights.add(
+                                if (parent.layoutAxis == 'V') frame.heightWeight else frame.widthWeight,
                             )
                         }
                     }
