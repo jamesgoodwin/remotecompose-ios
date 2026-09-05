@@ -73,6 +73,25 @@ object RealRemoteComposeParser {
     private const val OP_TEXT_SUBTEXT = 182
 
     /**
+     * `Operations.TEXT_TRANSFORM` — `RemoteComposeWriter.textTransform(srcTextId, start, len,
+     * operation)` writes `[textId:i32][srcId1:i32][start:f32(NaN-taggable)][len:f32(NaN-taggable,
+     * -1f means "rest of the string")][operation:i32]` (source-confirmed via javap) — the exact
+     * same "new text-pool slot computed from a real substring" shape [OP_TEXT_SUBTEXT] has, plus
+     * one trailing `operation` applied to that substring afterward: `TEXT_TO_LOWERCASE`(`1`)/
+     * `TEXT_TO_UPPERCASE`(`2`) (`String.lowercase()`/`.uppercase()`), `TEXT_TRIM`(`3`)
+     * (`String.trim()`), `TEXT_CAPITALIZE`(`4`) (title-cases the first letter of *every* word,
+     * leaving the rest of each word's own case untouched — not a full per-word lowercase-then-
+     * capitalize), and `TEXT_UPPERCASE_FIRST_CHAR`(`5`) (title-cases only the first non-whitespace
+     * character of the whole string) — both real `capitalizeWords()`/`capitalizeFirstWord()`
+     * algorithms ported verbatim from the real `TextTransform.apply()`'s own bytecode, not
+     * guessed (real `Character.toTitleCase()` approximated here as `uppercaseChar()` — identical
+     * for ordinary Latin text, only differing for a handful of rare Unicode digraphs Kotlin's
+     * stdlib has no direct titlecase mapping for). Real for the same reason [OP_TEXT_SUBTEXT] is:
+     * as long as `start`/`len` are literal.
+     */
+    private const val OP_TEXT_TRANSFORM = 199
+
+    /**
      * A paint-property bundle (observed opcode id 40; the real symbolic `Operations` name wasn't
      * confirmed against source, only its wire shape). Framed as
      * `[wordCount:i32][wordCount × i32]`, i.e. self-describing by word count rather than a fixed
@@ -1087,6 +1106,18 @@ object RealRemoteComposeParser {
             return floatPool[id] ?: raw
         }
 
+        // Shared by OP_TEXT_SUBTEXT/OP_TEXT_TRANSFORM (real TextSubtext/TextTransform.apply()'s
+        // own identical [start, start+len) / [start, end) — when len == -1f — String.substring()
+        // logic, source-confirmed via javap on both). null (real byte-consumed-only fallback) when
+        // either the source text-pool entry or start/len (already resolveFloat-resolved by the
+        // caller) is unresolved.
+        fun substringOf(src: String?, start: Float, len: Float): String? {
+            if (src == null || start.isNaN() || len.isNaN()) return null
+            val startIdx = start.toInt().coerceIn(0, src.length)
+            val endIdx = if (len == -1f) src.length else (startIdx + len.toInt()).coerceIn(startIdx, src.length)
+            return src.substring(startIdx, endIdx)
+        }
+
         // Every real container/action-list scope (LAYOUT_BOX/COLUMN/ROW/etc's own scope, the
         // LAYOUT_CONTENT children scope, LAYOUT_CANVAS_CONTENT, and MODIFIER_CLICK/MULTI_CLICK/
         // TOUCH_*'s nested action lists) is closed by exactly one generic CONTAINER_END, and these
@@ -1819,15 +1850,42 @@ object RealRemoteComposeParser {
                     val srcId = reader.readS32()
                     val start = resolveFloat(reader.readFloat32())
                     val len = resolveFloat(reader.readFloat32())
-                    val src = textPool[srcId]
-                    if (src != null && !start.isNaN() && !len.isNaN()) {
-                        val startIdx = start.toInt().coerceIn(0, src.length)
-                        val endIdx = if (len == -1f) {
-                            src.length
-                        } else {
-                            (startIdx + len.toInt()).coerceIn(startIdx, src.length)
+                    substringOf(textPool[srcId], start, len)?.let { textPool[textId] = it }
+                }
+
+                OP_TEXT_TRANSFORM -> {
+                    val textId = reader.readS32()
+                    val srcId = reader.readS32()
+                    val start = resolveFloat(reader.readFloat32())
+                    val len = resolveFloat(reader.readFloat32())
+                    val operation = reader.readS32()
+                    substringOf(textPool[srcId], start, len)?.let { sub ->
+                        textPool[textId] = when (operation) {
+                            1 -> sub.lowercase()
+                            2 -> sub.uppercase()
+                            3 -> sub.trim()
+                            // capitalizeWords: title-cases the first char of every word, copying
+                            // every other char through unchanged — ported char-for-char from the
+                            // real capitalizeWords() bytecode's own atStartOfWord-flag loop.
+                            4 -> buildString {
+                                var atStartOfWord = true
+                                for (c in sub) {
+                                    when {
+                                        c.isWhitespace() -> { atStartOfWord = true; append(c) }
+                                        atStartOfWord -> { append(c.uppercaseChar()); atStartOfWord = false }
+                                        else -> append(c)
+                                    }
+                                }
+                            }
+                            // capitalizeFirstWord: title-cases only the first non-whitespace char
+                            // of the whole string — ported from the real capitalizeFirstWord()
+                            // bytecode.
+                            5 -> {
+                                val i = sub.indexOfFirst { !it.isWhitespace() }
+                                if (i == -1) sub else sub.substring(0, i) + sub[i].uppercaseChar() + sub.substring(i + 1)
+                            }
+                            else -> sub
                         }
-                        textPool[textId] = src.substring(startIdx, endIdx)
                     }
                 }
 

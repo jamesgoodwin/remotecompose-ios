@@ -1197,6 +1197,20 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF5D4037.toInt()).commit()
     writer.drawTextAnchored(subtextSrcId, 60f, 196f, -1f, 1f, 0)
 
+    // TEXT_TRANSFORM real TEXT_CAPITALIZE proof: writer.textTransform(srcId, 0f, -1f,
+    // TEXT_CAPITALIZE) on a registered "hello world" string should compute "Hello World" (both
+    // words' own first letter capitalized, every other char untouched — real
+    // TextTransform.apply()'s own capitalizeWords() bytecode, ported verbatim), registered as a
+    // *new* text-pool entry and drawn here via drawTextAnchored's own int-textId overload — a real
+    // transform effect (not just byte-consumed), proven by comparing against the untransformed
+    // "hello world" drawn right below it.
+    val transformSrcId = writer.addText("hello world")
+    val transformId = writer.textTransform(transformSrcId, 0f, -1f, 4)
+    writer.getRcPaint().setColor(0xFF4527A0.toInt()).commit()
+    writer.drawTextAnchored(transformId, 2f, 12f, -1f, -1f, 0)
+    writer.getRcPaint().setColor(0xFF00695C.toInt()).commit()
+    writer.drawTextAnchored(transformSrcId, 2f, 30f, -1f, -1f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

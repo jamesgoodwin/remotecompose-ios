@@ -296,7 +296,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `len=-1f` meaning "rest of the string") and registering it as a *new* text-pool entry, drawn via
  * `drawTextAnchored`'s own int-`textId` overload right below the full "Hello World" source string
  * for comparison — proving this op's `start`/`len` really compute a real substring instead of
- * staying byte-consumed only. Shared by every
+ * staying byte-consumed only, and a real `TEXT_TRANSFORM` (`writer.textTransform(srcId, 0f, -1f,
+ * TEXT_CAPITALIZE)` — previously a completely unhandled opcode) computing "Hello World" from a
+ * registered "hello world" string — the real `capitalizeWords()` algorithm (ported verbatim from
+ * `TextTransform.apply()`'s own bytecode) title-cases only the first letter of *every* word,
+ * leaving the rest of each word's own case untouched — drawn via the same int-`textId`
+ * `drawTextAnchored` overload right above the untransformed "hello world" source string for
+ * comparison. Shared by every
  * platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -398,6 +404,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "QnAAAN1CyAAAQxYAAMn///851tZmAAAARgAAAAZzY2FsZWSVAAAAOQAAAAAAAAAAQQAAAEAAAABAAAAAQAAAAEGwAABBsAAAAAAABD+AAAAAAABGy///" +
             "/zj/////AAAAAAAAAAAAAAAA3UAAAABDKgAAyf///zfXAAAAAAAAAAA/gAAAQEAAACgAAAACAAAABP9tTEEqAAAAAAAAAABAwAAAQMAAANbW1rYAAABH" +
             "AAAAPkDAAAC/gAAAKAAAAAIAAAAE/wCDj4UAAABHQxsAAENEAAC/gAAAP4AAAAAAAAAoAAAAAgAAAAT/XUA3hQAAAD5CcAAAQ0QAAL+AAAA/gAAAAAAA" +
-            "AA==",
+            "AGYAAABIAAAAC2hlbGxvIHdvcmxkxwAAAEkAAABIAAAAAL+AAAAAAAAEKAAAAAIAAAAE/0UnoIUAAABJQAAAAEFAAAC/gAAAv4AAAAAAAAAoAAAAAgAA" +
+            "AAT/AGlchQAAAEhAAAAAQfAAAL+AAAC/gAAAAAAAAA==",
     )
 }
