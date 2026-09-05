@@ -267,7 +267,16 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * (confirmed via pixel sampling: the top-aligned string sits visibly lower/below `y=100`, the
  * bottom-aligned string sits visibly higher/above it, ending almost exactly at the same `y=100`),
  * not the identical position the old (`y` always the literal top edge, `panY` byte-consumed)
- * behavior would have given both. Shared by every
+ * behavior would have given both, and a real `LAYOUT_TEXT` component (`RemoteComposeWriter
+ * .startTextComponent(...)`/`.endTextComponent()` — previously a completely unhandled opcode that
+ * would throw a parse exception) rendering its own real `textId`/`color`/`fontSize`, drawn twice
+ * with an identical `width(60f)` modifier — once `TEXT_ALIGN_LEFT` (should render flush with this
+ * leaf's own left edge) and once `TEXT_ALIGN_CENTER` (should shift right by roughly half the
+ * declared box's own leftover space, confirmed via pixel sampling: the left-aligned "Hi"'s own
+ * left edge sits close to its box's own left edge, the centered one's left edge sits visibly
+ * further right by close to the hand-computed shift) — proving `LAYOUT_TEXT` is both really
+ * parsed at all and `textAlign` really anchors it within a declared width, not just newly byte-
+ * consumed. Shared by every
  * platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -364,6 +373,8 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "3UAAAABDFgAAyf///0HK////QP////8AAAAAAAAAAMn///8/KAAAAAIAAAAE/11ANyoAAAAAAAAAAEGgAABBoAAA1tbK////Pv////8AAAAAAAAAAMn/" +
             "//89KAAAAAIAAAAE//+zACoAAAAAAAAAAEEAAABBAAAA1tbW1igAAAACAAAABP8VZcBmAAAAQwAAAAhDZW50ZXJlZIUAAABDQsgAAEMgAAC/gAAAAAAA" +
             "AAAAAAAoAAAAAgAAAAT/ahuahQAAAENCyAAAQzQAAD+AAAAAAAAAAAAAACgAAAACAAAABP8ufTJmAAAARAAAAARUYWxshQAAAERDDAAAQsgAAL+AAAC/" +
-            "gAAAAAAAACgAAAACAAAABP/GKCiFAAAAREMqAABCyAAAv4AAAD+AAAAAAAAA",
+            "gAAAAAAAACgAAAACAAAABP/GKCiFAAAAREMqAABCyAAAv4AAAD+AAAAAAAAAZgAAAEUAAAAA0P///zz/////AAAAK/8AaVxBgAAAAAAAAEPIAAAAAABF" +
+            "AAAAAQAAAAEAAAABEAAAAABCcAAA3UGgAABDFgAAyf///zvW1tD///86/////wAAACv/rRRXQYAAAAAAAABDyAAAAAAARQAAAAMAAAABAAAAARAAAAAA" +
+            "QnAAAN1CyAAAQxYAAMn///851tY=",
     )
 }

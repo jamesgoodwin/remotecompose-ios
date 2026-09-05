@@ -391,6 +391,40 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_IMAGE = 234
 
     /**
+     * `Operations.LAYOUT_TEXT` — `RemoteComposeWriter.startTextComponent(modifier, textId, color,
+     * fontSize, fontStyle, fontWeight, fontFamilyName, flags, textAlign, overflow, maxLines)`
+     * writes `[componentId:i32][animationId:i32][textId:i32][color:i32][fontSize:f32(NaN-taggable)]
+     * [fontStyle:i32][fontWeight:f32(NaN-taggable)][fontFamilyId:i32][textAlign:i32(packed — see
+     * below)][overflow:i32][maxLines:i32]` (source-confirmed via javap on the real
+     * `TextLayout.read()`/`write()`), followed by this component's own modifiers, a
+     * [OP_LAYOUT_CONTENT] marker, *no* children (real `TextLayout` is a leaf, like
+     * [OP_LAYOUT_IMAGE] but — unlike it — still framed by a real content marker, confirmed via
+     * `RemoteComposeWriter.startTextComponent()`'s own bytecode calling the same
+     * `addContentStart()` every container calls), then two [OP_CONTAINER_END]s (this leaf's own
+     * empty content frame, then its outer modifier-carrying frame) — the same double-close shape
+     * [OP_LAYOUT_COLLAPSIBLE_COLUMN]/[OP_LAYOUT_ROW] already get. `textAlign`'s wire value is
+     * itself packed (javap-confirmed on `TextLayout.updateVariables()`'s own `getFlagsFromTextAlign`
+     * helper): the low 16 bits are the real `TEXT_ALIGN_LEFT(1)`/`RIGHT(2)`/`CENTER(3)`/
+     * `JUSTIFY(4)`/`START(5)`/`END(6)` value, the high 16 bits a separate flags word (only
+     * `FLAG_IS_DYNAMIC_COLOR` is ever set there — a dynamic-color-pool-reference feature this
+     * parser doesn't resolve, so `color` is trusted as a literal packed ARGB always). Renders as a
+     * plain [Opcode.DrawText] (real `fontSize`/`color`, `fontStyle`/`fontWeight`/`fontFamilyId`/
+     * `overflow`/`maxLines` byte-consumed only — no italic/bold/font-family/wrapping/ellipsis
+     * support exists anywhere in this renderer) at this leaf's own local origin, mirroring
+     * [OP_LAYOUT_IMAGE]'s "no measure pass, so only real when this component declares its own
+     * size" honesty: `textAlign` only gets a real horizontal-alignment effect when a
+     * `MODIFIER_WIDTH`/`MODIFIER_DIMENSION_CONSTRAINTS` on the *same* component gave it an explicit
+     * width to align within (via the same `crossAxisOffset` helper [OP_LAYOUT_BOX] reuses, mapping
+     * `TEXT_ALIGN_LEFT`/`START`/`JUSTIFY` to `POS_START`, `CENTER` to `POS_CENTER`,
+     * `RIGHT`/`END` to `POS_END` — `JUSTIFY`'s real multi-line-stretching effect needs a wrapping
+     * algorithm this parser doesn't have, so it falls back to left, the same honest simplification
+     * `MODIFIER_DIMENSION_CONSTRAINTS`'s own undeclared-size gate already documents elsewhere);
+     * with no declared width, `textAlign` is real byte-coverage only, same as every other field
+     * here.
+     */
+    private const val OP_LAYOUT_TEXT = 208
+
+    /**
      * `Operations.HAPTIC_FEEDBACK`/`THEME`/`ROOT_CONTENT_BEHAVIOR` — top-level document metadata
      * ops (not nested in any container). `performHaptic(id)` writes `[id:i32]`; `setTheme(theme)`
      * writes `[theme:i32]`; `setRootContentBehavior(a, b, c, d)` writes `[a:i32][b:i32][c:i32]
@@ -1075,6 +1109,16 @@ object RealRemoteComposeParser {
             // this is set, so a Custom/Canvas/Root/State content frame (also axis == null, also
             // registers children for MODIFIER_ZINDEX) never gets it by accident.
             var isBoxAlignment: Boolean = false
+            // Set (from pendingIsTextLayout et al.) only for a LAYOUT_TEXT content frame — the
+            // inner, always-empty frame OP_LAYOUT_CONTENT pushes for it (see OP_LAYOUT_TEXT's own
+            // KDoc); consumed at this same frame's own OP_CONTAINER_END to synthesize the one real
+            // Opcode.DrawText this leaf renders as, since it carries no children opcodes of its own
+            // to react to the way every other content frame here does.
+            var isTextLayout: Boolean = false
+            var textId: Int = 0
+            var textColorArgb: Int = 0
+            var textFontSize: Float = DEFAULT_TEXT_SIZE_SP
+            var textAlign: Int = 1 // TEXT_ALIGN_LEFT
             val childRanges = mutableListOf<IntArray>() // only populated/consumed when layoutAxis != null
             // Parallel to childRanges (same index correspondence) — each entry is the
             // corresponding child's own OP_MODIFIER_ZINDEX value (default 0f), read by
@@ -1223,6 +1267,15 @@ object RealRemoteComposeParser {
         // containers (Custom/Canvas/Root/State) so arrangeChildren's Box-alignment pass only
         // applies to a real Box/FitBox, never accidentally to one of those.
         var pendingIsBoxAlignment = false
+        // Set by OP_LAYOUT_TEXT on the outer (modifier-carrying) frame it pushes for itself;
+        // consumed by the very next OP_LAYOUT_CONTENT, same handoff shape as pendingIsBoxAlignment
+        // — this leaf's own content frame (not the outer one) is where OP_CONTAINER_END actually
+        // synthesizes the real Opcode.DrawText, so these need to reach that inner frame.
+        var pendingIsTextLayout = false
+        var pendingTextId = 0
+        var pendingTextColorArgb = 0
+        var pendingTextFontSize = DEFAULT_TEXT_SIZE_SP
+        var pendingTextAlign = 1 // TEXT_ALIGN_LEFT
 
         /**
          * This renderer has no measure/layout pass, so a container's "bounds" for
@@ -1983,6 +2036,26 @@ object RealRemoteComposeParser {
                     pendingIsBoxAlignment = true
                 }
 
+                OP_LAYOUT_TEXT -> {
+                    reader.readS32() // componentId
+                    reader.readS32() // animationId
+                    val textId = reader.readS32()
+                    val color = reader.readS32()
+                    val fontSize = resolveFloat(reader.readFloat32())
+                    reader.readS32() // fontStyle — byte-consumed only, no italic support
+                    reader.readFloat32() // fontWeight — byte-consumed only, no bold support
+                    reader.readS32() // fontFamilyId — byte-consumed only, no font-family support
+                    val textAlign = reader.readS32() and 0xFFFF // packed; see OP_LAYOUT_TEXT's KDoc
+                    reader.readS32() // overflow — byte-consumed only, no ellipsis/clip support
+                    reader.readS32() // maxLines — byte-consumed only, no wrapping support
+                    pushScope()
+                    pendingIsTextLayout = true
+                    pendingTextId = textId
+                    pendingTextColorArgb = color
+                    pendingTextFontSize = fontSize
+                    pendingTextAlign = textAlign
+                }
+
                 OP_LAYOUT_ROOT -> {
                     reader.readS32() // componentId — no LAYOUT_CONTENT marker follows
                     pushScope() // closed by this container's single CONTAINER_END
@@ -2013,6 +2086,12 @@ object RealRemoteComposeParser {
                     pendingHorizontalPositioning = POS_START
                     pendingVerticalPositioning = POS_START
                     pendingIsBoxAlignment = false
+                    scopeStack.last().isTextLayout = pendingIsTextLayout
+                    scopeStack.last().textId = pendingTextId
+                    scopeStack.last().textColorArgb = pendingTextColorArgb
+                    scopeStack.last().textFontSize = pendingTextFontSize
+                    scopeStack.last().textAlign = pendingTextAlign
+                    pendingIsTextLayout = false
                     val axis = pendingLayoutAxis
                     if (axis != null) {
                         scopeStack.last().layoutAxis = axis
@@ -2199,6 +2278,37 @@ object RealRemoteComposeParser {
                             }
                             if (clipWrappedImage) opcodes += Opcode.MatrixRestore
                             if (wrapAlpha) opcodes += Opcode.MatrixRestore
+                        }
+                        // LAYOUT_TEXT: this leaf's own content frame is always empty (see
+                        // OP_LAYOUT_TEXT's own KDoc), so the one real Opcode.DrawText it renders as
+                        // is synthesized here rather than reacting to already-emitted children.
+                        // textAlign only gets a real horizontal-alignment effect when this leaf's
+                        // *outer* frame (frame.parent — the one OP_LAYOUT_TEXT itself pushed, which
+                        // any MODIFIER_WIDTH/MODIFIER_DIMENSION_CONSTRAINTS on this same component
+                        // sets explicitWidthPx on, same as OP_LAYOUT_BOX's own boxWidth lookup)
+                        // actually declares a width to align within; otherwise it's real byte-
+                        // coverage only, same honest gate MODIFIER_WIDTH_IN's own effect needs.
+                        if (frame.isTextLayout) {
+                            val text = textPool[frame.textId] ?: ""
+                            val estimatedWidth = text.length * frame.textFontSize * 0.55f
+                            val boxWidth = frame.parent?.explicitWidthPx
+                            val alignOffsetX = if (boxWidth != null) {
+                                val posMode = when (frame.textAlign) {
+                                    3 -> POS_CENTER // TEXT_ALIGN_CENTER
+                                    2, 6 -> POS_END // TEXT_ALIGN_RIGHT/END
+                                    else -> POS_START // LEFT/START/JUSTIFY (no wrap algorithm here)
+                                }
+                                crossAxisOffset(posMode, boxWidth, estimatedWidth)
+                            } else {
+                                0f
+                            }
+                            opcodes += Opcode.DrawText(
+                                stringIndex = frame.textId,
+                                x = alignOffsetX,
+                                y = 0f,
+                                fontSize = frame.textFontSize,
+                                colorArgb = frame.textColorArgb,
+                            )
                         }
                         // MODIFIER_GRAPHICS_LAYER's SHAPE/SHAPE_RADIUS: a real clip, nested
                         // *innermost* (inserted at frame.startIndex first, so the transform-wrap

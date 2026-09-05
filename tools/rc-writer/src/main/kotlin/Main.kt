@@ -1127,6 +1127,30 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFFC62828.toInt()).commit()
     writer.drawTextAnchored("Tall", 170f, 100f, -1f, 1f, 0)
 
+    // LAYOUT_TEXT real textAlign proof: the same "Hi" textId drawn via two separate
+    // startTextComponent/endTextComponent leaves, each declaring the identical width(60f) box —
+    // once with TEXT_ALIGN_LEFT(1) (should render at this leaf's own left edge, unshifted) and
+    // once with TEXT_ALIGN_CENTER(3) (should shift right by half the declared box's own leftover
+    // space) — real TextLayout.updateVariables()'s own packed textAlign field (source-confirmed
+    // via javap) means these two should differ by roughly half the declared width minus the
+    // text's own estimated width, not sit at the identical position the old (LAYOUT_TEXT
+    // completely unhandled — this whole opcode would have thrown a parse exception) behavior
+    // would have given neither, proving LAYOUT_TEXT is both really parsed *and* textAlign
+    // really anchors it within a declared width instead of staying unsupported entirely.
+    val helloTextId = writer.addText("Hi")
+    writer.startTextComponent(
+        RecordingModifier().width(60f).offset(20f, 150f),
+        helloTextId, 0xFF00695C.toInt(), 16f, 0, 400f, "",
+        0.toShort(), 1.toShort(), 1, 1,
+    )
+    writer.endTextComponent()
+    writer.startTextComponent(
+        RecordingModifier().width(60f).offset(100f, 150f),
+        helloTextId, 0xFFAD1457.toInt(), 16f, 0, 400f, "",
+        0.toShort(), 3.toShort(), 1, 1,
+    )
+    writer.endTextComponent()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
