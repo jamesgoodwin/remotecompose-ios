@@ -1335,6 +1335,16 @@ private fun buildCoverageSample() {
     writer.drawPath(intersectPathId)
     writer.endBox()
 
+    // CANVAS_OPERATIONS real pass-through-container proof: real CanvasOperations writes no fields
+    // at all (source-confirmed via javap) — just a plain container whose own real paint() applies
+    // its children directly — so a rect drawn inside startCanvasOperations()/
+    // endCanvasOperations() should render at its own exact documented position, not the parse
+    // exception the old (CANVAS_OPERATIONS completely unhandled) behavior would have thrown.
+    writer.startCanvasOperations()
+    writer.getRcPaint().setColor(0xFFEF6C00.toInt()).commit()
+    writer.drawRect(100f, 185f, 116f, 199f)
+    writer.endCanvasOperations()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

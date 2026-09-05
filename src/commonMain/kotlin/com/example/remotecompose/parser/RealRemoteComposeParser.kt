@@ -337,6 +337,20 @@ object RealRemoteComposeParser {
      */
     private const val OP_PATH_COMBINE = 175
 
+    /**
+     * `Operations.CANVAS_OPERATIONS` — `startCanvasOperations()`/`endCanvasOperations()` write no
+     * fields at all (source-confirmed via javap on the real `CanvasOperations.read()`/`apply()` —
+     * `apply()` writes only the opcode header), just this container's own child opcodes directly
+     * (no `LAYOUT_CONTENT` marker — real `CanvasOperations` isn't a `Component`/`LayoutManager`,
+     * just a plain `Container`, the same shape [OP_LAYOUT_ROOT] already has), closed by a single
+     * [OP_CONTAINER_END] (`endCanvasOperations()` calls `addContainerEnd()` directly, confirmed via
+     * javap). Real `paint()` (source-confirmed via javap) just iterates and applies its own
+     * children in order — a genuine pass-through content container, so this parser's own generic
+     * scope mechanism already renders its children for real with no special handling needed at
+     * all, the same as any other plain container here.
+     */
+    private const val OP_CANVAS_OPERATIONS = 173
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2430,6 +2444,8 @@ object RealRemoteComposeParser {
                     reader.readS32() // componentId — no LAYOUT_CONTENT marker follows
                     pushScope() // closed by this container's single CONTAINER_END
                 }
+
+                OP_CANVAS_OPERATIONS -> pushScope() // no payload — closed by a single CONTAINER_END
 
                 OP_LOOP_START -> {
                     reader.readS32() // indexVariableId — no expression evaluator to feed it

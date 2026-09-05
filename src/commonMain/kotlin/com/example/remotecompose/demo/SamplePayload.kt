@@ -342,8 +342,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `(10, 10)-(30, 30)` — via this parser's own real Sutherland-Hodgman polygon-clipping algorithm,
  * confirmed via the parsed opcode dump to compute exactly their real geometric overlap, a 10x10
  * square at `(10, 10)-(20, 20)` (hand-verifiable min/max arithmetic), not the unresolved reference
- * the old unhandled behavior could never have computed at all. Shared by
- * every platform demo entry point (iOS, Android) so they
+ * the old unhandled behavior could never have computed at all, and a real `CANVAS_OPERATIONS`
+ * (`startCanvasOperations()`/`endCanvasOperations()` — previously a completely unhandled opcode)
+ * wrapping a single `drawRect` — real `CanvasOperations` writes no fields at all and its own real
+ * `paint()` just applies its children directly, confirmed by that `drawRect` landing at its own
+ * exact documented position, not the parse exception the old unhandled behavior would have thrown.
+ * Shared by every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
  */
@@ -459,6 +463,6 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAPwAAANbWyv///zD/////AAAAAAAAAADdQfAAAEJwAADJ////L58AAABTAAAAAAAAAACgAAAAUwAAAAX/gAALAAAAAAAAAABBoAAAAAAAAKAAAABT" +
             "AAAABf+AAAsAAAAAAAAAAEGgAABBoAAAoAAAAFMAAAAF/4AACwAAAAAAAAAAAAAAAEGgAACgAAAAUwAAAAH/gAAPnwAAAFRBIAAAQSAAAKAAAABUAAAA" +
             "Bf+AAAsAAAAAAAAAAEHwAABBIAAAoAAAAFQAAAAF/4AACwAAAAAAAAAAQfAAAEHwAACgAAAAVAAAAAX/gAALAAAAAAAAAABBIAAAQfAAAKAAAABUAAAA" +
-            "Af+AAA+vAAAAVQAAAFMAAABUASgAAAACAAAABP8ufTJ8AAAAVdbW",
+            "Af+AAA+vAAAAVQAAAFMAAABUASgAAAACAAAABP8ufTJ8AAAAVdbWrSgAAAACAAAABP/vbAAqQsgAAEM5AABC6AAAQ0cAANY=",
     )
 }
