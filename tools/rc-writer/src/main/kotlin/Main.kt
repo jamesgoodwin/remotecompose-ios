@@ -759,6 +759,24 @@ private fun buildCoverageSample() {
     writer.drawRect(56f, 41f, 71f, 51f)
     writer.endStateLayout()
 
+    // LAYOUT_STATE real-effect proof: a startStateLayout wrapping 3 startBox/endBox children
+    // (each drawing an identical raw (110, 80)-(125, 90) rect, deliberately overlapping) —
+    // real StateLayout defaults currentLayoutIndex to 0 and hides every other child
+    // (source-confirmed via javap: inflate() calls hideLayoutsOtherThan(0) immediately, before any
+    // runtime state-change event this parser has no live state to evaluate). A render showing only
+    // the first (pink) child, with the second (indigo) and third (lime) entirely absent — not
+    // three overlapping rects — proves stateIndex now really drives this default-state visibility
+    // instead of staying byte-consumed only.
+    writer.startStateLayout(RecordingModifier(), 0)
+    val stateColors = intArrayOf(0xFFE91E63.toInt(), 0xFF3F51B5.toInt(), 0xFFCDDC39.toInt())
+    for (color in stateColors) {
+        writer.startBox(RecordingModifier(), 0, 0)
+        writer.getRcPaint().setColor(color).commit()
+        writer.drawRect(110f, 80f, 125f, 90f)
+        writer.endBox()
+    }
+    writer.endStateLayout()
+
     writer.startCanvas(RecordingModifier())
     writer.getRcPaint()
         .setColor(0xFF558B2F.toInt())

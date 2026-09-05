@@ -314,7 +314,14 @@ object RealRemoteComposeParser {
      * `Operations.LAYOUT_STATE` — `startStateLayout` writes `[componentId:i32][animationId:i32]
      * [horizontalPositioning:i32][verticalPositioning:i32][stateIndex:i32]` (5 ints, confirmed
      * against real output), closed the same way as most other layout containers (a
-     * `LAYOUT_CONTENT` children marker, then two [OP_CONTAINER_END]s).
+     * `LAYOUT_CONTENT` children marker, then two [OP_CONTAINER_END]s). `stateIndex` is a
+     * remote-variable id driving *runtime* state changes this parser has no live state/expression
+     * system to evaluate — but the real `StateLayout` class (javap-confirmed) has a well-defined,
+     * fully static *default* render even so: `currentLayoutIndex` starts at `0` and `inflate()`
+     * immediately calls `hideLayoutsOtherThan(0)`, hiding every child but the first
+     * (`Component.Visibility.GONE`) before any state-change event ever fires — see
+     * `arrangeChildren`'s `isStateLayout` handling for the real (not faked) initial-render effect
+     * this parser now gives it.
      */
     private const val OP_LAYOUT_STATE = 217
 
@@ -1009,6 +1016,16 @@ object RealRemoteComposeParser {
             // height() on the CollapsibleColumn/Row itself), the same "no measure pass" gate
             // MODIFIER_WIDTH_IN/HEIGHT_IN's real effect already needs.
             var isCollapsible: Boolean = false
+            // Set (from pendingIsStateLayout) only for a LAYOUT_STATE content frame; propagated
+            // independently of layoutAxis/pendingLayoutAxis, since LAYOUT_STATE needs no position-
+            // arrangement handoff at all (unlike Column/Row/Flow/Collapsible, its children keep
+            // their own document-authored position — only their *visibility* is real). Real
+            // StateLayout (source-confirmed via javap on the real class): `currentLayoutIndex`
+            // defaults to `0` and `inflate()` immediately calls `hideLayoutsOtherThan(0)`, so the
+            // real, honest default render (before any runtime state-change event this parser has
+            // no live state to evaluate) shows only the *first* child, hiding every other one the
+            // same way [Component.Visibility.GONE] already does elsewhere.
+            var isStateLayout: Boolean = false
             val childRanges = mutableListOf<IntArray>() // only populated/consumed when layoutAxis != null
             // Parallel to childRanges (same index correspondence) — each entry is the
             // corresponding child's own OP_MODIFIER_ZINDEX value (default 0f), read by
@@ -1133,6 +1150,10 @@ object RealRemoteComposeParser {
         // OP_LAYOUT_CONTENT frame to set ScopeFrame.isCollapsible, same handoff shape as
         // pendingFlowMaxItemsPerLine/pendingFlowMaxLines.
         var pendingIsCollapsible = false
+        // Set by OP_LAYOUT_STATE; tells the very next OP_LAYOUT_CONTENT frame to set
+        // ScopeFrame.isStateLayout. Propagated independently of pendingLayoutAxis (LAYOUT_STATE
+        // never sets that — see ScopeFrame.isStateLayout's KDoc).
+        var pendingIsStateLayout = false
 
         /**
          * This renderer has no measure/layout pass, so a container's "bounds" for
@@ -1465,6 +1486,19 @@ object RealRemoteComposeParser {
                             opcodes[j] = shiftOpcode(opcodes[j], delta[0], delta[1])
                         }
                     }
+                }
+            }
+
+            // LAYOUT_STATE's real default: only the first child (index 0, matching the real
+            // StateLayout's own currentLayoutIndex default) stays visible; every other child is
+            // hidden via the same empty-ClipRect GONE mechanism used above, in place at its own
+            // document-authored position (StateLayout has no axis, so no repositioning applies).
+            if (frame.isStateLayout) {
+                for (i in children.indices.reversed()) {
+                    if (i == 0) continue
+                    val range = children[i]
+                    opcodes.addAll(range[1], listOf(Opcode.MatrixRestore))
+                    opcodes.addAll(range[0], listOf(Opcode.MatrixSave, Opcode.ClipRect(0f, 0f, 0f, 0f)))
                 }
             }
 
@@ -1804,8 +1838,11 @@ object RealRemoteComposeParser {
                     reader.readS32() // animationId
                     reader.readS32() // horizontalPositioning
                     reader.readS32() // verticalPositioning
-                    reader.readS32() // stateIndex
+                    reader.readS32() // stateIndex — a remote-variable id driving runtime state
+                    // changes this parser has no live state to evaluate; the real default render
+                    // (currentLayoutIndex=0, see ScopeFrame.isStateLayout's KDoc) needs none.
                     pushScope()
+                    pendingIsStateLayout = true
                 }
 
                 OP_LAYOUT_CONTENT, OP_LAYOUT_CANVAS_CONTENT -> {
@@ -1825,6 +1862,8 @@ object RealRemoteComposeParser {
                         pendingFlowMaxLines = null
                         pendingIsCollapsible = false
                     }
+                    scopeStack.last().isStateLayout = pendingIsStateLayout
+                    pendingIsStateLayout = false
                 }
 
                 OP_LAYOUT_CANVAS -> {
