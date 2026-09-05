@@ -576,7 +576,21 @@ private fun buildCoverageSample() {
     writer.drawRect(92f, 41f, 107f, 51f)
     writer.endCustom()
 
-    writer.image(RecordingModifier(), 3, 1, 0.75f)
+    // LAYOUT_IMAGE: real-bytes hex-diff of image(modifier, 111, 222, 0.5f) confirmed the wire
+    // order is [componentId][animationId][bitmapId=111][scaleType=222][alpha=0.5] — bitmapId
+    // (this call's 2nd argument) precedes scaleType (its 3rd) — the reverse of what an earlier
+    // pass over this opcode assumed. This leaf carries no position/size of its own, so a real
+    // render only happens with an explicit width()/height() on the same modifier (see
+    // OP_CONTAINER_END's imageBitmapId handling); alpha=0.8 (not 1.0) also exercises the
+    // SaveLayerAlpha wrap that path takes when the image isn't fully opaque.
+    val imageBitmap = java.awt.image.BufferedImage(4, 4, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+    for (py in 0 until 4) {
+        for (px in 0 until 4) {
+            imageBitmap.setRGB(px, py, if ((px + py) % 2 == 0) 0xFF00BFA5.toInt() else 0xFFFFFFFF.toInt())
+        }
+    }
+    val imageBitmapId = writer.storeBitmap(imageBitmap)
+    writer.image(RecordingModifier().width(16f).height(16f), imageBitmapId, RemoteComposeWriter.IMAGE_SCALE_FIT, 0.8f)
 
     writer.performHaptic(4)
     writer.setTheme(1)

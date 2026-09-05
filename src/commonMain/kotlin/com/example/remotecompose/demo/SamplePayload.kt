@@ -47,9 +47,14 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `startFlow`/`endFlow`, a deep-orange rect wrapped in a `startFitBox`/`endFitBox`, and a dark-blue
  * rect wrapped in a `startRoot`/`endRoot`, and a magenta rect wrapped in a `startStateLayout`/
  * `endStateLayout`, an olive rect wrapped in a `startCanvas`/`endCanvas`, and a dark-brown rect
- * wrapped in a `startCustom`/`endCustom`, a `writer.image(...)` leaf component — not yet rendered
- * by this engine's `Image` opcode support, only byte-consumed — and three top-level document
- * metadata ops: `performHaptic(4)`, `setTheme(1)`, `setRootContentBehavior(1, 2, 3, 4)` — and a
+ * wrapped in a `startCustom`/`endCustom`, a `writer.image(RecordingModifier().width(16f)
+ * .height(16f), bitmapId, IMAGE_SCALE_FIT, 0.8f)` leaf component drawing a small teal/white
+ * checkerboard bitmap at 80% opacity into that explicit 16x16 box (this renderer has no measure
+ * pass to size an image from its own bitmap/scaleType otherwise, so `LAYOUT_IMAGE` only renders
+ * when an explicit `width()`/`height()` is present — a real-bytes hex-diff of this same call also
+ * caught `bitmapId` and `scaleType` swapped from an earlier pass's assumed field order) — and
+ * three top-level document metadata ops: `performHaptic(4)`, `setTheme(1)`,
+ * `setRootContentBehavior(1, 2, 3, 4)` — and a
  * brown rect wrapped in a `startBox`/`endBox` carrying an `animationSpec(3)` modifier, a cyan rect
  * drawn after a raw `writer.save()`/`writer.translate(130f, 41f)`/`writer.restore()` (no modifier
  * involved — the document author's own top-level matrix ops), an amber rect drawn after a raw
@@ -132,17 +137,18 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "/wCDjypAAAAAQiQAAEGIAABCTAAA1taw////uP////8AAAAAAAAAAMn///+3KAAAAAIAAAAE/+ZKGSpBoAAAQiQAAEIMAABCTAAA1tbI////tigAAAAC" +
             "AAAABP8aI34qQhgAAEIkAABCVAAAQkwAANbZ////tf////8AAAAAAAAAAAAAAADJ////tCgAAAACAAAABP+tFFcqQmAAAEIkAABCjgAAQkwAANbWzf//" +
             "/7P/////yf///7LP////sSgAAAACAAAABP9Viy8qQpQAAEIkAABCsgAAQkwAANbW1mYAAAA0AAAACG15Q3VzdG9tXf//////////AAAANAAAAADJ////" +
-            "sCgAAAACAAAABP9ONC4qQrgAAEIkAABC1gAAQkwAANbW6v///6//////AAAAAwAAAAE/QAAA1rEAAAAEPwAAAAFBAAAAAQAAAAIAAAADAAAABMr///+u" +
-            "/////wAAAAAAAAAADgAAAANDlgAAAAAAAUOWAAAAAAABAAAAAAAAAAHJ////rSgAAAACAAAABP9dQDcqQtwAAEIkAABC+gAAQkwAANbWgn9DAgAAQiQA" +
-            "ACgAAAACAAAABP8ArMEqAAAAAAAAAABBcAAAQSAAAIOCfkAAAABAAAAAQxEAAEI4AAAoAAAAAgAAAAT/9X8XKkMRAABCJAAAQxgAAEI4AACDgoFCNAAA" +
-            "Qy8AAEI4AAAoAAAAAgAAAAT/ahuaKkMoAABCJAAAQzcAAEJMAACDgidDPgAAQiQAAENNAABCTAAAKAAAAAIAAAAE/6oA/ypDOQAAQhAAAENSAABCYAAA" +
-            "g8r///+s/////wAAAAAAAAAANwAAAAAAAAAAAAAAAAAAAAA/gAAAPt7e3wAAAAA/gAAAAAAAAMn///+rKAAAAAIAAAAE/xVlwCpAAAAAQnQAAEFAAABC" +
-            "jgAAKAAAAAIAAAAE/y59Mi5CDAAAQpwAAEDAAADW1sz///+q/////wAAAAAAAAAAQEAAAMn///+pyv///6j/////AAAAAAAAAADJ////pygAAAACAAAA" +
-            "BP/TLy8qQAAAAEK0AABBQAAAQsgAANbWyv///6b/////AAAAAAAAAADJ////pSgAAAACAAAABP8ZdtIqQAAAAEK0AABBQAAAQsgAANbWyv///6T/////" +
-            "AAAAAAAAAADJ////oygAAAACAAAABP84jjwqQAAAAEK0AABBQAAAQsgAANbW1tbL////ov////8AAAAGAAAAAgAAAAAQAAAAAEKgAADJ////ocr///+g" +
-            "/////wAAAAAAAAAAyf///58oAAAAAgAAAAT/xigoKkGwAABDFgAAQfAAAEMeAADW1sr///+e/////wAAAAAAAAAAyf///50oAAAAAgAAAAT/+aglKkGw" +
-            "AABDFgAAQfAAAEMmAADW1sr///+c/////wAAAAAAAAAAyf///5soAAAAAgAAAAT/AIOPKkGwAABDFgAAQfAAAEMeAADW1tbWgnsAAAA1AAAADv+AAApC" +
-            "0gAAQygAAP+AAAsAAAAAAAAAAEL6AABDFgAA/4AACwAAAAAAAAAAQvoAAEMoAAD/gAAPJgAAADUoAAAAAgAAAAT/ahuaKkLSAABDFgAAQwIAAEMqAACD" +
-            "KAAAAAIAAAAE/yEhIWYAAAA2AAAABkN1cnZlZDkAAAA2QsgAAEM5AABBIAAAQ4cAAAAAAAABAA==",
+            "sCgAAAACAAAABP9ONC4qQrgAAEIkAABC1gAAQkwAANbWZQAAADUAAAAEAAAABAAAAFCJUE5HDQoaCgAAAA1JSERSAAAABAAAAAQIBgAAAKnxnn4AAAAX" +
+            "SURBVHheY2DYv/Q/CMBpFA6QZiCoAgC6AjL51qQNdQAAAABJRU5ErkJggur///+v/////wAAADUAAAAEP0zMzRAAAAAAQYAAAEMAAAAAQYAAANaxAAAA" +
+            "BD8AAAABQQAAAAEAAAACAAAAAwAAAATK////rv////8AAAAAAAAAAA4AAAADQ5YAAAAAAAFDlgAAAAAAAQAAAAAAAAAByf///60oAAAAAgAAAAT/XUA3" +
+            "KkLcAABCJAAAQvoAAEJMAADW1oJ/QwIAAEIkAAAoAAAAAgAAAAT/AKzBKgAAAAAAAAAAQXAAAEEgAACDgn5AAAAAQAAAAEMRAABCOAAAKAAAAAIAAAAE" +
+            "//V/FypDEQAAQiQAAEMYAABCOAAAg4KBQjQAAEMvAABCOAAAKAAAAAIAAAAE/2obmipDKAAAQiQAAEM3AABCTAAAg4InQz4AAEIkAABDTQAAQkwAACgA" +
+            "AAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIPK////rP////8AAAAAAAAAADcAAAAAAAAAAAAAAAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////" +
+            "qygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4AACgAAAACAAAABP8ufTIuQgwAAEKcAABAwAAA1tbM////qv////8AAAAAAAAAAEBAAADJ////qcr/" +
+            "//+o/////wAAAAAAAAAAyf///6coAAAAAgAAAAT/0y8vKkAAAABCtAAAQUAAAELIAADW1sr///+m/////wAAAAAAAAAAyf///6UoAAAAAgAAAAT/GXbS" +
+            "KkAAAABCtAAAQUAAAELIAADW1sr///+k/////wAAAAAAAAAAyf///6MoAAAAAgAAAAT/OI48KkAAAABCtAAAQUAAAELIAADW1tbWy////6L/////AAAA" +
+            "BgAAAAIAAAAAEAAAAABCoAAAyf///6HK////oP////8AAAAAAAAAAMn///+fKAAAAAIAAAAE/8YoKCpBsAAAQxYAAEHwAABDHgAA1tbK////nv////8A" +
+            "AAAAAAAAAMn///+dKAAAAAIAAAAE//moJSpBsAAAQxYAAEHwAABDJgAA1tbK////nP////8AAAAAAAAAAMn///+bKAAAAAIAAAAE/wCDjypBsAAAQxYA" +
+            "AEHwAABDHgAA1tbW1oJ7AAAANgAAAA7/gAAKQtIAAEMoAAD/gAALAAAAAAAAAABC+gAAQxYAAP+AAAsAAAAAAAAAAEL6AABDKAAA/4AADyYAAAA2KAAA" +
+            "AAIAAAAE/2obmipC0gAAQxYAAEMCAABDKgAAgygAAAACAAAABP8hISFmAAAANwAAAAZDdXJ2ZWQ5AAAAN0LIAABDOQAAQSAAAEOHAAAAAAAAAQA=",
     )
 }

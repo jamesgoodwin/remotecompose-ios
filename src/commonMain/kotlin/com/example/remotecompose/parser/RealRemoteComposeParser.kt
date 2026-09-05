@@ -301,10 +301,20 @@ object RealRemoteComposeParser {
     private const val OP_LAYOUT_CUSTOM = 93
 
     /**
-     * `Operations.LAYOUT_IMAGE` — `writer.image(modifier, scaleType, bitmapId, alpha)` writes
-     * `[componentId:i32][animationId:i32][scaleType:i32][bitmapId:i32][alpha:f32]` (confirmed via
-     * `image(modifier, 3, 1, 0.75f)` decoding to exactly `[3, 1, 0.75]`). A leaf component — no
-     * `LAYOUT_CONTENT` children marker — closed by a single [OP_CONTAINER_END].
+     * `Operations.LAYOUT_IMAGE` — `writer.image(modifier, bitmapId, scaleType, alpha)` writes
+     * `[componentId:i32][animationId:i32][bitmapId:i32][scaleType:i32][alpha:f32]`. Real-bytes
+     * hex-diff of `image(modifier, 111, 222, 0.5f)` decoded to exactly
+     * `[componentId, -1, 111, 222, 0.5]` — `bitmapId` (the call's 2nd argument) precedes
+     * `scaleType` (its 3rd), the reverse of what an earlier pass over this opcode assumed (that
+     * pass's own `image(modifier, 3, 1, 0.75f)` test call happened to leave the swap
+     * undetectable, since neither `3` nor `1` stood out as identifiably "the bitmap id" or "the
+     * scale type" on inspection). A leaf component — no `LAYOUT_CONTENT` children marker — closed
+     * by a single [OP_CONTAINER_END]; unlike every other draw opcode, it carries no position/size
+     * of its own, so real rendering (see `OP_CONTAINER_END`'s `imageBitmapId` handling) depends on
+     * an explicit `MODIFIER_WIDTH`/`MODIFIER_HEIGHT` on the same modifier to know what rect to
+     * draw into — this renderer has no measure pass to size it from the bitmap's own dimensions
+     * or `scaleType` otherwise, so an image with no explicit size stays byte-consumed only, same
+     * as before this parser attempted real rendering.
      */
     private const val OP_LAYOUT_IMAGE = 234
 
@@ -718,6 +728,12 @@ object RealRemoteComposeParser {
             var glRotationZ: Float? = null
             var glTranslationX: Float? = null
             var glTranslationY: Float? = null
+            // Set by OP_LAYOUT_IMAGE on the frame it pushes for itself (a leaf, so this frame
+            // never gets any content of its own before its own OP_CONTAINER_END) — consumed there
+            // together with explicitWidthPx/explicitHeightPx from a MODIFIER_WIDTH/HEIGHT on the
+            // same modifier, since this opcode carries no position/size fields of its own.
+            var imageBitmapId: Int? = null
+            var imageAlpha: Float = 1f
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
@@ -1290,10 +1306,12 @@ object RealRemoteComposeParser {
                 OP_LAYOUT_IMAGE -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
-                    reader.readS32() // scaleType
-                    reader.readS32() // bitmapId
-                    reader.readFloat32() // alpha
+                    val bitmapId = reader.readS32()
+                    reader.readS32() // scaleType — no measure pass to apply FIT/CROP/etc. against
+                    val alpha = reader.readFloat32()
                     pushScope() // a leaf — no LAYOUT_CONTENT, just its own single CONTAINER_END
+                    scopeStack.last().imageBitmapId = bitmapId
+                    scopeStack.last().imageAlpha = alpha
                 }
 
                 OP_HAPTIC_FEEDBACK -> reader.readS32() // hapticId
@@ -1351,6 +1369,22 @@ object RealRemoteComposeParser {
                         }
                         if (frame.layoutAxis != null) {
                             arrangeChildren(frame)
+                        }
+                        // LAYOUT_IMAGE carries no position/size of its own, so real rendering only
+                        // happens when an explicit MODIFIER_WIDTH/HEIGHT on the same modifier gave
+                        // this frame a real box to draw into — the same real-vs-byte-consumed-only
+                        // gate MODIFIER_GRAPHICS_LAYER's scale/rotation use below, for the same
+                        // "no measure pass" reason. Drawn at this frame's own local origin (0,0),
+                        // same as every other leaf here that has no absolute position of its own
+                        // to inherit from anywhere but an enclosing MODIFIER_OFFSET/Translate.
+                        val imageBitmapId = frame.imageBitmapId
+                        val imageWidth = frame.explicitWidthPx
+                        val imageHeight = frame.explicitHeightPx
+                        if (imageBitmapId != null && imageWidth != null && imageHeight != null) {
+                            val wrapAlpha = frame.imageAlpha < 1f
+                            if (wrapAlpha) opcodes += Opcode.SaveLayerAlpha(frame.imageAlpha)
+                            opcodes += Opcode.DrawBitmap(imageBitmapId, 0f, 0f, imageWidth, imageHeight)
+                            if (wrapAlpha) opcodes += Opcode.MatrixRestore
                         }
                         // MODIFIER_GRAPHICS_LAYER's SCALE_X/SCALE_Y/ROTATION_Z/TRANSLATION_X/
                         // TRANSLATION_Y: wrap this frame's now-finished content (background
