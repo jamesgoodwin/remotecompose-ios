@@ -111,6 +111,10 @@ sealed interface Opcode {
      * @property colorArgb Text color, packed ARGB (kept packed rather than a resolved `Color` so
      *   this data class stays a plain value type; the execution engine unpacks it when building
      *   a `TextStyle`).
+     * @property substringStart When non-null (only `Operations.DRAW_TEXT_RUN` carries these —
+     *   plain `Operations.DRAW_TEXT_ANCHORED` always draws the whole pool entry), only the
+     *   `[substringStart, substringEnd)` slice of the resolved string is drawn, resolved at
+     *   render time so the pool entry itself stays shared rather than duplicated per opcode.
      */
     data class DrawText(
         val stringIndex: Int,
@@ -118,6 +122,8 @@ sealed interface Opcode {
         val y: Float,
         val fontSize: Float,
         val colorArgb: Int,
+        val substringStart: Int? = null,
+        val substringEnd: Int? = null,
     ) : Opcode
 
     /**

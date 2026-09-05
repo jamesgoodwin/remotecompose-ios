@@ -67,7 +67,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * *identical* raw `(22, 130)-(32, 140)` document coordinates — wrapped in a
  * `startCollapsibleColumn(RecordingModifier().spacedBy(3f), 0, 0)`/`endCollapsibleColumn`, so a
  * render showing them stacked without overlap proves real Column arrangement now covers this
- * shape-identical opcode pair too, not only plain `LAYOUT_COLUMN`/`LAYOUT_ROW`, and a
+ * shape-identical opcode pair too, not only plain `LAYOUT_COLUMN`/`LAYOUT_ROW`, the word "World"
+ * drawn via `writer.drawTextRun("Hello World", 6, 11, 0, 11, 36f, 136f, false)` — unlike
+ * `DRAW_TEXT_ON_CIRCLE`, the real `DrawText.paint()` *is* implemented, so only characters
+ * `[6, 11)` of the pool string rendering (not the whole "Hello World") is a real semantic effect,
+ * not just a byte-consumed field — and a
  * magenta rect drawn
  * oversized then clipped by a raw `writer.save()`/`writer.clipRect(190f, 41f, 205f, 51f)`/
  * `writer.restore()`, and a blue rect plus a separate green circle wrapped in a
@@ -153,14 +157,15 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "//V/FypDEQAAQiQAAEMYAABCOAAAg4KBQjQAAEMvAABCOAAAKAAAAAIAAAAE/2obmipDKAAAQiQAAEM3AABCTAAAg4InQz4AAEIkAABDTQAAQkwAACgA" +
             "AAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIOCgD8AAAAAAAAAKAAAAAIAAAAE/9hDFSpAAAAAQwIAAEGIAABDEQAAg+n///+s/////wAAAAAAAAAA" +
             "QEAAAMn///+ryv///6r/////AAAAAAAAAADJ////qSgAAAACAAAABP/CGFsqQbAAAEMCAABCAAAAQwwAANbWyv///6j/////AAAAAAAAAADJ////pygA" +
-            "AAACAAAABP97H6IqQbAAAEMCAABCAAAAQwwAANbWyv///6b/////AAAAAAAAAADJ////pSgAAAACAAAABP8wP58qQbAAAEMCAABCAAAAQwwAANbW1tbK" +
-            "////pP////8AAAAAAAAAADcAAAAAAAAAAAAAAAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////oygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4A" +
-            "ACgAAAACAAAABP8ufTIuQgwAAEKcAABAwAAA1tbM////ov////8AAAAAAAAAAEBAAADJ////ocr///+g/////wAAAAAAAAAAyf///58oAAAAAgAAAAT/" +
-            "0y8vKkAAAABCtAAAQUAAAELIAADW1sr///+e/////wAAAAAAAAAAyf///50oAAAAAgAAAAT/GXbSKkAAAABCtAAAQUAAAELIAADW1sr///+c/////wAA" +
-            "AAAAAAAAyf///5soAAAAAgAAAAT/OI48KkAAAABCtAAAQUAAAELIAADW1tbWy////5r/////AAAABgAAAAIAAAAAEAAAAABCoAAAyf///5nK////mP//" +
-            "//8AAAAAAAAAAMn///+XKAAAAAIAAAAE/8YoKCpBsAAAQxYAAEHwAABDHgAA1tbK////lv////8AAAAAAAAAAMn///+VKAAAAAIAAAAE//moJSpBsAAA" +
-            "QxYAAEHwAABDJgAA1tbK////lP////8AAAAAAAAAAMn///+TKAAAAAIAAAAE/wCDjypBsAAAQxYAAEHwAABDHgAA1tbW1oJ7AAAANgAAAA7/gAAKQtIA" +
-            "AEMoAAD/gAALAAAAAAAAAABC+gAAQxYAAP+AAAsAAAAAAAAAAEL6AABDKAAA/4AADyYAAAA2KAAAAAIAAAAE/2obmipC0gAAQxYAAEMCAABDKgAAgygA" +
-            "AAACAAAABP8hISFmAAAANwAAAAZDdXJ2ZWQ5AAAAN0LIAABDOQAAQSAAAEOHAAAAAAAAAQA=",
+            "AAACAAAABP97H6IqQbAAAEMCAABCAAAAQwwAANbWyv///6b/////AAAAAAAAAADJ////pSgAAAACAAAABP8wP58qQbAAAEMCAABCAAAAQwwAANbW1tYo" +
+            "AAAAAgAAAAT/ISEhZgAAADYAAAALSGVsbG8gV29ybGQrAAAANgAAAAYAAAALAAAAAAAAAAtCEAAAQwgAAADK////pP////8AAAAAAAAAADcAAAAAAAAA" +
+            "AAAAAAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////oygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4AACgAAAACAAAABP8ufTIuQgwAAEKcAABA" +
+            "wAAA1tbM////ov////8AAAAAAAAAAEBAAADJ////ocr///+g/////wAAAAAAAAAAyf///58oAAAAAgAAAAT/0y8vKkAAAABCtAAAQUAAAELIAADW1sr/" +
+            "//+e/////wAAAAAAAAAAyf///50oAAAAAgAAAAT/GXbSKkAAAABCtAAAQUAAAELIAADW1sr///+c/////wAAAAAAAAAAyf///5soAAAAAgAAAAT/OI48" +
+            "KkAAAABCtAAAQUAAAELIAADW1tbWy////5r/////AAAABgAAAAIAAAAAEAAAAABCoAAAyf///5nK////mP////8AAAAAAAAAAMn///+XKAAAAAIAAAAE" +
+            "/8YoKCpBsAAAQxYAAEHwAABDHgAA1tbK////lv////8AAAAAAAAAAMn///+VKAAAAAIAAAAE//moJSpBsAAAQxYAAEHwAABDJgAA1tbK////lP////8A" +
+            "AAAAAAAAAMn///+TKAAAAAIAAAAE/wCDjypBsAAAQxYAAEHwAABDHgAA1tbW1oJ7AAAANwAAAA7/gAAKQtIAAEMoAAD/gAALAAAAAAAAAABC+gAAQxYA" +
+            "AP+AAAsAAAAAAAAAAEL6AABDKAAA/4AADyYAAAA3KAAAAAIAAAAE/2obmipC0gAAQxYAAEMCAABDKgAAgygAAAACAAAABP8hISFmAAAAOAAAAAZDdXJ2" +
+            "ZWQ5AAAAOELIAABDOQAAQSAAAEOHAAAAAAAAAQA=",
     )
 }

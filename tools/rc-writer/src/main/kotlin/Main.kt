@@ -657,6 +657,14 @@ private fun buildCoverageSample() {
     writer.endBox()
     writer.endCollapsibleColumn()
 
+    // DRAW_TEXT_RUN: unlike DRAW_TEXT_ON_CIRCLE, the real DrawText.paint() *is* implemented
+    // (delegates to PaintContext.drawTextRun(...)), so this is real byte-coverage *and* a real
+    // semantic effect — only characters [6, 11) of "Hello World" ("World") should render, not
+    // the whole string, proving this parser actually applies the substring range rather than
+    // just byte-consuming it.
+    writer.getRcPaint().setColor(0xFF212121.toInt()).commit()
+    writer.drawTextRun("Hello World", 6, 11, 0, 11, 36f, 136f, false)
+
     writer.startBox(RecordingModifier().background(0xFFFF6F00.toInt()), 0, 0)
     writer.getRcPaint().setColor(0xFF1565C0.toInt()).commit()
     writer.drawRect(2f, 61f, 12f, 71f)

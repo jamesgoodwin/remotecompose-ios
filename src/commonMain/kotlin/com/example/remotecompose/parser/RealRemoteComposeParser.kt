@@ -83,6 +83,22 @@ object RealRemoteComposeParser {
     private const val OP_DRAW_TEXT_ANCHORED = 133
 
     /**
+     * `Operations.DRAW_TEXT_RUN` — `RemoteComposeWriter.drawTextRun(text, start, end,
+     * contextStart, contextEnd, x, y, rtl)` writes `[textId:i32][start:i32][end:i32]
+     * [contextStart:i32][contextEnd:i32][x:f32][y:f32][rtl:byte]` (source-confirmed via javap:
+     * `apply()`'s int/int/int/int/int/float/float/boolean parameter order matches the call's own
+     * argument order exactly, unlike `DRAW_BITMAP_INT`/`LAYOUT_IMAGE`'s field-order surprises).
+     * Unlike `DRAW_TEXT_ON_CIRCLE`, this op's real `DrawText.paint()` *is* implemented (delegates
+     * to `PaintContext.drawTextRun(...)`) — real byte-coverage *and* a real semantic effect: only
+     * the `[start, end)` substring of the referenced text-pool entry is drawn (modeled via
+     * [Opcode.DrawText]'s `substringStart`/`substringEnd`, resolved at render time so the pool
+     * entry itself stays shared rather than duplicated per opcode). `contextStart`/`contextEnd`
+     * (a wider range used only for bidi/shaping context around the drawn substring) and `rtl` are
+     * read to stay aligned but not modeled — this renderer has no bidi reordering to give them.
+     */
+    private const val OP_DRAW_TEXT_RUN = 43
+
+    /**
      * `Operations.DRAW_TEXT_ON_CIRCLE` — `RemoteComposeWriter.drawTextOnCircle(textId, centerX,
      * centerY, radius, startAngle, warpRadiusOffset, alignment, placement)` writes
      * `[textId:i32][centerX:f32][centerY:f32][radius:f32][startAngleDegrees:f32]
@@ -1085,6 +1101,26 @@ object RealRemoteComposeParser {
                     )
                 }
 
+                OP_DRAW_TEXT_RUN -> {
+                    val textId = reader.readS32()
+                    val start = reader.readS32()
+                    val end = reader.readS32()
+                    reader.readS32() // contextStart — bidi/shaping context only, not modeled
+                    reader.readS32() // contextEnd
+                    val x = reader.readFloat32()
+                    val y = reader.readFloat32()
+                    reader.readU8() // rtl — no bidi reordering to give it
+                    opcodes += Opcode.DrawText(
+                        stringIndex = textId,
+                        x = x,
+                        y = y,
+                        fontSize = DEFAULT_TEXT_SIZE_SP,
+                        colorArgb = currentColor.toArgb(),
+                        substringStart = start,
+                        substringEnd = end,
+                    )
+                }
+
                 OP_DRAW_TEXT_ANCHORED -> {
                     val textId = reader.readS32()
                     val x = reader.readFloat32()
@@ -1648,7 +1684,7 @@ object RealRemoteComposeParser {
                         "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
                         "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
-                        "ClipPath/DrawBitmapInt/DrawTextOnCircle/MatrixSkew)",
+                        "ClipPath/DrawBitmapInt/DrawTextOnCircle/MatrixSkew/DrawTextRun)",
                 )
             }
         }

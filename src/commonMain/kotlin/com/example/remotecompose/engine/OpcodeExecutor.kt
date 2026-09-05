@@ -175,12 +175,24 @@ object OpcodeExecutor {
                         )
                     }
 
-                    is Opcode.DrawText -> drawScope.drawText(
-                        textMeasurer = context.textMeasurer,
-                        text = context.document.strings[opcode.stringIndex],
-                        topLeft = Offset(opcode.x, opcode.y),
-                        style = TextStyle(fontSize = opcode.fontSize.sp, color = Color(opcode.colorArgb)),
-                    )
+                    is Opcode.DrawText -> {
+                        val fullText = context.document.strings[opcode.stringIndex]
+                        val start = opcode.substringStart
+                        val end = opcode.substringEnd
+                        val text = if (start != null && end != null) {
+                            val safeStart = start.coerceIn(0, fullText.length)
+                            val safeEnd = end.coerceIn(safeStart, fullText.length)
+                            fullText.substring(safeStart, safeEnd)
+                        } else {
+                            fullText
+                        }
+                        drawScope.drawText(
+                            textMeasurer = context.textMeasurer,
+                            text = text,
+                            topLeft = Offset(opcode.x, opcode.y),
+                            style = TextStyle(fontSize = opcode.fontSize.sp, color = Color(opcode.colorArgb)),
+                        )
+                    }
 
                     is Opcode.DrawBitmap -> {
                         val bitmap = context.document.bitmaps.get(opcode.bitmapIndex)
