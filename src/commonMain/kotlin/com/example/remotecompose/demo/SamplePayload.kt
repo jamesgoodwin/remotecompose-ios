@@ -59,7 +59,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * drawn after a raw `writer.save()`/`writer.translate(130f, 41f)`/`writer.restore()` (no modifier
  * involved — the document author's own top-level matrix ops), an amber rect drawn after a raw
  * `writer.save()`/`writer.scale(2f, 2f, 145f, 46f)`/`writer.restore()`, a purple rect drawn after a
- * raw `writer.save()`/`writer.rotate(45f, 175f, 46f)`/`writer.restore()`, and a magenta rect drawn
+ * raw `writer.save()`/`writer.rotate(45f, 175f, 46f)`/`writer.restore()`, a burnt-orange rect
+ * drawn after a raw `writer.save()`/`writer.skew(0.5f, 0f)`/`writer.restore()` that should read
+ * as a parallelogram leaning right (`skewX`/`skewY` are direct shear factors, the
+ * `android.graphics.Matrix.setSkew(kx, ky)` convention, not an angle like `ROTATION_Z`), and a
+ * magenta rect drawn
  * oversized then clipped by a raw `writer.save()`/`writer.clipRect(190f, 41f, 205f, 51f)`/
  * `writer.restore()`, and a blue rect plus a separate green circle wrapped in a
  * `startBox`/`endBox` carrying a `background(0xFFFF6F00)` modifier — with a gap between the two
@@ -142,13 +146,14 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "BD8AAAABQQAAAAEAAAACAAAAAwAAAATK////rv////8AAAAAAAAAAA4AAAADQ5YAAAAAAAFDlgAAAAAAAQAAAAAAAAAByf///60oAAAAAgAAAAT/XUA3" +
             "KkLcAABCJAAAQvoAAEJMAADW1oJ/QwIAAEIkAAAoAAAAAgAAAAT/AKzBKgAAAAAAAAAAQXAAAEEgAACDgn5AAAAAQAAAAEMRAABCOAAAKAAAAAIAAAAE" +
             "//V/FypDEQAAQiQAAEMYAABCOAAAg4KBQjQAAEMvAABCOAAAKAAAAAIAAAAE/2obmipDKAAAQiQAAEM3AABCTAAAg4InQz4AAEIkAABDTQAAQkwAACgA" +
-            "AAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIPK////rP////8AAAAAAAAAADcAAAAAAAAAAAAAAAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////" +
-            "qygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4AACgAAAACAAAABP8ufTIuQgwAAEKcAABAwAAA1tbM////qv////8AAAAAAAAAAEBAAADJ////qcr/" +
-            "//+o/////wAAAAAAAAAAyf///6coAAAAAgAAAAT/0y8vKkAAAABCtAAAQUAAAELIAADW1sr///+m/////wAAAAAAAAAAyf///6UoAAAAAgAAAAT/GXbS" +
-            "KkAAAABCtAAAQUAAAELIAADW1sr///+k/////wAAAAAAAAAAyf///6MoAAAAAgAAAAT/OI48KkAAAABCtAAAQUAAAELIAADW1tbWy////6L/////AAAA" +
-            "BgAAAAIAAAAAEAAAAABCoAAAyf///6HK////oP////8AAAAAAAAAAMn///+fKAAAAAIAAAAE/8YoKCpBsAAAQxYAAEHwAABDHgAA1tbK////nv////8A" +
-            "AAAAAAAAAMn///+dKAAAAAIAAAAE//moJSpBsAAAQxYAAEHwAABDJgAA1tbK////nP////8AAAAAAAAAAMn///+bKAAAAAIAAAAE/wCDjypBsAAAQxYA" +
-            "AEHwAABDHgAA1tbW1oJ7AAAANgAAAA7/gAAKQtIAAEMoAAD/gAALAAAAAAAAAABC+gAAQxYAAP+AAAsAAAAAAAAAAEL6AABDKAAA/4AADyYAAAA2KAAA" +
-            "AAIAAAAE/2obmipC0gAAQxYAAEMCAABDKgAAgygAAAACAAAABP8hISFmAAAANwAAAAZDdXJ2ZWQ5AAAAN0LIAABDOQAAQSAAAEOHAAAAAAAAAQA=",
+            "AAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIOCgD8AAAAAAAAAKAAAAAIAAAAE/9hDFSpAAAAAQwIAAEGIAABDEQAAg8r///+s/////wAAAAAAAAAA" +
+            "NwAAAAAAAAAAAAAAAAAAAAA/gAAAPt7e3wAAAAA/gAAAAAAAAMn///+rKAAAAAIAAAAE/xVlwCpAAAAAQnQAAEFAAABCjgAAKAAAAAIAAAAE/y59Mi5C" +
+            "DAAAQpwAAEDAAADW1sz///+q/////wAAAAAAAAAAQEAAAMn///+pyv///6j/////AAAAAAAAAADJ////pygAAAACAAAABP/TLy8qQAAAAEK0AABBQAAA" +
+            "QsgAANbWyv///6b/////AAAAAAAAAADJ////pSgAAAACAAAABP8ZdtIqQAAAAEK0AABBQAAAQsgAANbWyv///6T/////AAAAAAAAAADJ////oygAAAAC" +
+            "AAAABP84jjwqQAAAAEK0AABBQAAAQsgAANbW1tbL////ov////8AAAAGAAAAAgAAAAAQAAAAAEKgAADJ////ocr///+g/////wAAAAAAAAAAyf///58o" +
+            "AAAAAgAAAAT/xigoKkGwAABDFgAAQfAAAEMeAADW1sr///+e/////wAAAAAAAAAAyf///50oAAAAAgAAAAT/+aglKkGwAABDFgAAQfAAAEMmAADW1sr/" +
+            "//+c/////wAAAAAAAAAAyf///5soAAAAAgAAAAT/AIOPKkGwAABDFgAAQfAAAEMeAADW1tbWgnsAAAA2AAAADv+AAApC0gAAQygAAP+AAAsAAAAAAAAA" +
+            "AEL6AABDFgAA/4AACwAAAAAAAAAAQvoAAEMoAAD/gAAPJgAAADYoAAAAAgAAAAT/ahuaKkLSAABDFgAAQwIAAEMqAACDKAAAAAIAAAAE/yEhIWYAAAA3" +
+            "AAAABkN1cnZlZDkAAAA3QsgAAEM5AABBIAAAQ4cAAAAAAAABAA==",
     )
 }

@@ -38,6 +38,13 @@ sealed interface Opcode {
     /** Rotates the coordinate space by [degrees] about ([pivotX], [pivotY]). */
     data class Rotate(val degrees: Float, val pivotX: Float, val pivotY: Float) : Opcode
 
+    /**
+     * Shears the coordinate space: `x' = x + skewX*y`, `y' = skewY*x + y` — the same convention
+     * `android.graphics.Matrix.setSkew(kx, ky)` uses. Unlike [Scale]/[Rotate], the real
+     * `MatrixSkew` operation carries no pivot field at all.
+     */
+    data class Skew(val skewX: Float, val skewY: Float) : Opcode
+
     /** Intersects the current clip with an axis-aligned rectangle. */
     data class ClipRect(val left: Float, val top: Float, val right: Float, val bottom: Float) : Opcode
 

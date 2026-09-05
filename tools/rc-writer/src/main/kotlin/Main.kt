@@ -627,6 +627,15 @@ private fun buildCoverageSample() {
     writer.drawRect(185f, 36f, 210f, 56f)
     writer.restore()
 
+    // MATRIX_SKEW: skewX/skewY are direct shear factors (android.graphics.Matrix.setSkew
+    // convention), not an angle, unlike ROTATION_Z — a skewX=0.5 square should read as a
+    // parallelogram leaning right, its top edge shifted +0.5*height from its bottom edge.
+    writer.save()
+    writer.skew(0.5f, 0f)
+    writer.getRcPaint().setColor(0xFFD84315.toInt()).commit()
+    writer.drawRect(2f, 130f, 17f, 145f)
+    writer.restore()
+
     writer.startBox(RecordingModifier().background(0xFFFF6F00.toInt()), 0, 0)
     writer.getRcPaint().setColor(0xFF1565C0.toInt()).commit()
     writer.drawRect(2f, 61f, 12f, 71f)

@@ -638,6 +638,18 @@ object RealRemoteComposeParser {
     private const val OP_MATRIX_ROTATE = 129
 
     /**
+     * `Operations.MATRIX_SKEW` — `writer.skew(skewX, skewY)` writes `[skewX:f32][skewY:f32]`, the
+     * same raw top-level document-author matrix op as [OP_MATRIX_TRANSLATE]/[OP_MATRIX_SCALE]/
+     * [OP_MATRIX_ROTATE] (its own real `MatrixSkew.write()` just delegates straight to a shared
+     * `DrawBase2` two-float writer with no pivot field — unlike scale/rotate, this real op has no
+     * pivot concept at all). `skewX`/`skewY` are direct shear factors (`x' = x + skewX*y`,
+     * `y' = skewY*x + y`), the same convention `android.graphics.Matrix.setSkew(kx, ky)` uses, not
+     * an angle — `DrawTextOnCircle`'s `startAngle` is the only field this real SDK's own
+     * documentation ever calls out as being "in degrees"; this one carries no such note.
+     */
+    private const val OP_MATRIX_SKEW = 128
+
+    /**
      * `Operations.CLIP_RECT` — the top-level draw-context clip (distinct from
      * [OP_MODIFIER_CLIP_RECT]'s modifier-attached one): `[left:f32][top:f32][right:f32][bottom:f32]`,
      * confirmed via `writer.clipRect(190f,41f,205f,51f)` decoding to exactly those four floats.
@@ -1597,6 +1609,12 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.Rotate(degrees, pivotX, pivotY)
                 }
 
+                OP_MATRIX_SKEW -> {
+                    val skewX = reader.readFloat32()
+                    val skewY = reader.readFloat32()
+                    opcodes += Opcode.Skew(skewX, skewY)
+                }
+
                 OP_CLIP_RECT -> {
                     val left = reader.readFloat32()
                     val top = reader.readFloat32()
@@ -1623,7 +1641,7 @@ object RealRemoteComposeParser {
                         "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
                         "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
-                        "ClipPath/DrawBitmapInt/DrawTextOnCircle)",
+                        "ClipPath/DrawBitmapInt/DrawTextOnCircle/MatrixSkew)",
                 )
             }
         }

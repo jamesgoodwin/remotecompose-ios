@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -90,6 +91,13 @@ object OpcodeExecutor {
                     is Opcode.Rotate -> transform.rotate(
                         degrees = opcode.degrees,
                         pivot = Offset(opcode.pivotX, opcode.pivotY),
+                    )
+
+                    is Opcode.Skew -> transform.transform(
+                        Matrix().apply {
+                            this[0, 1] = opcode.skewX
+                            this[1, 0] = opcode.skewY
+                        },
                     )
 
                     is Opcode.ClipRect -> transform.clipRect(
