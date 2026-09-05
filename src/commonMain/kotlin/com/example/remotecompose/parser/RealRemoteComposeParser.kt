@@ -579,7 +579,12 @@ object RealRemoteComposeParser {
      * `Operations.MODIFIER_WIDTH_IN`/`MODIFIER_HEIGHT_IN` — `RecordingModifier.widthIn(min, max)`/
      * `heightIn(min, max)` write `[min:f32][max:f32]`, the same two-float shape as
      * [OP_MODIFIER_WIDTH]/[OP_MODIFIER_HEIGHT] (which instead carry a leading mode int), confirmed
-     * via `widthIn(10f, 20f)` decoding to exactly `[10.0, 20.0]`.
+     * via `widthIn(10f, 20f)` decoding to exactly `[10.0, 20.0]`. Gets a real effect at
+     * `OP_CONTAINER_END` (see `ScopeFrame.widthInMin`'s KDoc): resolved against this frame's own
+     * inferred content bounds — narrower than `min` raises the effective declared size (visible
+     * to a parent Row/Column's arrangement the same way an explicit `width()`/`height()` would
+     * be), wider than `max` clips the overflow (implying `MODIFIER_CLIP_RECT`'s effect without a
+     * separate `clip(...)` call, matching real Compose).
      */
     private const val OP_MODIFIER_WIDTH_IN = 231
     private const val OP_MODIFIER_HEIGHT_IN = 232
@@ -956,6 +961,15 @@ object RealRemoteComposeParser {
             // explicit MODIFIER_WIDTH/HEIGHT smaller than its natural content — see
             // OP_CONTAINER_END's clip handling.
             var hasClipRect: Boolean = false
+            // Set by OP_MODIFIER_WIDTH_IN/OP_MODIFIER_HEIGHT_IN; resolved against this frame's own
+            // contentBounds() at OP_CONTAINER_END (real Compose constrains to a *measured* size
+            // this parser doesn't have) into explicitWidthPx/explicitHeightPx when natural content
+            // actually falls outside the range — narrower than [min, max] raises it, wider clips
+            // it (widthIn/heightIn imply their own clip, no separate MODIFIER_CLIP_RECT needed).
+            var widthInMin: Float? = null
+            var widthInMax: Float? = null
+            var heightInMin: Float? = null
+            var heightInMax: Float? = null
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
@@ -1785,6 +1799,40 @@ object RealRemoteComposeParser {
                         }
                         opcodes.addAll(frame.cleanupOpcodes)
                         if (transformWrapped) opcodes += Opcode.MatrixRestore
+                        // MODIFIER_WIDTH_IN/MODIFIER_HEIGHT_IN: resolve against this frame's own
+                        // inferred content bounds now that its content is finished — narrower than
+                        // min raises the effective declared size (visible to a parent Row/Column's
+                        // arrangement below, the same as an explicit width()/height() would be);
+                        // wider than max clips it, the same real "cut off the overflow" effect
+                        // MODIFIER_CLIP_RECT gets, without a document needing a separate clip(...)
+                        // call — real Compose's widthIn/heightIn imply their own clip. Only applied
+                        // when no exact width()/height() already set explicitWidthPx/HeightPx,
+                        // since that's a stronger, unambiguous declaration.
+                        var clipImpliedByRangeConstraint = false
+                        val widthInMin = frame.widthInMin
+                        val widthInMax = frame.widthInMax
+                        if ((widthInMin != null || widthInMax != null) && frame.explicitWidthPx == null) {
+                            contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
+                                val naturalWidth = bounds[2] - bounds[0]
+                                val clamped = naturalWidth.coerceIn(widthInMin ?: 0f, widthInMax ?: Float.MAX_VALUE)
+                                if (clamped != naturalWidth) {
+                                    frame.explicitWidthPx = clamped
+                                    if (widthInMax != null && naturalWidth > widthInMax) clipImpliedByRangeConstraint = true
+                                }
+                            }
+                        }
+                        val heightInMin = frame.heightInMin
+                        val heightInMax = frame.heightInMax
+                        if ((heightInMin != null || heightInMax != null) && frame.explicitHeightPx == null) {
+                            contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
+                                val naturalHeight = bounds[3] - bounds[1]
+                                val clamped = naturalHeight.coerceIn(heightInMin ?: 0f, heightInMax ?: Float.MAX_VALUE)
+                                if (clamped != naturalHeight) {
+                                    frame.explicitHeightPx = clamped
+                                    if (heightInMax != null && naturalHeight > heightInMax) clipImpliedByRangeConstraint = true
+                                }
+                            }
+                        }
                         // MODIFIER_CLIP_RECT/MODIFIER_ROUNDED_CLIP_RECT: real only when this frame
                         // also has an explicit width/height smaller than its natural content —
                         // clipping to the *inferred* (natural) bounds alone would be a no-op, since
@@ -1794,7 +1842,9 @@ object RealRemoteComposeParser {
                         // same space its declared width/height is measured in) — a real "cut off
                         // the overflow" effect, not just a byte-skip.
                         var clipWrapped = false
-                        if (frame.hasClipRect && (frame.explicitWidthPx != null || frame.explicitHeightPx != null)) {
+                        if ((frame.hasClipRect || clipImpliedByRangeConstraint) &&
+                            (frame.explicitWidthPx != null || frame.explicitHeightPx != null)
+                        ) {
                             contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
                                 val clipRight = frame.explicitWidthPx?.let { bounds[0] + it } ?: bounds[2]
                                 val clipBottom = frame.explicitHeightPx?.let { bounds[1] + it } ?: bounds[3]
@@ -1956,8 +2006,16 @@ object RealRemoteComposeParser {
                     pushScope() // no payload — opens a nested action list, closed by its own CONTAINER_END
 
                 OP_MODIFIER_WIDTH_IN, OP_MODIFIER_HEIGHT_IN -> {
-                    reader.readFloat32() // min
-                    reader.readFloat32() // max
+                    val min = reader.readFloat32()
+                    val max = reader.readFloat32()
+                    val frame = scopeStack.lastOrNull()
+                    if (opId == OP_MODIFIER_WIDTH_IN) {
+                        frame?.widthInMin = min
+                        frame?.widthInMax = max
+                    } else {
+                        frame?.heightInMin = min
+                        frame?.heightInMax = max
+                    }
                 }
 
                 OP_MODIFIER_COLLAPSIBLE_PRIORITY -> {

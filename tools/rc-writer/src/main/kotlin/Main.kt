@@ -446,6 +446,17 @@ private fun buildCoverageSample() {
     writer.drawRect(74f, 15f, 89f, 25f)
     writer.endBox()
 
+    // MODIFIER_WIDTH_IN real-effect proof: a 30-wide child inside widthIn(5f, 15f) — its natural
+    // width (30) exceeds max (15), so this parser should clip it down to exactly 15, the same
+    // real "cut off the overflow" effect MODIFIER_CLIP_RECT gets, without a separate clip(...)
+    // call — matching real Compose's widthIn/heightIn semantics.
+    writer.startBox(RecordingModifier().widthIn(5f, 15f), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF827717.toInt())
+        .commit()
+    writer.drawRect(95f, 90f, 125f, 100f)
+    writer.endBox()
+
     writer.startBox(RecordingModifier().collapsiblePriority(0, 2f), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF546E7A.toInt())
