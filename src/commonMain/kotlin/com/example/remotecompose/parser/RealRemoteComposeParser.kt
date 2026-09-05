@@ -436,7 +436,9 @@ object RealRemoteComposeParser {
      * container's children inward (the same mechanism [OP_MODIFIER_OFFSET] uses); all four
      * expand a sibling `MODIFIER_BACKGROUND`'s inferred rect back out, so the background covers
      * this container's full un-padded box instead of just the inset children `contentBounds()`
-     * alone would measure.
+     * alone would measure. Each field is also resolved through `resolveFloat` first, so a document
+     * that passes a `RemoteComposeWriter.addFloatConstant(...)` reference here (rather than a
+     * literal) still gets a real, correct inset instead of a `NaN` one — see [OP_DATA_FLOAT].
      */
     private const val OP_MODIFIER_PADDING = 58
 
@@ -464,11 +466,11 @@ object RealRemoteComposeParser {
      * itself but a *NaN-tagged reference* to it (`Float.fromBits(id or -8388608)`, i.e. a NaN or
      * -Infinity bit pattern with `id` packed into the low 22 mantissa bits) — the same
      * `idFromNan(rawBits and 0x3FFFFF)` scheme this real SDK uses throughout for any field this
-     * parser already reads as a plain literal float assuming a document never actually resolves
-     * it dynamically (e.g. `DRAW_TEXT_ON_CIRCLE`'s `warpRadiusOffset`, `MODIFIER_PADDING`'s
-     * fields). [floatPool] exists so a future pass can resolve those against it instead of just
-     * assuming a literal; this pass only registers it, matching [OP_COLOR_CONSTANT]'s own
-     * byte-coverage-first scope before it was wired into [OP_MODIFIER_BORDER].
+     * parser might otherwise read as a plain literal float. See `resolveFloat` (defined alongside
+     * [floatPool]): [OP_MODIFIER_PADDING]'s fields resolve against it now, so a document passing
+     * one of these references there gets its real registered value instead of silently decoding
+     * as `NaN` and corrupting the translate it drives. Other still-literal-only fields (e.g.
+     * `DRAW_TEXT_ON_CIRCLE`'s `warpRadiusOffset`) can adopt the same helper as they're revisited.
      */
     private const val OP_DATA_FLOAT = 80
 
@@ -801,6 +803,23 @@ object RealRemoteComposeParser {
         val colorPool = mutableMapOf<Int, Color>()
         val floatPool = mutableMapOf<Int, Float>()
         val opcodes = mutableListOf<Opcode>()
+
+        /**
+         * Resolves a raw wire float that may be a NaN-tagged [floatPool] reference (the
+         * `Utils.asNan(id)`/`idFromNan(value)` scheme — see [OP_DATA_FLOAT]'s KDoc) rather than a
+         * literal value: real Compose lets a document write `RemoteComposeWriter
+         * .addFloatConstant(value)`'s returned reference anywhere a plain float field is expected,
+         * so a field this parser previously always read as a literal would decode as `NaN` (and
+         * corrupt whatever math used it — e.g. a `Translate` by `NaN` renders nothing at all)
+         * whenever a document actually exercises that path. Falls back to the raw value itself
+         * when it isn't NaN, or when the referenced id was never registered by a prior
+         * [OP_DATA_FLOAT].
+         */
+        fun resolveFloat(raw: Float): Float {
+            if (!raw.isNaN()) return raw
+            val id = raw.toRawBits() and 0x3FFFFF
+            return floatPool[id] ?: raw
+        }
 
         // Every real container/action-list scope (LAYOUT_BOX/COLUMN/ROW/etc's own scope, the
         // LAYOUT_CONTENT children scope, LAYOUT_CANVAS_CONTENT, and MODIFIER_CLICK/MULTI_CLICK/
@@ -1738,10 +1757,10 @@ object RealRemoteComposeParser {
                     // background rect back out to cover the full un-padded box, matching the
                     // classic "colored margin around padded content" look real Compose gives
                     // `Modifier.background(color).padding(...)`.
-                    val left = reader.readFloat32()
-                    val top = reader.readFloat32()
-                    val right = reader.readFloat32()
-                    val bottom = reader.readFloat32()
+                    val left = resolveFloat(reader.readFloat32())
+                    val top = resolveFloat(reader.readFloat32())
+                    val right = resolveFloat(reader.readFloat32())
+                    val bottom = resolveFloat(reader.readFloat32())
                     val frame = scopeStack.lastOrNull()
                     frame?.paddingLeft = left
                     frame?.paddingTop = top

@@ -653,12 +653,19 @@ private fun buildCoverageSample() {
     val imageBitmapId = writer.storeBitmap(imageBitmap)
     writer.image(RecordingModifier().width(16f).height(16f), imageBitmapId, RemoteComposeWriter.IMAGE_SCALE_FIT, 0.8f)
 
-    // DATA_FLOAT: registers a real value into a float pool, the same real-value-pool pattern
-    // COLOR_CONSTANT already established — not yet resolved anywhere a document might reference
-    // it dynamically (this parser has no general NaN-tagged-reference resolution pass yet), so
-    // purely byte-coverage for now, same as COLOR_CONSTANT's own scope before it was wired into
-    // MODIFIER_BORDER.
-    writer.addFloatConstant(42f)
+    // DATA_FLOAT + resolveFloat: addFloatConstant(...) registers a real value in a float pool
+    // then returns a NaN-tagged *reference* to it, not the literal value — passing that reference
+    // straight into padding(...) (as real documents can) means the parser must resolve it back to
+    // 6.0 through the float pool, or this child would decode a NaN inset and disappear/render
+    // garbage. The teal child should still shift right by exactly 6, the same as a literal
+    // padding(6f, 0f, 0f, 0f) would, proving the resolution actually happened.
+    val paddingRef = writer.addFloatConstant(6f)
+    writer.startBox(RecordingModifier().padding(paddingRef, 0f, 0f, 0f), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF00897B.toInt())
+        .commit()
+    writer.drawRect(40f, 90f, 55f, 100f)
+    writer.endBox()
 
     writer.performHaptic(4)
     writer.setTheme(1)
