@@ -599,6 +599,22 @@ private fun buildCoverageSample() {
     writer.drawRect(85f, 61f, 93f, 69f)
     writer.endBox()
 
+    // GraphicsLayerModifierOperation.SHAPE=20/SHAPE_CIRCLE=2: a solid 16x16 square with a
+    // SHAPE_CIRCLE-clipped graphics layer should render as a circle inscribed in that square —
+    // corners visibly cut off against whatever's behind, the same real quarter-round-cut proof
+    // MODIFIER_BACKGROUND's own shapeType=CIRCLE test uses, but reached through the reduced
+    // GraphicsLayerModifier attribute API this time (no separate boolean "clip" flag exists in
+    // this wire format — SHAPE itself is the only way to express clip intent here) instead of a
+    // MODIFIER_BACKGROUND fill.
+    val graphicsLayerShapeCircle = GraphicsLayerModifier()
+    graphicsLayerShapeCircle.setIntAttribute(20, 2) // SHAPE = SHAPE_CIRCLE
+    writer.startBox(RecordingModifier().then(graphicsLayerShapeCircle), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF5D4037.toInt())
+        .commit()
+    writer.drawRect(2f, 170f, 18f, 186f)
+    writer.endBox()
+
     writer.startBox(RecordingModifier().then(WidthInModifier(1, 5f, 40f)), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF4527A0.toInt())

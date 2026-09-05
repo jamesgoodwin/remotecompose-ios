@@ -746,6 +746,23 @@ object RealRemoteComposeParser {
     private const val GRAPHICS_LAYER_TRANSFORM_ORIGIN_X_TAG = 5 or 0x400
     private const val GRAPHICS_LAYER_TRANSFORM_ORIGIN_Y_TAG = 6 or 0x400
 
+    // `GraphicsLayerModifierOperation.SHAPE`/`SHAPE_RADIUS` (`= 20`/`= 21`, source-confirmed via
+    // javap) — SHAPE is int-valued (no `0x400` float bit: `0`=SHAPE_RECT, `1`=SHAPE_ROUND_RECT,
+    // `2`=SHAPE_CIRCLE, same constants javap-confirmed on the same class), SHAPE_RADIUS is
+    // float-valued. Standard Compose `GraphicsLayerScope.shape`/`.clip` semantics: a non-rect
+    // shape clips this layer's own rendered content to it. This reduced wire API exposes no
+    // separate boolean "clip" flag the way real Compose's full API does — SHAPE is the only way
+    // this format can express clip intent at all, so a non-RECT value is trusted to mean "clip to
+    // this shape" unconditionally. Applied at OP_CONTAINER_END as an innermost ClipPath wrap
+    // (nested *inside* the SCALE/ROTATION_Z/TRANSLATION transform-wrap above, since real Compose
+    // clips a layer's own local content before transforming the whole clipped result) built from
+    // the same quadratic-corner [roundedRectPath] approximation [OP_MODIFIER_ROUNDED_CLIP_RECT]
+    // uses — all 4 corners at `SHAPE_RADIUS` for SHAPE_ROUND_RECT, at half this box's smaller
+    // dimension (an approximately-circular rounded rect, `roundedRectPath` already clamps radii to
+    // that same maximum) for SHAPE_CIRCLE.
+    private const val GRAPHICS_LAYER_SHAPE_TAG = 20
+    private const val GRAPHICS_LAYER_SHAPE_RADIUS_TAG = 21 or 0x400
+
     // `RowLayout`/`ColumnLayout`'s shared positioning-mode ordinals (source-confirmed identical in
     // both classes) — the raw ints `horizontalPositioning`/`verticalPositioning` carry. TOP/BOTTOM
     // are only meaningful on Row's verticalPositioning (cross axis); START/END are only meaningful
@@ -990,6 +1007,12 @@ object RealRemoteComposeParser {
             // the exact pivot every scale/rotation use before this was hardcoded to.
             var glTransformOriginX: Float? = null
             var glTransformOriginY: Float? = null
+            // Set by OP_MODIFIER_GRAPHICS_LAYER's SHAPE/SHAPE_RADIUS. null (or SHAPE_RECT/0)
+            // means no real clip; SHAPE_ROUND_RECT(1)/SHAPE_CIRCLE(2) clip this layer's own
+            // content at OP_CONTAINER_END to a roundedRectPath built from this box's own inferred
+            // bounds, nested innermost of the SCALE/ROTATION_Z/TRANSLATION transform-wrap.
+            var glShapeType: Int? = null
+            var glShapeRadius: Float = 0f
             // Set by OP_LAYOUT_IMAGE on the frame it pushes for itself (a leaf, so this frame
             // never gets any content of its own before its own OP_CONTAINER_END) — consumed there
             // together with explicitWidthPx/explicitHeightPx from a MODIFIER_WIDTH/HEIGHT on the
@@ -1865,6 +1888,36 @@ object RealRemoteComposeParser {
                             opcodes += Opcode.DrawBitmap(imageBitmapId, 0f, 0f, imageWidth, imageHeight)
                             if (wrapAlpha) opcodes += Opcode.MatrixRestore
                         }
+                        // MODIFIER_GRAPHICS_LAYER's SHAPE/SHAPE_RADIUS: a real clip, nested
+                        // *innermost* (inserted at frame.startIndex first, so the transform-wrap
+                        // below — inserted at the same index afterward — ends up outside it),
+                        // matching real Compose's own order: a layer clips its own local content
+                        // before the whole clipped result is scaled/rotated/translated as a unit.
+                        var shapeClipWrapped = false
+                        val shapeType = frame.glShapeType
+                        if (shapeType != null && shapeType != 0) {
+                            contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
+                                val radius = if (shapeType == 2) {
+                                    minOf(bounds[2] - bounds[0], bounds[3] - bounds[1]) / 2f
+                                } else {
+                                    frame.glShapeRadius
+                                }
+                                opcodes.addAll(
+                                    frame.startIndex,
+                                    listOf(
+                                        Opcode.MatrixSave,
+                                        Opcode.ClipPath(
+                                            roundedRectPath(
+                                                bounds[0], bounds[1], bounds[2], bounds[3],
+                                                radius, radius, radius, radius,
+                                            ),
+                                        ),
+                                    ),
+                                )
+                                shapeClipWrapped = true
+                            }
+                        }
+                        if (shapeClipWrapped) opcodes += Opcode.MatrixRestore
                         // MODIFIER_GRAPHICS_LAYER's SCALE_X/SCALE_Y/ROTATION_Z/TRANSLATION_X/
                         // TRANSLATION_Y: wrap this frame's now-finished content (background
                         // included, since a real graphicsLayer transform applies to the whole
@@ -2192,12 +2245,12 @@ object RealRemoteComposeParser {
                     // Real semantic effect for ALPHA (opens a real compositing layer around this
                     // container's children, closed by a MatrixRestore queued on this container's
                     // own scope — the same mechanism MODIFIER_OFFSET/MODIFIER_VISIBILITY use),
-                    // SCALE_X/SCALE_Y/ROTATION_Z/TRANSLATION_X/TRANSLATION_Y, and
-                    // TRANSFORM_ORIGIN_X/_Y (stashed on this container's own [ScopeFrame], applied
-                    // at its OP_CONTAINER_END once a real pivot can be inferred — see the frame's
-                    // `glScaleX`/`glTransformOriginX` etc. KDoc). Every other attribute (shadow/
-                    // blur/camera distance/shape/etc.) is still just byte-consumed, since those
-                    // have no equivalent among this renderer's Opcodes.
+                    // SCALE_X/SCALE_Y/ROTATION_Z/TRANSLATION_X/TRANSLATION_Y, TRANSFORM_ORIGIN_X/_Y,
+                    // and SHAPE/SHAPE_RADIUS (all stashed on this container's own [ScopeFrame],
+                    // applied at its OP_CONTAINER_END once real bounds/a real pivot can be inferred
+                    // — see the frame's `glScaleX`/`glTransformOriginX`/`glShapeType` etc. KDoc).
+                    // Every other attribute (shadow/blur/camera distance/etc.) is still just
+                    // byte-consumed, since those have no equivalent among this renderer's Opcodes.
                     val count = reader.readS32()
                     var alpha: Float? = null
                     repeat(count) {
@@ -2212,6 +2265,8 @@ object RealRemoteComposeParser {
                             GRAPHICS_LAYER_TRANSLATION_Y_TAG -> scopeStack.lastOrNull()?.glTranslationY = Float.fromBits(rawValue)
                             GRAPHICS_LAYER_TRANSFORM_ORIGIN_X_TAG -> scopeStack.lastOrNull()?.glTransformOriginX = Float.fromBits(rawValue)
                             GRAPHICS_LAYER_TRANSFORM_ORIGIN_Y_TAG -> scopeStack.lastOrNull()?.glTransformOriginY = Float.fromBits(rawValue)
+                            GRAPHICS_LAYER_SHAPE_TAG -> scopeStack.lastOrNull()?.glShapeType = rawValue // int, not bit-reinterpreted
+                            GRAPHICS_LAYER_SHAPE_RADIUS_TAG -> scopeStack.lastOrNull()?.glShapeRadius = Float.fromBits(rawValue)
                         }
                     }
                     alpha?.let {
