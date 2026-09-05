@@ -244,6 +244,27 @@ object RealRemoteComposeParser {
     private const val OP_DRAW_BITMAP_INT = 66
 
     /**
+     * `Operations.DRAW_BITMAP_SCALED` — writes `[imageId:i32][srcLeft:f32(NaN-taggable)]
+     * [srcTop:f32(NaN-taggable)][srcRight:f32(NaN-taggable)][srcBottom:f32(NaN-taggable)]
+     * [dstLeft:f32(NaN-taggable)][dstTop:f32(NaN-taggable)][dstRight:f32(NaN-taggable)]
+     * [dstBottom:f32(NaN-taggable)][scaleType:i32][scaleFactor:f32(NaN-taggable)]
+     * [contentDescriptionId:i32]` (source-confirmed via javap on the real
+     * `DrawBitmapScaled.read()`/`paint()` — its own `documentation()` call independently confirms
+     * every field name/order too). Unlike [OP_LAYOUT_IMAGE] (which always samples a bitmap's own
+     * *natural* PNG size), this op declares an explicit *source* sub-rect to sample — real
+     * `ImageScaling.setup()`'s scaling math (already ported once for [OP_LAYOUT_IMAGE] as
+     * [imageScaleDstRect]) is identical in shape, just fed this source rect's own declared
+     * width/height instead of a bitmap's intrinsic size, so that same helper is reused verbatim
+     * here for `SCALE_NONE`(`0`)/`SCALE_INSIDE`(`1`)/`SCALE_FIT`(`4`)/`SCALE_CROP`(`5`); real
+     * `paint()` *always* clips to the declared destination rect regardless of scale type (unlike
+     * [OP_LAYOUT_IMAGE]'s conditional clip), so this always wraps its `Opcode.DrawBitmap` in a
+     * `ClipRect`. `SCALE_FILL_WIDTH`(`2`)/`SCALE_FILL_HEIGHT`(`3`)/`SCALE_FIXED_SCALE`(`7`, an
+     * explicit `scaleFactor` zoom this parser doesn't model) fall back to the same stretch-to-fill
+     * behavior every other unhandled scale type already falls back to elsewhere in this codebase.
+     */
+    private const val OP_DRAW_BITMAP_SCALED = 149
+
+    /**
      * `Operations.CLICK_AREA` — `addClickArea(actionId, contentDescription, left, top, right,
      * bottom, metadata)` writes `[actionId:i32][contentDescriptionTextId:i32][left:f32][top:f32]
      * [right:f32][bottom:f32][metadataTextId:i32]`. `metadata` is exactly the target-URL string
@@ -1948,6 +1969,36 @@ object RealRemoteComposeParser {
                         bitmapId, dstLeft, dstTop, dstRight, dstBottom,
                         srcLeft, srcTop, srcRight, srcBottom,
                     )
+                }
+
+                OP_DRAW_BITMAP_SCALED -> {
+                    val bitmapId = reader.readS32()
+                    val srcLeft = resolveFloat(reader.readFloat32())
+                    val srcTop = resolveFloat(reader.readFloat32())
+                    val srcRight = resolveFloat(reader.readFloat32())
+                    val srcBottom = resolveFloat(reader.readFloat32())
+                    val dstLeft = resolveFloat(reader.readFloat32())
+                    val dstTop = resolveFloat(reader.readFloat32())
+                    val dstRight = resolveFloat(reader.readFloat32())
+                    val dstBottom = resolveFloat(reader.readFloat32())
+                    val scaleType = reader.readS32()
+                    resolveFloat(reader.readFloat32()) // scaleFactor — SCALE_FIXED_SCALE not modeled
+                    reader.readS32() // content-description text-pool id — not needed for drawing
+                    val srcWidth = (srcRight - srcLeft).toInt()
+                    val srcHeight = (srcBottom - srcTop).toInt()
+                    val realScaleTypes = scaleType == 0 || scaleType == 1 || scaleType == 4 || scaleType == 5
+                    val dst = if (realScaleTypes) {
+                        imageScaleDstRect(scaleType, srcWidth, srcHeight, dstLeft, dstTop, dstRight, dstBottom)
+                    } else {
+                        floatArrayOf(dstLeft, dstTop, dstRight, dstBottom)
+                    }
+                    opcodes += Opcode.MatrixSave
+                    opcodes += Opcode.ClipRect(dstLeft, dstTop, dstRight, dstBottom)
+                    opcodes += Opcode.DrawBitmap(
+                        bitmapId, dst[0], dst[1], dst[2], dst[3],
+                        srcLeft, srcTop, srcRight, srcBottom,
+                    )
+                    opcodes += Opcode.MatrixRestore
                 }
 
                 OP_CLICK_AREA -> {

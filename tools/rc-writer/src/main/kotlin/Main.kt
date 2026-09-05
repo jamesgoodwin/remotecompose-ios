@@ -1151,6 +1151,20 @@ private fun buildCoverageSample() {
     )
     writer.endTextComponent()
 
+    // DRAW_BITMAP_SCALED real source-sub-rect + SCALE_FIT proof: the same solid-green wideBitmap
+    // (8x4, used above for LAYOUT_IMAGE's own FIT/CROP proof) sampled from only its own top *half*
+    // (srcRect (0,0,8,2), an 8x2 region — 4:1 aspect, unlike the full bitmap's own 2:1) into a
+    // 20x20 square dst box with SCALE_FIT — real ImageScaling math driven by this *declared*
+    // source rect's own aspect (not the bitmap's full natural 8x4 size) should letterbox to a
+    // 20-wide x 5-tall strip vertically centered in the box (unlike the full-bitmap 2:1 aspect,
+    // which would letterbox to 20x10 — twice as tall), proving DRAW_BITMAP_SCALED's own source
+    // sub-rect really drives the scaling math instead of just being byte-consumed, and that this
+    // opcode (previously completely unhandled — would have thrown a parse exception) is now real.
+    writer.drawScaledBitmap(
+        wideBitmapId, 0f, 0f, 8f, 2f, 2f, 2f, 22f, 22f,
+        RemoteComposeWriter.IMAGE_SCALE_FIT, 1f, "scaled",
+    )
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

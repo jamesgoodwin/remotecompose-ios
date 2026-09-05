@@ -276,7 +276,14 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * left edge sits close to its box's own left edge, the centered one's left edge sits visibly
  * further right by close to the hand-computed shift) — proving `LAYOUT_TEXT` is both really
  * parsed at all and `textAlign` really anchors it within a declared width, not just newly byte-
- * consumed. Shared by every
+ * consumed, and a real `DRAW_BITMAP_SCALED` (`RemoteComposeWriter.drawScaledBitmap(...)` —
+ * previously a completely unhandled opcode) call sampling only the top *half* of the existing
+ * solid-green 8x4 `wideBitmap` (an 8x2, 4:1-aspect source sub-rect, unlike the full bitmap's own
+ * 2:1) into a 20x20 square box with `SCALE_FIT` — real `ImageScaling` math driven by this
+ * *declared* source rect's own aspect (confirmed via the parsed opcode dump: a 20-wide x 5-tall
+ * letterboxed strip, half as tall as the full-bitmap 20x10 strip [OP_LAYOUT_IMAGE]'s own FIT
+ * proof produces elsewhere in this same document) proves this opcode's source sub-rect really
+ * drives its scaling math, not just being byte-consumed. Shared by every
  * platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -375,6 +382,6 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAAAAoAAAAAgAAAAT/ahuahQAAAENCyAAAQzQAAD+AAAAAAAAAAAAAACgAAAACAAAABP8ufTJmAAAARAAAAARUYWxshQAAAERDDAAAQsgAAL+AAAC/" +
             "gAAAAAAAACgAAAACAAAABP/GKCiFAAAAREMqAABCyAAAv4AAAD+AAAAAAAAAZgAAAEUAAAAA0P///zz/////AAAAK/8AaVxBgAAAAAAAAEPIAAAAAABF" +
             "AAAAAQAAAAEAAAABEAAAAABCcAAA3UGgAABDFgAAyf///zvW1tD///86/////wAAACv/rRRXQYAAAAAAAABDyAAAAAAARQAAAAMAAAABAAAAARAAAAAA" +
-            "QnAAAN1CyAAAQxYAAMn///851tY=",
+            "QnAAAN1CyAAAQxYAAMn///851tZmAAAARgAAAAZzY2FsZWSVAAAAOQAAAAAAAAAAQQAAAEAAAABAAAAAQAAAAEGwAABBsAAAAAAABD+AAAAAAABG",
     )
 }
