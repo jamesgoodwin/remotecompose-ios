@@ -76,7 +76,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * drawn via `writer.drawTextRun("Hello World", 6, 11, 0, 11, 36f, 136f, false)` — unlike
  * `DRAW_TEXT_ON_CIRCLE`, the real `DrawText.paint()` *is* implemented, so only characters
  * `[6, 11)` of the pool string rendering (not the whole "Hello World") is a real semantic effect,
- * not just a byte-consumed field — and a
+ * not just a byte-consumed field, the word "Path" drawn via `writer.drawTextOnPath(textId,
+ * pathId, 0f, -4f)` against a two-point path from `(105, 195)` — a real-bytes hex-diff of this
+ * same call caught `vOffset` written *before* `hOffset` on the wire, the reverse of the call's
+ * own argument order; there's no real glyph-by-glyph path-following to reverse-engineer at this
+ * renderer's level, so it renders as a straight line anchored at the path's own first point
+ * shifted by `(hOffset, vOffset)`, not curving along the path — and a
  * magenta rect drawn
  * oversized then clipped by a raw `writer.save()`/`writer.clipRect(190f, 41f, 205f, 51f)`/
  * `writer.restore()`, and a blue rect plus a separate green circle wrapped in a
@@ -163,14 +168,15 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIOCgD8AAAAAAAAAKAAAAAIAAAAE/9hDFSpAAAAAQwIAAEGIAABDEQAAg+n///+s/////wAAAAAAAAAA" +
             "QEAAAMn///+ryv///6r/////AAAAAAAAAADJ////qSgAAAACAAAABP/CGFsqQbAAAEMCAABCAAAAQwwAANbWyv///6j/////AAAAAAAAAADJ////pygA" +
             "AAACAAAABP97H6IqQbAAAEMCAABCAAAAQwwAANbWyv///6b/////AAAAAAAAAADJ////pSgAAAACAAAABP8wP58qQbAAAEMCAABCAAAAQwwAANbW1tYo" +
-            "AAAAAgAAAAT/ISEhZgAAADYAAAALSGVsbG8gV29ybGQrAAAANgAAAAYAAAALAAAAAAAAAAtCEAAAQwgAAADK////pP////8AAAAAAAAAADcAAAAAAAAA" +
-            "AAAAAAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////oygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4AACgAAAACAAAABP8ufTIuQgwAAEKcAABA" +
-            "wAAA1tbM////ov////8AAAAAAAAAAEBAAADJ////ocr///+g/////wAAAAAAAAAAyf///58oAAAAAgAAAAT/0y8vKkAAAABCtAAAQUAAAELIAADW1sr/" +
-            "//+e/////wAAAAAAAAAAyf///50oAAAAAgAAAAT/GXbSKkAAAABCtAAAQUAAAELIAADW1sr///+c/////wAAAAAAAAAAyf///5soAAAAAgAAAAT/OI48" +
-            "KkAAAABCtAAAQUAAAELIAADW1tbWy////5r/////AAAABgAAAAIAAAAAEAAAAABCoAAAyf///5nK////mP////8AAAAAAAAAAMn///+XKAAAAAIAAAAE" +
-            "/8YoKCpBsAAAQxYAAEHwAABDHgAA1tbK////lv////8AAAAAAAAAAMn///+VKAAAAAIAAAAE//moJSpBsAAAQxYAAEHwAABDJgAA1tbK////lP////8A" +
-            "AAAAAAAAAMn///+TKAAAAAIAAAAE/wCDjypBsAAAQxYAAEHwAABDHgAA1tbW1oJ7AAAANwAAAA7/gAAKQtIAAEMoAAD/gAALAAAAAAAAAABC+gAAQxYA" +
-            "AP+AAAsAAAAAAAAAAEL6AABDKAAA/4AADyYAAAA3KAAAAAIAAAAE/2obmipC0gAAQxYAAEMCAABDKgAAgygAAAACAAAABP8hISFmAAAAOAAAAAZDdXJ2" +
-            "ZWQ5AAAAOELIAABDOQAAQSAAAEOHAAAAAAAAAQA=",
+            "AAAAAgAAAAT/ISEhZgAAADYAAAALSGVsbG8gV29ybGQrAAAANgAAAAYAAAALAAAAAAAAAAtCEAAAQwgAAAB7AAAANwAAAAj/gAAKQtIAAENDAAD/gAAL" +
+            "AAAAAAAAAABC+gAAQ0MAACgAAAACAAAABP8AaVxmAAAAOAAAAARQYXRoNQAAADgAAAA3wIAAAAAAAADK////pP////8AAAAAAAAAADcAAAAAAAAAAAAA" +
+            "AAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////oygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4AACgAAAACAAAABP8ufTIuQgwAAEKcAABAwAAA" +
+            "1tbM////ov////8AAAAAAAAAAEBAAADJ////ocr///+g/////wAAAAAAAAAAyf///58oAAAAAgAAAAT/0y8vKkAAAABCtAAAQUAAAELIAADW1sr///+e" +
+            "/////wAAAAAAAAAAyf///50oAAAAAgAAAAT/GXbSKkAAAABCtAAAQUAAAELIAADW1sr///+c/////wAAAAAAAAAAyf///5soAAAAAgAAAAT/OI48KkAA" +
+            "AABCtAAAQUAAAELIAADW1tbWy////5r/////AAAABgAAAAIAAAAAEAAAAABCoAAAyf///5nK////mP////8AAAAAAAAAAMn///+XKAAAAAIAAAAE/8Yo" +
+            "KCpBsAAAQxYAAEHwAABDHgAA1tbK////lv////8AAAAAAAAAAMn///+VKAAAAAIAAAAE//moJSpBsAAAQxYAAEHwAABDJgAA1tbK////lP////8AAAAA" +
+            "AAAAAMn///+TKAAAAAIAAAAE/wCDjypBsAAAQxYAAEHwAABDHgAA1tbW1oJ7AAAAOQAAAA7/gAAKQtIAAEMoAAD/gAALAAAAAAAAAABC+gAAQxYAAP+A" +
+            "AAsAAAAAAAAAAEL6AABDKAAA/4AADyYAAAA5KAAAAAIAAAAE/2obmipC0gAAQxYAAEMCAABDKgAAgygAAAACAAAABP8hISFmAAAAOgAAAAZDdXJ2ZWQ5" +
+            "AAAAOkLIAABDOQAAQSAAAEOHAAAAAAAAAQA=",
     )
 }

@@ -670,6 +670,18 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF212121.toInt()).commit()
     writer.drawTextRun("Hello World", 6, 11, 0, 11, 36f, 136f, false)
 
+    // DRAW_TEXT_ON_PATH: unlike DRAW_TEXT_ON_CIRCLE, the real DrawText.paint() *is* implemented
+    // (delegates to PaintContext.drawTextOnPath(...)). A real-bytes hex-diff of
+    // drawTextOnPath(textId, pathId, 111f, 222f) decoded to floats (222.0, 111.0) in that wire
+    // order — apply()'s own bytecode writes its 4th argument (vOffset) before its 3rd (hOffset),
+    // the reverse of the call's own argument order, so this parser reads vOffset first.
+    val textOnPathPath = RemotePath()
+    textOnPathPath.moveTo(105f, 195f)
+    textOnPathPath.lineTo(125f, 195f)
+    val textOnPathPathId = writer.addPathData(textOnPathPath)
+    writer.getRcPaint().setColor(0xFF00695C.toInt()).commit()
+    writer.drawTextOnPath(writer.textCreateId("Path"), textOnPathPathId, 0f, -4f)
+
     writer.startBox(RecordingModifier().background(0xFFFF6F00.toInt()), 0, 0)
     writer.getRcPaint().setColor(0xFF1565C0.toInt()).commit()
     writer.drawRect(2f, 61f, 12f, 71f)

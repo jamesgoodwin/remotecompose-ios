@@ -117,6 +117,22 @@ object RealRemoteComposeParser {
      */
     private const val OP_DRAW_TEXT_ON_CIRCLE = 57
 
+    /**
+     * `Operations.DRAW_TEXT_ON_PATH` — `RemoteComposeWriter.drawTextOnPath(textId, pathId,
+     * hOffset, vOffset)` writes `[textId:i32][pathId:i32][vOffset:f32][hOffset:f32]` — a
+     * real-bytes hex-diff of `drawTextOnPath(textId, pathId, 111f, 222f)` decoded to floats
+     * `(222.0, 111.0)` in that wire order: `DrawTextOnPath.apply()`'s own bytecode writes its 4th
+     * argument (`vOffset`) *before* its 3rd (`hOffset`), the reverse of the call's own argument
+     * order — another field-order surprise in the same family as `DRAW_BITMAP_INT`/
+     * `LAYOUT_IMAGE`'s. Unlike `DRAW_TEXT_ON_CIRCLE`, the real `DrawText.paint()` *is* implemented
+     * here (delegates to `PaintContext.drawTextOnPath(...)`) — but there's still no real
+     * glyph-by-glyph path-following to reverse-engineer at this renderer's level, so this parser
+     * fully decodes the wire format (real byte-coverage) but renders only a straight-line
+     * approximation reusing [Opcode.DrawText], anchored at the referenced path's own first point
+     * (its leading `MoveTo`) shifted by `(hOffset, vOffset)`.
+     */
+    private const val OP_DRAW_TEXT_ON_PATH = 53
+
     /** `Operations.DRAW_LINE` — `[x1,y1,x2,y2]` as four raw floats. */
     private const val OP_DRAW_LINE = 47
 
@@ -1173,6 +1189,23 @@ object RealRemoteComposeParser {
                     )
                 }
 
+                OP_DRAW_TEXT_ON_PATH -> {
+                    val textId = reader.readS32()
+                    val pathId = reader.readS32()
+                    val vOffset = reader.readFloat32() // written before hOffset — see KDoc above
+                    val hOffset = reader.readFloat32()
+                    val anchor = pathPool[pathId]?.filterIsInstance<PathCommand.MoveTo>()?.firstOrNull()
+                    if (anchor != null) {
+                        opcodes += Opcode.DrawText(
+                            stringIndex = textId,
+                            x = anchor.x + hOffset,
+                            y = anchor.y + vOffset,
+                            fontSize = DEFAULT_TEXT_SIZE_SP,
+                            colorArgb = currentColor.toArgb(),
+                        )
+                    }
+                }
+
                 OP_DRAW_LINE -> {
                     val x1 = reader.readFloat32()
                     val y1 = reader.readFloat32()
@@ -1729,7 +1762,8 @@ object RealRemoteComposeParser {
                         "ModifierDimensionConstraints/ValueIntegerChange/ValueStringChange/" +
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
                         "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
-                        "ClipPath/DrawBitmapInt/DrawTextOnCircle/MatrixSkew/DrawTextRun)",
+                        "ClipPath/DrawBitmapInt/DrawTextOnCircle/MatrixSkew/DrawTextRun/" +
+                        "DrawTextOnPath)",
                 )
             }
         }
