@@ -582,6 +582,23 @@ private fun buildCoverageSample() {
     writer.drawRect(60f, 61f, 76f, 69f)
     writer.endBox()
 
+    // GraphicsLayerModifierOperation.TRANSFORM_ORIGIN_X/_Y=5/6: the same 45-degree rotation as
+    // above, but with the pivot fraction explicitly set to (0f, 0f) — real Compose's
+    // GraphicsLayerScope.transformOrigin standard semantics put that at this layer's own
+    // top-left corner, not its center. A diamond whose top-left corner stays fixed while the rest
+    // sweeps away from it (not a diamond centered the same way the plain ROTATION_Z square above
+    // is) is the only way to tell this from that test by eye.
+    val graphicsLayerRotateOrigin = GraphicsLayerModifier()
+    graphicsLayerRotateOrigin.setFloatAttribute(5, 0f) // TRANSFORM_ORIGIN_X
+    graphicsLayerRotateOrigin.setFloatAttribute(6, 0f) // TRANSFORM_ORIGIN_Y
+    graphicsLayerRotateOrigin.setFloatAttribute(4, 45f) // ROTATION_Z
+    writer.startBox(RecordingModifier().then(graphicsLayerRotateOrigin), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF00ACC1.toInt())
+        .commit()
+    writer.drawRect(85f, 61f, 93f, 69f)
+    writer.endBox()
+
     writer.startBox(RecordingModifier().then(WidthInModifier(1, 5f, 40f)), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF4527A0.toInt())
