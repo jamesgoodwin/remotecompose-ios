@@ -576,6 +576,41 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_MARQUEE = 228
 
     /**
+     * `Operations.MODIFIER_SCROLL` — reached via `RecordingModifier.verticalScroll(max)`/
+     * `horizontalScroll(max)` — writes `[direction:i32][positionExpression:f32][max:f32]
+     * [notchMax:f32]` (source-confirmed via javap on the real `ScrollModifierOperation`: field
+     * order matches `apply()`'s own parameter order exactly, no reordering). `direction` is
+     * `0`=VERTICAL/`1`=HORIZONTAL. Real-bytes hex-diff of `verticalScroll(50f)` decoded to exactly
+     * `[0, 50.0, NaN, NaN]` — `max`/`notchMax` are NaN-tagged variable references (reserved via
+     * the real writer's `reserveFloatVariable()`) even in this simplest convenience overload.
+     * There's no real scroll effect to give this: the real `ScrollModifierOperation.paint()`
+     * resolves its actual scroll offset from `RemoteContext.getFloat(idFromNan(positionExpression))`
+     * — a live touch/interaction-driven runtime variable this parser has no state or expression
+     * system to evaluate — so this is byte-coverage only, the same "no interactive runtime to
+     * drive it" gap as [OP_MODIFIER_MARQUEE]'s animation and [OP_MODIFIER_GRAPHICS_LAYER]'s
+     * shadow/blur attributes.
+     */
+    private const val OP_MODIFIER_SCROLL = 226
+
+    /**
+     * `Operations.TOUCH_EXPRESSION` — an unavoidable companion `RemoteComposeWriter
+     * .addModifierScroll(...)` itself emits alongside [OP_MODIFIER_SCROLL] (every creation-side
+     * `ScrollModifier.write()` branch calls a `RemoteComposeWriter.addModifierScroll(...)`
+     * overload, and all of them set up this touch-driven expression alongside it — there is no
+     * public call path to `verticalScroll`/`horizontalScroll` that skips it). Source-confirmed via
+     * javap on the real `TouchExpression` class's `apply()`: a length-prefixed, otherwise
+     * self-describing record —
+     * `[id:i32][defValue:f32][min:f32][max:f32][velocity:f32][flags:i32]
+     * [srcExpLength:i32][srcExp: srcExpLength floats][packed:i32 = (tag << 16) | tapExpLength]
+     * [tapExp: tapExpLength floats][tapExpFloatsLength:i32][tapExpFloats: tapExpFloatsLength
+     * floats]` — an embedded little expression-tree language driving a touch/gesture-animated
+     * value. Fully decodable (every array is length-prefixed) but, like [OP_MODIFIER_SCROLL]
+     * itself, represents a live interaction this parser has no runtime state or expression
+     * evaluator to give real effect to — byte-coverage only.
+     */
+    private const val OP_TOUCH_EXPRESSION = 157
+
+    /**
      * `Operations.MODIFIER_GRAPHICS_LAYER` — reached via `.then(GraphicsLayerModifier().apply {
      * setFloatAttribute(key, value) })` (a `HashMap<Int, Any>` of attributes, not a direct method)
      * — writes `[count:i32]` then `count` entries of `[tag:i32][value:4 bytes]`, where `tag` is the
@@ -1775,6 +1810,29 @@ object RealRemoteComposeParser {
                     repeat(4) { reader.readFloat32() } // repeatDelay, initialDelay, spacing, velocity
                 }
 
+                OP_MODIFIER_SCROLL -> {
+                    reader.readS32() // direction — 0=VERTICAL, 1=HORIZONTAL
+                    reader.readFloat32() // positionExpression — a live touch-driven runtime
+                    reader.readFloat32() // max — variable this parser has no state/expression
+                    reader.readFloat32() // notchMax — system to evaluate; see KDoc above
+                }
+
+                OP_TOUCH_EXPRESSION -> {
+                    reader.readS32() // id
+                    reader.readFloat32() // defValue
+                    reader.readFloat32() // min
+                    reader.readFloat32() // max
+                    reader.readFloat32() // velocity
+                    reader.readS32() // flags
+                    val srcExpLength = reader.readS32()
+                    repeat(srcExpLength) { reader.readFloat32() }
+                    val packed = reader.readS32()
+                    val tapExpLength = packed and 0xFFFF
+                    repeat(tapExpLength) { reader.readFloat32() }
+                    val tapExpFloatsLength = reader.readS32()
+                    repeat(tapExpFloatsLength) { reader.readFloat32() }
+                }
+
                 OP_MODIFIER_GRAPHICS_LAYER -> {
                     // Real semantic effect for ALPHA (opens a real compositing layer around this
                     // container's children, closed by a MatrixRestore queued on this container's
@@ -1893,7 +1951,7 @@ object RealRemoteComposeParser {
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
                         "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
                         "ClipPath/DrawBitmapInt/DrawTextOnCircle/MatrixSkew/DrawTextRun/" +
-                        "DrawTextOnPath/ColorConstant)",
+                        "DrawTextOnPath/ColorConstant/ModifierScroll/TouchExpression)",
                 )
             }
         }

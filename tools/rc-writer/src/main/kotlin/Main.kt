@@ -351,6 +351,19 @@ private fun buildCoverageSample() {
     writer.drawRect(105f, 2f, 120f, 12f)
     writer.endBox()
 
+    // MODIFIER_SCROLL: real-bytes hex-diff of verticalScroll(50f) decoded to exactly
+    // [direction=0, positionExpression=50.0, max=NaN, notchMax=NaN] — max/notchMax are NaN-tagged
+    // runtime variable references (reserved via the real writer's own reserveFloatVariable())
+    // even in this simplest convenience overload. Every public call path to verticalScroll/
+    // horizontalScroll also emits a TOUCH_EXPRESSION record right after (a length-prefixed,
+    // otherwise self-describing touch-gesture expression tree) — both represent a live
+    // interaction this parser has no runtime state or expression evaluator to give real effect
+    // to, so this child renders at its own plain position, unaffected by the scroll modifier.
+    writer.startBox(RecordingModifier().verticalScroll(50f), 0, 0)
+    writer.getRcPaint().setColor(0xFF33691E.toInt()).commit()
+    writer.drawRect(178f, 65f, 193f, 80f)
+    writer.endBox()
+
     // COLOR_CONSTANT + MODIFIER_BORDER's colorId-ref path: addColor(...) registers a real color
     // in the pool, then dynamicBorder(...) references it by id (colorRefFlag == 2 on the wire,
     // r/g/b/a all 0) instead of carrying literal color floats — the border should still render
