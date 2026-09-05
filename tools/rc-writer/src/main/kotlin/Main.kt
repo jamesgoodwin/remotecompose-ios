@@ -351,6 +351,19 @@ private fun buildCoverageSample() {
     writer.drawRect(105f, 2f, 120f, 12f)
     writer.endBox()
 
+    // COLOR_CONSTANT + MODIFIER_BORDER's colorId-ref path: addColor(...) registers a real color
+    // in the pool, then dynamicBorder(...) references it by id (colorRefFlag == 2 on the wire,
+    // r/g/b/a all 0) instead of carrying literal color floats — the border should still render
+    // in the real magenta color, proving colorPool resolution actually happened rather than the
+    // border silently staying unrendered (this parser's prior behavior for this exact case).
+    val dynamicBorderColorId = writer.addColor(0xFFD500F9.toInt())
+    writer.startBox(RecordingModifier().dynamicBorder(2f, 4f, dynamicBorderColorId.toShort(), 0), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF37474F.toInt())
+        .commit()
+    writer.drawRect(123f, 2f, 138f, 12f)
+    writer.endBox()
+
     writer.startBox(RecordingModifier().clip(RectShape(0f, 0f, 8f, 8f)), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF5E35B1.toInt())

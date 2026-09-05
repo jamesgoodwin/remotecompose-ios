@@ -457,18 +457,30 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_OFFSET = 221
 
     /**
+     * `Operations.COLOR_CONSTANT` — `RemoteComposeWriter.addColor(argb)` writes
+     * `[colorId:i32][colorArgb:i32]` (source-confirmed via javap: a plain packed-ARGB int, the
+     * same convention [Opcode.DrawText.colorArgb] already uses). Registers a real color into
+     * [colorPool] so a modifier that references it by id — so far: [OP_MODIFIER_BORDER]'s
+     * `RecordingModifier.dynamicBorder(...)` path — resolves to the real color instead of staying
+     * unrendered.
+     */
+    private const val OP_COLOR_CONSTANT = 138
+
+    /**
      * `Operations.MODIFIER_BORDER` — `RecordingModifier.border(width, roundedCorner, color,
      * shapeType)` writes 4 raw ints then 6 raw floats then 1 raw int (44 bytes), confirmed via
      * `border(2f, 4f, 0xFF000000, 0)`: `[0, 0, 0, 0][2.0, 4.0, 0.0, 0.0, 0.0, 1.0][0]` — a
      * colorId-ref flag/id/legacy-flag/reserved int quad (source-confirmed via javap on the real
-     * `BorderModifierOperation`: the 4th int is always a literal `0`, not merely unused — the
-     * flag is only ever `2` when the color comes from a resolved color-pool reference rather than
-     * literal `r/g/b/a` floats, a case this parser doesn't resolve and so doesn't render), then
-     * borderWidth, roundedCorner, and the color as normalized r/g/b/a floats (same
-     * normalized-channel convention as [OP_MODIFIER_BACKGROUND]), then a trailing shapeType int
-     * (`0`=RECTANGLE, `1`=CIRCLE, also javap-confirmed). Gets a real stroked-outline effect (see
-     * `OP_CONTAINER_END`'s `borderColor` handling) using the same `contentBounds()`-inferred,
-     * padding-expanded box [OP_MODIFIER_BACKGROUND] already uses.
+     * `BorderModifierOperation`: the 4th int is always a literal `0`, not merely unused). The flag
+     * is `2` when the color instead comes from `RecordingModifier.dynamicBorder(...)`'s
+     * color-pool reference (`r`/`g`/`b`/`a` all `0` on the wire in that case, source-confirmed via
+     * `RemoteComposeBuffer.addModifierDynamicBorder`) — resolved against [OP_COLOR_CONSTANT]'s
+     * [colorPool] now that it exists; a reference to an id this document never registered still
+     * stays unrendered. Otherwise `r`/`g`/`b`/`a` are the color as normalized floats (same
+     * normalized-channel convention as [OP_MODIFIER_BACKGROUND]). A trailing shapeType int
+     * (`0`=RECTANGLE, `1`=CIRCLE, javap-confirmed) picks the stroked shape (see
+     * `OP_CONTAINER_END`'s `borderColor` handling) drawn around the same
+     * `contentBounds()`-inferred, padding-expanded box [OP_MODIFIER_BACKGROUND] already uses.
      */
     private const val OP_MODIFIER_BORDER = 107
 
@@ -724,6 +736,7 @@ object RealRemoteComposeParser {
         val textPool = mutableMapOf<Int, String>()
         val pathPool = mutableMapOf<Int, List<PathCommand>>()
         val bitmapPool = mutableMapOf<Int, ByteArray>()
+        val colorPool = mutableMapOf<Int, Color>()
         val opcodes = mutableListOf<Opcode>()
 
         // Every real container/action-list scope (LAYOUT_BOX/COLUMN/ROW/etc's own scope, the
@@ -1642,7 +1655,7 @@ object RealRemoteComposeParser {
 
                 OP_MODIFIER_BORDER -> {
                     val colorRefFlag = reader.readS32()
-                    reader.readS32() // colorId — only meaningful when colorRefFlag == 2
+                    val colorId = reader.readS32() // only meaningful when colorRefFlag == 2
                     reader.readS32() // legacy flag
                     reader.readS32() // reserved — always a literal 0 on the wire
                     val borderWidth = reader.readFloat32()
@@ -1652,13 +1665,20 @@ object RealRemoteComposeParser {
                     val b = reader.readFloat32()
                     val a = reader.readFloat32()
                     val shapeType = reader.readS32()
-                    if (colorRefFlag != 2) {
+                    val resolvedColor = if (colorRefFlag == 2) colorPool[colorId] else Color(r, g, b, a)
+                    if (resolvedColor != null) {
                         val frame = scopeStack.lastOrNull()
-                        frame?.borderColor = Color(r, g, b, a)
+                        frame?.borderColor = resolvedColor
                         frame?.borderWidth = borderWidth
                         frame?.borderRoundedCorner = roundedCorner
                         frame?.borderShapeType = shapeType
                     }
+                }
+
+                OP_COLOR_CONSTANT -> {
+                    val colorId = reader.readS32()
+                    val colorArgb = reader.readS32()
+                    colorPool[colorId] = Color(colorArgb)
                 }
 
                 OP_MODIFIER_CLIP_RECT -> Unit // no payload
@@ -1818,7 +1838,7 @@ object RealRemoteComposeParser {
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
                         "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
                         "ClipPath/DrawBitmapInt/DrawTextOnCircle/MatrixSkew/DrawTextRun/" +
-                        "DrawTextOnPath)",
+                        "DrawTextOnPath/ColorConstant)",
                 )
             }
         }
