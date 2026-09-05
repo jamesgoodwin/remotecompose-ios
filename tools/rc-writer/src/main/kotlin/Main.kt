@@ -391,6 +391,19 @@ private fun buildCoverageSample() {
     writer.drawRect(145f, 2f, 160f, 12f)
     writer.endBox()
 
+    // MODIFIER_CLIP_RECT real-effect proof: neither clip opcode carries its own rect bounds on
+    // the wire at all (real Compose always clips to this container's own measured box) — a
+    // useful real effect is only possible when the container also declares an explicit
+    // width()/height() smaller than its content. Here the amber child rect (30x20) is drawn
+    // oversized relative to the 15x10 box; only its top-left 15x10 corner should be visible, the
+    // rest clipped away.
+    writer.startBox(RecordingModifier().width(15f).height(10f).clip(RectShape(0f, 0f, 8f, 8f)), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFFFF8F00.toInt())
+        .commit()
+    writer.drawRect(181f, 15f, 211f, 35f)
+    writer.endBox()
+
     writer.startBox(RecordingModifier().onLongClick(HostAction(9)), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF00838F.toInt())

@@ -487,14 +487,21 @@ object RealRemoteComposeParser {
     /**
      * `Operations.MODIFIER_CLIP_RECT` — `RecordingModifier.clip(RectShape(...))` writes only the
      * opcode tag, no payload — confirmed: the very next byte is the following opcode
-     * (`LAYOUT_CONTENT`'s `0xc9`), with nothing in between.
+     * (`LAYOUT_CONTENT`'s `0xc9`), with nothing in between. Real Compose always clips to this
+     * container's own *measured* box, which this parser doesn't have — but when the same
+     * container also carries an explicit `MODIFIER_WIDTH`/`MODIFIER_HEIGHT` smaller than its
+     * natural content, clipping to *that* declared box (see `OP_CONTAINER_END`'s `hasClipRect`
+     * handling) is both real and useful: it cuts off the overflow the same way real Compose
+     * would, instead of staying a no-op.
      */
     private const val OP_MODIFIER_CLIP_RECT = 108
 
     /**
      * `Operations.MODIFIER_ROUNDED_CLIP_RECT` — `RecordingModifier.clip(RoundedRectShape(topStart,
      * topEnd, bottomStart, bottomEnd))` writes those 4 raw floats, confirmed via
-     * `RoundedRectShape(4f, 4f, 4f, 4f)` decoding to exactly `[4.0, 4.0, 4.0, 4.0]`.
+     * `RoundedRectShape(4f, 4f, 4f, 4f)` decoding to exactly `[4.0, 4.0, 4.0, 4.0]`. Gets the same
+     * explicit-size-gated real clip [OP_MODIFIER_CLIP_RECT] does; the 4 corner radii themselves
+     * aren't modeled (no `ClipRoundRect` `Opcode` primitive exists to carry them).
      */
     private const val OP_MODIFIER_ROUNDED_CLIP_RECT = 54
 
@@ -867,6 +874,12 @@ object RealRemoteComposeParser {
             var borderWidth: Float = 0f
             var borderRoundedCorner: Float = 0f
             var borderShapeType: Int = 0
+            // Set by OP_MODIFIER_CLIP_RECT/OP_MODIFIER_ROUNDED_CLIP_RECT — neither carries its own
+            // rect bounds on the wire at all (real Compose always clips to this container's own
+            // measured box), so a real effect is only possible when this frame also has an
+            // explicit MODIFIER_WIDTH/HEIGHT smaller than its natural content — see
+            // OP_CONTAINER_END's clip handling.
+            var hasClipRect: Boolean = false
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
@@ -1660,6 +1673,27 @@ object RealRemoteComposeParser {
                         }
                         opcodes.addAll(frame.cleanupOpcodes)
                         if (transformWrapped) opcodes += Opcode.MatrixRestore
+                        // MODIFIER_CLIP_RECT/MODIFIER_ROUNDED_CLIP_RECT: real only when this frame
+                        // also has an explicit width/height smaller than its natural content —
+                        // clipping to the *inferred* (natural) bounds alone would be a no-op, since
+                        // by construction nothing in the content extends past its own bounding box.
+                        // The outermost wrap (inserted after the graphics-layer transform above,
+                        // so it applies in this container's own *un-transformed* layout space, the
+                        // same space its declared width/height is measured in) — a real "cut off
+                        // the overflow" effect, not just a byte-skip.
+                        var clipWrapped = false
+                        if (frame.hasClipRect && (frame.explicitWidthPx != null || frame.explicitHeightPx != null)) {
+                            contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
+                                val clipRight = frame.explicitWidthPx?.let { bounds[0] + it } ?: bounds[2]
+                                val clipBottom = frame.explicitHeightPx?.let { bounds[1] + it } ?: bounds[3]
+                                opcodes.addAll(
+                                    frame.startIndex,
+                                    listOf(Opcode.MatrixSave, Opcode.ClipRect(bounds[0], bounds[1], clipRight, clipBottom)),
+                                )
+                                clipWrapped = true
+                            }
+                        }
+                        if (clipWrapped) opcodes += Opcode.MatrixRestore
                         val parent = frame.parent
                         if (parent != null) {
                             // Registered regardless of parent.layoutAxis: a Box's children need
@@ -1768,9 +1802,14 @@ object RealRemoteComposeParser {
                     colorPool[colorId] = Color(colorArgb)
                 }
 
-                OP_MODIFIER_CLIP_RECT -> Unit // no payload
+                OP_MODIFIER_CLIP_RECT -> scopeStack.lastOrNull()?.hasClipRect = true
 
-                OP_MODIFIER_ROUNDED_CLIP_RECT -> repeat(4) { reader.readFloat32() } // topStart, topEnd, bottomStart, bottomEnd
+                OP_MODIFIER_ROUNDED_CLIP_RECT -> {
+                    repeat(4) { reader.readFloat32() } // topStart, topEnd, bottomStart, bottomEnd — corner
+                    // rounding not modeled (no ClipRoundRect Opcode primitive exists), but the
+                    // plain-rect real effect below still applies.
+                    scopeStack.lastOrNull()?.hasClipRect = true
+                }
 
                 OP_MODIFIER_MULTI_CLICK -> {
                     reader.readS32() // clickType
