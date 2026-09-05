@@ -1252,6 +1252,16 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFFFFC107.toInt()).commit()
     writer.drawPath(tweenedPathId)
 
+    // DEBUG_MESSAGE real byte-alignment proof: real DebugMessage has no paint()/rendering effect
+    // at all (a pure developer-tools log message, VariableSupport only, source-confirmed via
+    // javap), so there's nothing to render — the only real thing to verify is that this parser
+    // consumes exactly its own real [textId][floatValue][flags] fields and stays correctly
+    // aligned for whatever follows, proven by a normal drawRect landing at its own exact
+    // documented position right after it (not shifted by a byte-misaligned read).
+    writer.addDebugMessage("debug", 1f, 0)
+    writer.getRcPaint().setColor(0xFF1A237E.toInt()).commit()
+    writer.drawRect(160f, 150f, 176f, 166f)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

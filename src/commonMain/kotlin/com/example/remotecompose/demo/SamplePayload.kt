@@ -313,7 +313,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * shifted straight down by `30` to `y=[32, 50]`) — real per-coordinate linear interpolation
  * (matching real `android.graphics.Path.interpolate()`'s own well-known contract) confirmed via
  * the parsed opcode dump: the tweened path's own `MoveTo`/`LineTo`/`LineTo` land at exactly
- * `y=[17, 35]`, drawn in amber alongside both original gray triangles for comparison. Shared by
+ * `y=[17, 35]`, drawn in amber alongside both original gray triangles for comparison, and a real
+ * `DEBUG_MESSAGE` (`writer.addDebugMessage("debug", 1f, 0)` — previously a completely unhandled
+ * opcode) followed immediately by a plain `drawRect` — real `DebugMessage` has no rendering effect
+ * of any kind (a pure developer-tools log message, source-confirmed via javap), so the only real
+ * thing to prove is that this parser consumes exactly its own `[textId][floatValue][flags]` fields
+ * and stays correctly byte-aligned for what follows, confirmed by that `drawRect` landing at its
+ * own exact documented position rather than shifted by a misaligned read. Shared by
  * every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -420,6 +426,6 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAAAAAAEEgAABDJQAAoAAAAEoAAAAB/4AADygAAAACAAAABP/CGFt8AAAASp8AAABLQwwAAEAAAACgAAAASwAAAAX/gAALAAAAAAAAAABDHgAAQAAA" +
             "AKAAAABLAAAABf+AAAsAAAAAAAAAAEMVAABBoAAAoAAAAEsAAAAB/4AAD58AAABMQwwAAEIAAACgAAAATAAAAAX/gAALAAAAAAAAAABDHgAAQgAAAKAA" +
             "AABMAAAABf+AAAsAAAAAAAAAAEMVAABCSAAAoAAAAEwAAAAB/4AAD54AAABNAAAASwAAAEw/AAAAKAAAAAIAAAAE/56ennwAAABLKAAAAAIAAAAE/2Fh" +
-            "YXwAAABMKAAAAAIAAAAE///BB3wAAABN",
+            "YXwAAABMKAAAAAIAAAAE///BB3wAAABNZgAAAE4AAAAFZGVidWezAAAATj+AAAAAAAAAKAAAAAIAAAAE/xojfipDIAAAQxYAAEMwAABDJgAA",
     )
 }

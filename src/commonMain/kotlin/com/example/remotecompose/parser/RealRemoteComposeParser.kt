@@ -561,6 +561,16 @@ object RealRemoteComposeParser {
     private const val OP_ROOT_CONTENT_BEHAVIOR = 65
 
     /**
+     * `Operations.DEBUG_MESSAGE` — `RemoteComposeWriter.addDebugMessage(...)` writes
+     * `[textId:i32][floatValue:f32(NaN-taggable)][flags:i32]` (source-confirmed via javap on the
+     * real `DebugMessage.read()`). Real `DebugMessage` only implements `VariableSupport` (no
+     * `paint()`/`PaintOperation` at all) — a pure developer-tools log message with no rendering
+     * effect of any kind to reproduce, honestly byte-consumed only, the same as
+     * [OP_HAPTIC_FEEDBACK]/[OP_ROOT_CONTENT_BEHAVIOR]'s own no-visual-effect metadata.
+     */
+    private const val OP_DEBUG_MESSAGE = 179
+
+    /**
      * `Operations.ANIMATION_SPEC` — `RecordingModifier.animationSpec(animationId)` writes
      * `[animationId:i32][motionDuration:f32][motionEasingType:i32][visibilityDuration:f32]
      * [visibilityEasingType:i32][enterAnimation:i32][exitAnimation:i32]` (7 fields, the last two
@@ -2405,6 +2415,12 @@ object RealRemoteComposeParser {
                 OP_THEME -> reader.readS32() // theme
 
                 OP_ROOT_CONTENT_BEHAVIOR -> repeat(4) { reader.readS32() }
+
+                OP_DEBUG_MESSAGE -> {
+                    reader.readS32() // textId — no visual effect to reproduce
+                    reader.readFloat32() // floatValue
+                    reader.readS32() // flags
+                }
 
                 OP_ANIMATION_SPEC -> {
                     reader.readS32() // animationId
