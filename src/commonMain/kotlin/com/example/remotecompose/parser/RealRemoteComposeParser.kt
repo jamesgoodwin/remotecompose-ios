@@ -261,6 +261,25 @@ object RealRemoteComposeParser {
      */
     private const val OP_PATH_ADD = 160
 
+    /**
+     * `Operations.PATH_TWEEN` — `RemoteComposeWriter.pathTween(pathId1, pathId2, tween)` writes
+     * `[outId:i32][pathId1:i32][pathId2:i32][tween:f32(NaN-taggable)]` (source-confirmed via javap
+     * on the real `PathTween.read()`/`write()`) — `outId` (like [OP_TEXT_SUBTEXT]/
+     * [OP_TEXT_TRANSFORM]'s own leading id) is a *newly* allocated [pathPool] slot the real writer
+     * method itself returns. Real `paint()` just delegates to an abstract
+     * `PaintContext.tweenPath(outId, pathId1, pathId2, tween)` with no further algorithm to
+     * decompile — matching real `android.graphics.Path.interpolate()`'s own well-documented
+     * contract (source: Android's own Path API docs, not this SDK), this parser reproduces that
+     * exact semantic instead: both paths must have the *identical* command sequence (same count,
+     * same `MoveTo`/`LineTo`/`QuadraticTo`/`CubicTo`/`Close` kind at every index — real
+     * `Path.canInterpolate()`'s own requirement), linearly interpolating every coordinate pair by
+     * `tween` (`0f` = `pathId1`, `1f` = `pathId2`); a structural mismatch leaves `outId`
+     * unresolved, the same honest fallback every other unresolvable reference in this parser
+     * already gets, rather than guessing at a mismatched-shape blend real Android itself refuses
+     * to attempt either.
+     */
+    private const val OP_PATH_TWEEN = 158
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2091,6 +2110,14 @@ object RealRemoteComposeParser {
                     pathPool[pathId] = (pathPool[pathId] ?: emptyList()) + appended
                 }
 
+                OP_PATH_TWEEN -> {
+                    val outId = reader.readS32()
+                    val pathId1 = reader.readS32()
+                    val pathId2 = reader.readS32()
+                    val tween = resolveFloat(reader.readFloat32())
+                    lerpPath(pathPool[pathId1], pathPool[pathId2], tween)?.let { pathPool[outId] = it }
+                }
+
                 OP_DRAW_PATH -> {
                     val pathId = reader.readS32()
                     val commands = pathPool[pathId] ?: throw RemoteComposeParseException(
@@ -3306,5 +3333,35 @@ object RealRemoteComposeParser {
             }
         }
         return commands
+    }
+
+    // OP_PATH_TWEEN's real semantic (matching real android.graphics.Path.interpolate()'s own
+    // contract): both paths need the identical command sequence — same count, same kind at every
+    // index — to linearly interpolate; null (this parser's own honest "leave unresolved" fallback)
+    // otherwise, the same way real Path.canInterpolate() refuses a structural mismatch.
+    private fun lerpPath(a: List<PathCommand>?, b: List<PathCommand>?, t: Float): List<PathCommand>? {
+        if (a == null || b == null || a.size != b.size) return null
+        fun lerp(x: Float, y: Float) = x + (y - x) * t
+        return a.zip(b).map { (ca, cb) ->
+            when {
+                ca is PathCommand.MoveTo && cb is PathCommand.MoveTo ->
+                    PathCommand.MoveTo(lerp(ca.x, cb.x), lerp(ca.y, cb.y))
+                ca is PathCommand.LineTo && cb is PathCommand.LineTo ->
+                    PathCommand.LineTo(lerp(ca.x, cb.x), lerp(ca.y, cb.y))
+                ca is PathCommand.QuadraticTo && cb is PathCommand.QuadraticTo ->
+                    PathCommand.QuadraticTo(
+                        lerp(ca.x1, cb.x1), lerp(ca.y1, cb.y1),
+                        lerp(ca.x2, cb.x2), lerp(ca.y2, cb.y2),
+                    )
+                ca is PathCommand.CubicTo && cb is PathCommand.CubicTo ->
+                    PathCommand.CubicTo(
+                        lerp(ca.x1, cb.x1), lerp(ca.y1, cb.y1),
+                        lerp(ca.x2, cb.x2), lerp(ca.y2, cb.y2),
+                        lerp(ca.x3, cb.x3), lerp(ca.y3, cb.y3),
+                    )
+                ca is PathCommand.Close && cb is PathCommand.Close -> PathCommand.Close
+                else -> return null
+            }
+        }
     }
 }

@@ -1228,6 +1228,30 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFFC2185B.toInt()).commit()
     writer.drawPath(trianglePathId)
 
+    // PATH_TWEEN real linear-interpolation proof: two structurally-identical triangles (same
+    // MoveTo/LineTo/LineTo/Close sequence), one at y=[2,20] and one shifted straight down by 30 to
+    // y=[32,50] — writer.pathTween(pathA, pathB, 0.5f) should compute a *new* path exactly halfway
+    // between them (y=[17,35], real PathTween.paint() delegating to the same per-coordinate lerp
+    // real android.graphics.Path.interpolate() itself performs), confirmed via the parsed opcode
+    // dump against both original triangles drawn alongside it in different colors for comparison —
+    // not the unresolved reference the old (PATH_TWEEN completely unhandled — would have thrown a
+    // parse exception) behavior could never have computed at all.
+    val tweenPathA = writer.pathCreate(140f, 2f)
+    writer.pathAppendLineTo(tweenPathA, 158f, 2f)
+    writer.pathAppendLineTo(tweenPathA, 149f, 20f)
+    writer.pathAppendClose(tweenPathA)
+    val tweenPathB = writer.pathCreate(140f, 32f)
+    writer.pathAppendLineTo(tweenPathB, 158f, 32f)
+    writer.pathAppendLineTo(tweenPathB, 149f, 50f)
+    writer.pathAppendClose(tweenPathB)
+    val tweenedPathId = writer.pathTween(tweenPathA, tweenPathB, 0.5f)
+    writer.getRcPaint().setColor(0xFF9E9E9E.toInt()).commit()
+    writer.drawPath(tweenPathA)
+    writer.getRcPaint().setColor(0xFF616161.toInt()).commit()
+    writer.drawPath(tweenPathB)
+    writer.getRcPaint().setColor(0xFFFFC107.toInt()).commit()
+    writer.drawPath(tweenedPathId)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

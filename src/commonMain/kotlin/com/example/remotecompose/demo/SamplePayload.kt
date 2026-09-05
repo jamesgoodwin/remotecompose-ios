@@ -307,8 +307,14 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `drawPath` — the *incremental*, multi-opcode path-building protocol (distinct from this
  * document's own already-handled single-opcode `DATA_PATH` paths elsewhere), confirmed via the
  * parsed opcode dump: a real `MoveTo`/`LineTo`/`LineTo`/`Close` triangle, not the single point the
- * old unhandled behavior could never have rendered at all. Shared by every
- * platform demo entry point (iOS, Android) so they
+ * old unhandled behavior could never have rendered at all, and a real `PATH_TWEEN`
+ * (`writer.pathTween(pathA, pathB, 0.5f)` — previously a completely unhandled opcode) computing a
+ * new path exactly halfway between two structurally-identical triangles (one at `y=[2, 20]`, one
+ * shifted straight down by `30` to `y=[32, 50]`) — real per-coordinate linear interpolation
+ * (matching real `android.graphics.Path.interpolate()`'s own well-known contract) confirmed via
+ * the parsed opcode dump: the tweened path's own `MoveTo`/`LineTo`/`LineTo` land at exactly
+ * `y=[17, 35]`, drawn in amber alongside both original gray triangles for comparison. Shared by
+ * every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
  */
@@ -411,6 +417,9 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAPkDAAAC/gAAAKAAAAAIAAAAE/wCDj4UAAABHQxsAAENEAAC/gAAAP4AAAAAAAAAoAAAAAgAAAAT/XUA3hQAAAD5CcAAAQ0QAAL+AAAA/gAAAAAAA" +
             "AGYAAABIAAAAC2hlbGxvIHdvcmxkxwAAAEkAAABIAAAAAL+AAAAAAAAEKAAAAAIAAAAE/0UnoIUAAABJQAAAAEFAAAC/gAAAv4AAAAAAAAAoAAAAAgAA" +
             "AAT/AGlchQAAAEhAAAAAQfAAAL+AAAC/gAAAAAAAAJ8AAABKQAAAAEMWAACgAAAASgAAAAX/gAALAAAAAAAAAABBkAAAQxYAAKAAAABKAAAABf+AAAsA" +
-            "AAAAAAAAAEEgAABDJQAAoAAAAEoAAAAB/4AADygAAAACAAAABP/CGFt8AAAASg==",
+            "AAAAAAAAAEEgAABDJQAAoAAAAEoAAAAB/4AADygAAAACAAAABP/CGFt8AAAASp8AAABLQwwAAEAAAACgAAAASwAAAAX/gAALAAAAAAAAAABDHgAAQAAA" +
+            "AKAAAABLAAAABf+AAAsAAAAAAAAAAEMVAABBoAAAoAAAAEsAAAAB/4AAD58AAABMQwwAAEIAAACgAAAATAAAAAX/gAALAAAAAAAAAABDHgAAQgAAAKAA" +
+            "AABMAAAABf+AAAsAAAAAAAAAAEMVAABCSAAAoAAAAEwAAAAB/4AAD54AAABNAAAASwAAAEw/AAAAKAAAAAIAAAAE/56ennwAAABLKAAAAAIAAAAE/2Fh" +
+            "YXwAAABMKAAAAAIAAAAE///BB3wAAABN",
     )
 }
