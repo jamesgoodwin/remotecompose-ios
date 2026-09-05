@@ -1165,6 +1165,23 @@ private fun buildCoverageSample() {
         RemoteComposeWriter.IMAGE_SCALE_FIT, 1f, "scaled",
     )
 
+    // LOOP_START real static-unrolling proof: a single 6x6 rect authored *once* inside
+    // startLoop(0, from=0f, step=1f, until=3f)/endLoop(), nested in a startRow so real Row
+    // packing (already proven elsewhere in this document) arranges each unrolled copy as its own
+    // independent sibling. Real LoopOperation.paint() (source-confirmed via javap) re-apply()s
+    // this one authored body in a live for(i=from; i<until; i+=step) loop — since every bound
+    // here is a literal (not a NaN-tagged variable reference), this parser can compute the same
+    // iteration count (3) without any live expression evaluation, and should render three 6x6
+    // rects side by side (x=0-6, 6-12, 12-18 within the row), not the single rect the old
+    // (LOOP_START completely unhandled — would have thrown a parse exception) behavior could
+    // never have rendered at all.
+    writer.startRow(RecordingModifier().offset(2f, 170f), 0, 0)
+    writer.startLoop(0, 0f, 1f, 3f)
+    writer.getRcPaint().setColor(0xFF6D4C41.toInt()).commit()
+    writer.drawRect(0f, 0f, 6f, 6f)
+    writer.endLoop()
+    writer.endRow()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

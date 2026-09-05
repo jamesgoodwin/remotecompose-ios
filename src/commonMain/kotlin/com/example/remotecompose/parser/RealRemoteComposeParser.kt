@@ -9,6 +9,7 @@ import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
 import kotlin.math.PI
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -339,6 +340,28 @@ object RealRemoteComposeParser {
      * `endRoot()` calls `addContainerEnd()` exactly once).
      */
     private const val OP_LAYOUT_ROOT = 200
+
+    /**
+     * `Operations.LOOP_START` — writes `[indexVariableId:i32][from:f32(NaN-taggable)]
+     * [step:f32(NaN-taggable)][until:f32(NaN-taggable)]` (source-confirmed via javap on the real
+     * `LoopOperation.read()`/`apply()`), then this loop's own body opcodes directly (no
+     * `LAYOUT_CONTENT` marker — real `LoopOperation` isn't a `Component`/`LayoutManager` at all,
+     * just a plain `Container`, closed by a single [OP_CONTAINER_END] the same way [OP_LAYOUT_ROOT]
+     * is). Real `paint()` (source-confirmed via javap) re-`apply()`s this one authored copy of the
+     * body in a live `for (i = from; i < until; i += step)` loop, writing `i` into
+     * `indexVariableId` each iteration for the body's own expressions to read — a live interaction
+     * this parser has no expression evaluator for, so `indexVariableId` is read only to stay
+     * aligned. When `from`/`step`/`until` are all literal (not `NaN`-tagged variable references)
+     * and describe a real, non-empty range, though, the iteration *count* itself needs no live
+     * expression evaluation at all — just arithmetic — so this frame's own [OP_CONTAINER_END]
+     * literally clones this loop's one authored body that many times instead of leaving it
+     * rendered exactly once, a real "unrolled loop" structural effect (not just newly byte-
+     * consumed) whenever an enclosing [OP_LAYOUT_COLUMN]/[OP_LAYOUT_ROW]'s sequential packing
+     * then arranges each clone as its own independent sibling. Any `NaN`-tagged bound falls back
+     * to rendering the body exactly once — the same honest "real effect only when statically
+     * known" gate every other no-measure-pass/no-expression-evaluator effect here already has.
+     */
+    private const val OP_LOOP_START = 215
 
     /**
      * `Operations.LAYOUT_STATE` — `startStateLayout` writes `[componentId:i32][animationId:i32]
@@ -1251,6 +1274,21 @@ object RealRemoteComposeParser {
             var widthInMax: Float? = null
             var heightInMin: Float? = null
             var heightInMax: Float? = null
+            // Set directly by OP_LOOP_START on the frame it pushes for itself (no modifiers ever
+            // come between it and its own children — unlike a Component-based container, real
+            // LoopOperation isn't a Component/ModifierOperation host at all — so no pending-var
+            // handoff to a later LAYOUT_CONTENT is needed the way OP_LAYOUT_BOX's isBoxAlignment
+            // needs one). Non-null (real, static, non-NaN-tagged) from/step/until only when this
+            // loop's own bounds are literal values, not variable references this parser has no
+            // expression evaluator to resolve — consumed at this frame's own OP_CONTAINER_END to
+            // literally repeat its one authored copy of the loop body real Compose's own
+            // `RemoteContext`-driven runtime loop would otherwise re-`apply()` N times, the same
+            // "real effect via static unrolling, honest fallback otherwise" approach
+            // MODIFIER_COLLAPSIBLE_PRIORITY's declared-size gate already established.
+            var isLoop: Boolean = false
+            var loopFrom: Float? = null
+            var loopStep: Float? = null
+            var loopUntil: Float? = null
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
@@ -2112,6 +2150,18 @@ object RealRemoteComposeParser {
                     pushScope() // closed by this container's single CONTAINER_END
                 }
 
+                OP_LOOP_START -> {
+                    reader.readS32() // indexVariableId — no expression evaluator to feed it
+                    val from = resolveFloat(reader.readFloat32())
+                    val step = resolveFloat(reader.readFloat32())
+                    val until = resolveFloat(reader.readFloat32())
+                    pushScope() // no LAYOUT_CONTENT marker — closed by a single CONTAINER_END
+                    scopeStack.last().isLoop = true
+                    scopeStack.last().loopFrom = from.takeUnless { it.isNaN() }
+                    scopeStack.last().loopStep = step.takeUnless { it.isNaN() }
+                    scopeStack.last().loopUntil = until.takeUnless { it.isNaN() }
+                }
+
                 OP_LAYOUT_STATE -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
@@ -2498,32 +2548,69 @@ object RealRemoteComposeParser {
                         if (clipWrapped) opcodes += Opcode.MatrixRestore
                         val parent = frame.parent
                         if (parent != null) {
-                            // Registered regardless of parent.layoutAxis: a Box's children need
-                            // this too, just for MODIFIER_ZINDEX's paint-order reordering below
-                            // rather than arrangeChildren's position-arrangement (Box already
-                            // paints children at their own document-authored position).
-                            parent.childRanges.add(intArrayOf(frame.startIndex, opcodes.size))
-                            parent.childZIndices.add(frame.zIndex)
-                            // Resolved against *this* registration's own parent axis now, while
-                            // both this frame's own collapsiblePriorityOrientation and the parent's
-                            // layoutAxis are known — CollapsiblePriority.getPriority's real
-                            // orientation filter (javap-confirmed): a priority whose own
-                            // orientation doesn't match is treated as Float.MAX_VALUE (never
-                            // collapse), same as no modifier at all.
-                            val expectedOrientation = if (parent.layoutAxis == 'V') 1 else 0
-                            parent.childCollapsiblePriorities.add(
-                                if (frame.collapsiblePriorityOrientation == expectedOrientation) {
-                                    frame.collapsiblePriority
-                                } else {
-                                    Float.MAX_VALUE
-                                },
-                            )
-                            // A widthWeight only applies in an 'H' (Row-axis) parent, a
-                            // heightWeight only in a 'V' one — same axis-matching rationale as
-                            // collapsiblePriority's own orientation filter above.
-                            parent.childWeights.add(
-                                if (parent.layoutAxis == 'V') frame.heightWeight else frame.widthWeight,
-                            )
+                            // Real LOOP_START unrolling (see its own KDoc): a static, non-empty
+                            // range clones this frame's one authored body that many times, each
+                            // clone registered as its own independent sibling below — real
+                            // Compose's own per-iteration re-apply(), just unrolled at parse time
+                            // instead of re-walked live. Every other frame (loopFrom == null) — and
+                            // a variable-driven loop, honestly falling back to rendering once —
+                            // takes repeatCount == 1, reducing to plain single registration, the
+                            // exact behavior every non-loop frame already had.
+                            val loopFrom = frame.loopFrom
+                            val loopStep = frame.loopStep
+                            val loopUntil = frame.loopUntil
+                            val repeatCount = if (
+                                frame.isLoop && loopFrom != null && loopStep != null && loopUntil != null &&
+                                loopStep > 0f && loopFrom < loopUntil
+                            ) {
+                                ceil((loopUntil - loopFrom) / loopStep).toInt().coerceIn(0, 64)
+                            } else {
+                                1
+                            }
+                            val bodyStart = frame.startIndex
+                            val bodyTemplate = opcodes.subList(bodyStart, opcodes.size).toList()
+                            if (repeatCount <= 0) {
+                                // A real "loop never runs" range (from >= until): this frame's one
+                                // authored body copy was never actually meant to render at all.
+                                while (opcodes.size > bodyStart) opcodes.removeAt(opcodes.size - 1)
+                            } else {
+                                val expectedOrientation = if (parent.layoutAxis == 'V') 1 else 0
+                                fun registerChild(range: IntArray) {
+                                    // Registered regardless of parent.layoutAxis: a Box's children
+                                    // need this too, just for MODIFIER_ZINDEX's paint-order
+                                    // reordering below rather than arrangeChildren's position-
+                                    // arrangement (Box already paints children at their own
+                                    // document-authored position).
+                                    parent.childRanges.add(range)
+                                    parent.childZIndices.add(frame.zIndex)
+                                    // Resolved against *this* registration's own parent axis now,
+                                    // while both this frame's own collapsiblePriorityOrientation
+                                    // and the parent's layoutAxis are known —
+                                    // CollapsiblePriority.getPriority's real orientation filter
+                                    // (javap-confirmed): a priority whose own orientation doesn't
+                                    // match is treated as Float.MAX_VALUE (never collapse), same
+                                    // as no modifier at all.
+                                    parent.childCollapsiblePriorities.add(
+                                        if (frame.collapsiblePriorityOrientation == expectedOrientation) {
+                                            frame.collapsiblePriority
+                                        } else {
+                                            Float.MAX_VALUE
+                                        },
+                                    )
+                                    // A widthWeight only applies in an 'H' (Row-axis) parent, a
+                                    // heightWeight only in a 'V' one — same axis-matching rationale
+                                    // as collapsiblePriority's own orientation filter above.
+                                    parent.childWeights.add(
+                                        if (parent.layoutAxis == 'V') frame.heightWeight else frame.widthWeight,
+                                    )
+                                }
+                                registerChild(intArrayOf(bodyStart, opcodes.size))
+                                repeat(repeatCount - 1) {
+                                    val cloneStart = opcodes.size
+                                    opcodes.addAll(bodyTemplate)
+                                    registerChild(intArrayOf(cloneStart, opcodes.size))
+                                }
+                            }
                         }
                     }
                 }

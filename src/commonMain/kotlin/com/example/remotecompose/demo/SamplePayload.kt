@@ -283,7 +283,15 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * *declared* source rect's own aspect (confirmed via the parsed opcode dump: a 20-wide x 5-tall
  * letterboxed strip, half as tall as the full-bitmap 20x10 strip [OP_LAYOUT_IMAGE]'s own FIT
  * proof produces elsewhere in this same document) proves this opcode's source sub-rect really
- * drives its scaling math, not just being byte-consumed. Shared by every
+ * drives its scaling math, not just being byte-consumed, and a real `LOOP_START`
+ * (`startLoop(0, 0f, 1f, 3f)`/`endLoop()` — previously a completely unhandled opcode) wrapping a
+ * single authored 6x6 rect, nested in a `startRow`/`endRow` — real `LoopOperation.paint()` would
+ * re-apply that one authored body in a live `for (i = 0; i < 3; i += 1)` loop; since every bound
+ * here is a literal (not a variable reference), this parser statically unrolls it into three
+ * separate rects instead, each registered as its own independent sibling for the enclosing row's
+ * own real packing to arrange — confirmed via the parsed opcode dump: three 6x6 rects at local
+ * `x=0`/`6`/`12` (not the single rect the old unhandled behavior could never have rendered at
+ * all). Shared by every
  * platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -382,6 +390,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAAAAAoAAAAAgAAAAT/ahuahQAAAENCyAAAQzQAAD+AAAAAAAAAAAAAACgAAAACAAAABP8ufTJmAAAARAAAAARUYWxshQAAAERDDAAAQsgAAL+AAAC/" +
             "gAAAAAAAACgAAAACAAAABP/GKCiFAAAAREMqAABCyAAAv4AAAD+AAAAAAAAAZgAAAEUAAAAA0P///zz/////AAAAK/8AaVxBgAAAAAAAAEPIAAAAAABF" +
             "AAAAAQAAAAEAAAABEAAAAABCcAAA3UGgAABDFgAAyf///zvW1tD///86/////wAAACv/rRRXQYAAAAAAAABDyAAAAAAARQAAAAMAAAABAAAAARAAAAAA" +
-            "QnAAAN1CyAAAQxYAAMn///851tZmAAAARgAAAAZzY2FsZWSVAAAAOQAAAAAAAAAAQQAAAEAAAABAAAAAQAAAAEGwAABBsAAAAAAABD+AAAAAAABG",
+            "QnAAAN1CyAAAQxYAAMn///851tZmAAAARgAAAAZzY2FsZWSVAAAAOQAAAAAAAAAAQQAAAEAAAABAAAAAQAAAAEGwAABBsAAAAAAABD+AAAAAAABGy///" +
+            "/zj/////AAAAAAAAAAAAAAAA3UAAAABDKgAAyf///zfXAAAAAAAAAAA/gAAAQEAAACgAAAACAAAABP9tTEEqAAAAAAAAAABAwAAAQMAAANbW1g==",
     )
 }
