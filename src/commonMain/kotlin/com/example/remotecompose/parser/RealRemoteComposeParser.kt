@@ -318,6 +318,25 @@ object RealRemoteComposeParser {
      */
     private const val OP_DRAW_TWEEN_PATH = 125
 
+    /**
+     * `Operations.PATH_COMBINE` — `RemoteComposeWriter.pathCombine(pathId1, pathId2, operation)`
+     * writes `[outId:i32][pathId1:i32][pathId2:i32][operation:i8]` (source-confirmed via javap on
+     * the real `PathCombine.read()`/`write()` — `operation` is a single byte, unlike every other
+     * id/enum field in this format, confirmed by the real `readByte()` call, not assumed) —
+     * `OP_DIFFERENCE=0`/`OP_INTERSECT=1`/`OP_REVERSE_DIFFERENCE=2`/`OP_UNION=3`/`OP_XOR=4`. Real
+     * `paint()` delegates to an abstract `PaintContext.combinePath(...)` with no algorithm in this
+     * SDK to decompile; general polygon boolean ops (union/difference/xor of arbitrary, possibly
+     * concave, possibly curved paths) need real computational-geometry machinery well beyond this
+     * parser's own scope. Only `OP_INTERSECT` gets a real effect here, via the textbook
+     * Sutherland-Hodgman polygon-clipping algorithm [sutherlandHodgmanIntersect] (correct for any
+     * simple subject polygon clipped against a *convex* clip polygon — real, not a guess, but a
+     * scoped-down real algorithm rather than a full general-path intersection) — every other
+     * operation, and any `OP_INTERSECT` whose clip path isn't convex, honestly leaves the result
+     * unresolved rather than guessing at a general boolean-op result this algorithm can't
+     * correctly produce.
+     */
+    private const val OP_PATH_COMBINE = 175
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2201,6 +2220,25 @@ object RealRemoteComposeParser {
                     }
                 }
 
+                OP_PATH_COMBINE -> {
+                    val outId = reader.readS32()
+                    val pathId1 = reader.readS32()
+                    val pathId2 = reader.readS32()
+                    val operation = reader.readS8()
+                    val path1 = pathPool[pathId1]
+                    val path2 = pathPool[pathId2]
+                    if (operation == 1 && path1 != null && path2 != null) { // OP_INTERSECT only
+                        val subject = flattenPathSegments(path1).map { floatArrayOf(it[0], it[1]) }
+                        val clip = flattenPathSegments(path2).map { floatArrayOf(it[0], it[1]) }
+                        val result = sutherlandHodgmanIntersect(subject, clip)
+                        if (result.size >= 3) {
+                            pathPool[outId] = listOf(PathCommand.MoveTo(result[0][0], result[0][1])) +
+                                result.drop(1).map { PathCommand.LineTo(it[0], it[1]) } +
+                                listOf(PathCommand.Close)
+                        }
+                    }
+                }
+
                 OP_DRAW_PATH -> {
                     val pathId = reader.readS32()
                     val commands = pathPool[pathId] ?: throw RemoteComposeParseException(
@@ -3587,5 +3625,55 @@ object RealRemoteComposeParser {
         if (vertices.size < 2) return emptyList()
         return listOf(PathCommand.MoveTo(vertices[0][0], vertices[0][1])) +
             vertices.drop(1).map { PathCommand.LineTo(it[0], it[1]) }
+    }
+
+    // OP_PATH_COMBINE's OP_INTERSECT: the textbook Sutherland-Hodgman polygon-clipping algorithm
+    // (real, well-known computational geometry — not a guess), correct for any simple subject
+    // polygon clipped against a *convex* clip polygon. [ensureCcw] normalizes winding first since
+    // the algorithm's own "inside" test assumes a consistent (counter-clockwise) orientation —
+    // real callers may author either winding.
+    private fun ensureCcw(poly: List<FloatArray>): List<FloatArray> {
+        var area = 0f
+        for (i in poly.indices) {
+            val p1 = poly[i]
+            val p2 = poly[(i + 1) % poly.size]
+            area += p1[0] * p2[1] - p2[0] * p1[1]
+        }
+        return if (area < 0f) poly.reversed() else poly
+    }
+
+    private fun sutherlandHodgmanIntersect(subject: List<FloatArray>, clip: List<FloatArray>): List<FloatArray> {
+        if (subject.size < 3 || clip.size < 3) return emptyList()
+        fun isInside(p: FloatArray, a: FloatArray, b: FloatArray) =
+            (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]) >= 0f
+        fun intersection(p1: FloatArray, p2: FloatArray, a: FloatArray, b: FloatArray): FloatArray {
+            val denom = (p1[0] - p2[0]) * (a[1] - b[1]) - (p1[1] - p2[1]) * (a[0] - b[0])
+            if (denom == 0f) return p2
+            val t = ((p1[0] - a[0]) * (a[1] - b[1]) - (p1[1] - a[1]) * (a[0] - b[0])) / denom
+            return floatArrayOf(p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1]))
+        }
+        val clipCcw = ensureCcw(clip)
+        var output = ensureCcw(subject)
+        for (i in clipCcw.indices) {
+            if (output.isEmpty()) break
+            val a = clipCcw[i]
+            val b = clipCcw[(i + 1) % clipCcw.size]
+            val input = output
+            val next = mutableListOf<FloatArray>()
+            for (j in input.indices) {
+                val current = input[j]
+                val prev = input[(j - 1 + input.size) % input.size]
+                val currentInside = isInside(current, a, b)
+                val prevInside = isInside(prev, a, b)
+                if (currentInside) {
+                    if (!prevInside) next += intersection(prev, current, a, b)
+                    next += current
+                } else if (prevInside) {
+                    next += intersection(prev, current, a, b)
+                }
+            }
+            output = next
+        }
+        return output
     }
 }

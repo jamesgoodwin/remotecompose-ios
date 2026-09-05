@@ -336,7 +336,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `MoveTo(0, 15)`/`LineTo(20, 15)`/`LineTo(20, 35)` "L" shape (the square's first two sides), which
  * renders (this parser's own `drawTweenPath`, like `drawPath`, always fills) as a clean right
  * triangle — the top-left half of the square, not the full untrimmed square the old unhandled
- * behavior could never have computed at all. Shared by
+ * behavior could never have computed at all, and a real `PATH_COMBINE` `OP_INTERSECT`
+ * (`writer.pathCombine(squareC, squareD, OP_INTERSECT)` — previously a completely unhandled
+ * opcode) intersecting two overlapping 20x20 squares — one at `(0, 0)-(20, 20)`, one at
+ * `(10, 10)-(30, 30)` — via this parser's own real Sutherland-Hodgman polygon-clipping algorithm,
+ * confirmed via the parsed opcode dump to compute exactly their real geometric overlap, a 10x10
+ * square at `(10, 10)-(20, 20)` (hand-verifiable min/max arithmetic), not the unresolved reference
+ * the old unhandled behavior could never have computed at all. Shared by
  * every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -450,6 +456,9 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "cAAAyf///zGfAAAAUQAAAAAAAAAAoAAAAFEAAAAF/4AACwAAAAAAAAAAQaAAAAAAAACgAAAAUQAAAAX/gAALAAAAAAAAAABBoAAAQaAAAKAAAABRAAAA" +
             "Bf+AAAsAAAAAAAAAAAAAAABBoAAAoAAAAFEAAAAB/4AAD58AAABSAAAAAEHwAACgAAAAUgAAAAX/gAALAAAAAAAAAABBoAAAQfAAAKAAAABSAAAABf+A" +
             "AAsAAAAAAAAAAEGgAABCSAAAoAAAAFIAAAAF/4AACwAAAAAAAAAAAAAAAEJIAACgAAAAUgAAAAH/gAAPKAAAAAIAAAAE/2obmn0AAABRAAAAUj8AAAAA" +
-            "AAAAPwAAANbW",
+            "AAAAPwAAANbWyv///zD/////AAAAAAAAAADdQfAAAEJwAADJ////L58AAABTAAAAAAAAAACgAAAAUwAAAAX/gAALAAAAAAAAAABBoAAAAAAAAKAAAABT" +
+            "AAAABf+AAAsAAAAAAAAAAEGgAABBoAAAoAAAAFMAAAAF/4AACwAAAAAAAAAAAAAAAEGgAACgAAAAUwAAAAH/gAAPnwAAAFRBIAAAQSAAAKAAAABUAAAA" +
+            "Bf+AAAsAAAAAAAAAAEHwAABBIAAAoAAAAFQAAAAF/4AACwAAAAAAAAAAQfAAAEHwAACgAAAAVAAAAAX/gAALAAAAAAAAAABBIAAAQfAAAKAAAABUAAAA" +
+            "Af+AAA+vAAAAVQAAAFMAAABUASgAAAACAAAABP8ufTJ8AAAAVdbW",
     )
 }

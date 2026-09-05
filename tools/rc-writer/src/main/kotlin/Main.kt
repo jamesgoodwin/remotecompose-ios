@@ -1312,6 +1312,29 @@ private fun buildCoverageSample() {
     writer.drawTweenPath(squarePathA, squarePathB, 0.5f, 0f, 0.5f)
     writer.endBox()
 
+    // PATH_COMBINE real OP_INTERSECT proof: two overlapping 20x20 squares — one at (0,0)-(20,20),
+    // one at (10,10)-(30,30) — pathCombine(squareC, squareD, OP_INTERSECT) should compute exactly
+    // their real geometric overlap, a 10x10 square at (10,10)-(20,20) (hand-verifiable min/max
+    // arithmetic), via this parser's own real Sutherland-Hodgman polygon-clipping algorithm —
+    // confirmed via the parsed opcode dump, not the unresolved reference the old (PATH_COMBINE
+    // completely unhandled — would have thrown a parse exception) behavior could never have
+    // computed at all.
+    writer.startBox(RecordingModifier().offset(30f, 60f), 0, 0)
+    val squarePathC = writer.pathCreate(0f, 0f)
+    writer.pathAppendLineTo(squarePathC, 20f, 0f)
+    writer.pathAppendLineTo(squarePathC, 20f, 20f)
+    writer.pathAppendLineTo(squarePathC, 0f, 20f)
+    writer.pathAppendClose(squarePathC)
+    val squarePathD = writer.pathCreate(10f, 10f)
+    writer.pathAppendLineTo(squarePathD, 30f, 10f)
+    writer.pathAppendLineTo(squarePathD, 30f, 30f)
+    writer.pathAppendLineTo(squarePathD, 10f, 30f)
+    writer.pathAppendClose(squarePathD)
+    val intersectPathId = writer.pathCombine(squarePathC, squarePathD, 1.toByte()) // OP_INTERSECT
+    writer.getRcPaint().setColor(0xFF2E7D32.toInt()).commit()
+    writer.drawPath(intersectPathId)
+    writer.endBox()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
