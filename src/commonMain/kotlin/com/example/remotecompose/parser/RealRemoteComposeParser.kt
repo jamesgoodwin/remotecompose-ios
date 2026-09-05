@@ -410,8 +410,17 @@ object RealRemoteComposeParser {
 
     /**
      * `Operations.MODIFIER_PADDING` — `RecordingModifier.padding(float)` writes four raw floats
-     * (all equal to the single value passed, for the one-arg overload — presumably
-     * top/bottom/left/right independently for the four-arg overload, unconfirmed order).
+     * (all equal to the single value passed, for the one-arg overload). For the four-arg
+     * overload the order is `[left:f32][top:f32][right:f32][bottom:f32]` — source-confirmed via
+     * javap on the real `PaddingModifier`/`PaddingModifierOperation` classes: both the
+     * creation-side constructor and the wire `apply()` carry the fields straight through in
+     * `(left, top, right, bottom)` order with no reordering at either hop (an earlier pass over
+     * this opcode left the order "unconfirmed" and guessed wrong — `top/bottom/left/right`).
+     * All four get a real semantic effect (see the handler below): `left`/`top` translate this
+     * container's children inward (the same mechanism [OP_MODIFIER_OFFSET] uses); all four
+     * expand a sibling `MODIFIER_BACKGROUND`'s inferred rect back out, so the background covers
+     * this container's full un-padded box instead of just the inset children `contentBounds()`
+     * alone would measure.
      */
     private const val OP_MODIFIER_PADDING = 58
 
@@ -762,6 +771,14 @@ object RealRemoteComposeParser {
             // same modifier, since this opcode carries no position/size fields of its own.
             var imageBitmapId: Int? = null
             var imageAlpha: Float = 1f
+            // Set by OP_MODIFIER_PADDING; consumed by OP_CONTAINER_END's MODIFIER_BACKGROUND
+            // handling to expand the inferred background rect back out to cover this container's
+            // full (un-padded) box — contentBounds() alone would only ever measure the *inset*
+            // children, since their own draw calls already carry the padding's runtime translate.
+            var paddingLeft: Float = 0f
+            var paddingTop: Float = 0f
+            var paddingRight: Float = 0f
+            var paddingBottom: Float = 0f
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
@@ -1416,7 +1433,10 @@ object RealRemoteComposeParser {
                                 opcodes.add(
                                     frame.startIndex,
                                     Opcode.DrawRect(
-                                        bounds[0], bounds[1], bounds[2], bounds[3],
+                                        bounds[0] - frame.paddingLeft,
+                                        bounds[1] - frame.paddingTop,
+                                        bounds[2] + frame.paddingRight,
+                                        bounds[3] + frame.paddingBottom,
                                         PaintStyle(bg, PaintStyleKind.FILL),
                                     ),
                                 )
@@ -1483,7 +1503,32 @@ object RealRemoteComposeParser {
 
                 OP_HOST_ACTION -> reader.readS32() // actionId
 
-                OP_MODIFIER_PADDING -> repeat(4) { reader.readFloat32() }
+                OP_MODIFIER_PADDING -> {
+                    // A real semantic effect (not just a byte-skip): translates every subsequent
+                    // draw belonging to this container's children inward, undone at this
+                    // container's own closing CONTAINER_END — the same mechanism MODIFIER_OFFSET
+                    // uses. right/bottom are stashed too (not applied as a translate themselves —
+                    // padding only insets from the top-left, the same as MODIFIER_OFFSET's own
+                    // two-float shape has no separate "how much smaller" concept) so
+                    // OP_CONTAINER_END's MODIFIER_BACKGROUND handling can expand the inferred
+                    // background rect back out to cover the full un-padded box, matching the
+                    // classic "colored margin around padded content" look real Compose gives
+                    // `Modifier.background(color).padding(...)`.
+                    val left = reader.readFloat32()
+                    val top = reader.readFloat32()
+                    val right = reader.readFloat32()
+                    val bottom = reader.readFloat32()
+                    val frame = scopeStack.lastOrNull()
+                    frame?.paddingLeft = left
+                    frame?.paddingTop = top
+                    frame?.paddingRight = right
+                    frame?.paddingBottom = bottom
+                    if (left != 0f || top != 0f) {
+                        opcodes += Opcode.MatrixSave
+                        opcodes += Opcode.Translate(left, top)
+                        attachToTopScope(Opcode.MatrixRestore)
+                    }
+                }
 
                 OP_MODIFIER_BACKGROUND -> {
                     repeat(4) { reader.readFloat32() } // corner radii — not modeled (no rounded-fill Opcode variant used here)

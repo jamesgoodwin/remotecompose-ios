@@ -318,7 +318,12 @@ private fun buildCoverageSample() {
     writer.drawRect(190f, 2f, 199f, 11f)
     writer.endBox()
 
-    writer.startBox(RecordingModifier().padding(3f).background(0xFF7B1FA2.toInt()), 0, 0)
+    // padding(left=2, top=6, right=2, bottom=2): a real-bytes hex-diff of this same call
+    // confirmed the field order is (left, top, right, bottom), not the "top/bottom/left/right"
+    // an earlier pass guessed — left/top get a real inset here, so the purple child rect's top
+    // edge should sit visibly further from the grey background's top edge than its left edge
+    // sits from the background's left edge.
+    writer.startBox(RecordingModifier().padding(2f, 6f, 2f, 2f).background(0xFF37474F.toInt()), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF7B1FA2.toInt())
         .commit()

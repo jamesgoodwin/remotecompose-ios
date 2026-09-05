@@ -14,7 +14,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * rect wrapped in a `startBox`/`endBox`, a dark-brown rect wrapped in a `startBox`/`endBox`
  * carrying explicit `width()`/`height()` modifiers, a small pink rect wrapped in a
  * `startBox`/`endBox` carrying an `onClick(HostAction(9))` modifier, a small purple rect wrapped
- * in a `startBox`/`endBox` carrying `padding()`/`background()` modifiers, a small green rect
+ * in a `startBox`/`endBox` carrying `padding(2f, 6f, 2f, 2f)`/`background(0xFF37474F)` modifiers —
+ * a real-bytes hex-diff of this same call confirmed the field order is `(left, top, right,
+ * bottom)`, not the `top/bottom/left/right` an earlier pass guessed; `left`/`top` really inset
+ * the purple child (visibly further from the grey background's top edge than its left edge,
+ * proving the order), and all four expand the inferred grey background back out to the full
+ * un-padded box rather than just matching the inset child's own bounds — a small green rect
  * wrapped in a `startBox`/`endBox` carrying a `visibility()` modifier, and a small orange rect
  * wrapped in a `startBox`/`endBox` carrying an `offset()` modifier, a small teal rect wrapped in a
  * `startBox`/`endBox` carrying a `border()` modifier, a small purple rect wrapped in a
@@ -124,7 +129,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AABDLwAAQQAAANbWy/////z/////AAAAAAAAAAAAAAAAyf////soAAAAAgAAAAT/AGlcKkLmAABDFgAAQwIAAEMlAAAoAAAAAgAAAAT/8GKSLkMMAABD" +
             "HQAAQOAAANbWyv////r/////AAAAAAAAAADJ////+SgAAAACAAAABP+enSQqQxYAAEMUAABDJQAAQyMAANbWyv////j/////AAAAAAAAAAAQAAAAAEGg" +
             "AABDAAAAAEEgAADJ////9ygAAAACAAAABP9dQDcqQyoAAEMUAABDPgAAQyMAANbWyv////b/////AAAAAAAAAAA70QAAAAnWyf////UoAAAAAgAAAAT/" +
-            "7EB6KkM+AABAAAAAQ0cAAEEwAADW1sr////0/////wAAAAAAAAAAOkBAAABAQAAAQEAAAEBAAAA3AAAAAAAAAAAAAAAAAAAAAD729vc9+Pj5PyKioz+A" +
+            "7EB6KkM+AABAAAAAQ0cAAEEwAADW1sr////0/////wAAAAAAAAAAOkAAAABAwAAAQAAAAEAAAAA3AAAAAAAAAAAAAAAAAAAAAD5c3N0+jo6PPp6enz+A" +
             "AAAAAAAAyf////MoAAAAAgAAAAT/ex+iKkI0AABAAAAAQnAAAEFAAADW1sr////y/////wAAAAAAAAAA0wAAAADJ////8SgAAAACAAAABP84jjwqQoIA" +
             "AEAAAABCoAAAQUAAANbWyv////D/////AAAAAAAAAADdQKAAAECgAADJ////7ygAAAACAAAABP//VyIqQqoAAEAAAABCyAAAQUAAANbWyv///+7/////" +
             "AAAAAAAAAABrAAAAAAAAAAAAAAAAAAAAAEAAAABAgAAAAAAAAAAAAAAAAAAAP4AAAAAAAADJ////7SgAAAACAAAABP8AlogqQtIAAEAAAABC8AAAQUAA" +
