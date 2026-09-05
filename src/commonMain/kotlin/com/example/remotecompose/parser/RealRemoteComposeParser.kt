@@ -286,9 +286,11 @@ object RealRemoteComposeParser {
      * just [OP_LAYOUT_ROW]'s single-line arrangement): the real `FlowLayout` class extends
      * `RowLayout` (source-confirmed via javap), so the main axis is always horizontal, wrapping to
      * a new line after `maxItemsInMainAxis` children — see `arrangeChildren`'s
-     * `flowMaxItemsPerLine` handling. `maxLinesInCrossAxis` isn't modeled: this parser wraps as
-     * many lines as the children need rather than capping and hiding the overflow past a fixed
-     * line count the way real Compose would.
+     * `flowMaxItemsPerLine` handling. `maxLinesInCrossAxis` also gets a real effect: javap on the
+     * real `FlowLayout`'s own measure logic shows it marks a child `Component.Visibility.GONE`
+     * (no space reserved, the same real effect [OP_MODIFIER_VISIBILITY] already gives that value)
+     * the moment its row index would reach `maxLinesInCrossAxis`, instead of adding another row —
+     * see `arrangeChildren`'s `flowMaxLines` handling.
      */
     private const val OP_LAYOUT_FLOW = 240
 
@@ -940,6 +942,11 @@ object RealRemoteComposeParser {
             // plain LAYOUT_COLUMN/LAYOUT_ROW/LAYOUT_COLLAPSIBLE_* content frames, which always pack
             // onto a single line regardless of child count.
             var flowMaxItemsPerLine: Int? = null
+            // Set (from pendingFlowMaxLines) only for a LAYOUT_FLOW content frame; null everywhere
+            // else. arrangeChildren hides (Component.Visibility.GONE, via an empty ClipRect — the
+            // same mechanism OP_MODIFIER_VISIBILITY uses) every child whose computed row index
+            // would reach this line count, matching the real FlowLayout's own measure logic.
+            var flowMaxLines: Int? = null
             val childRanges = mutableListOf<IntArray>() // only populated/consumed when layoutAxis != null
             // Parallel to childRanges (same index correspondence) — each entry is the
             // corresponding child's own OP_MODIFIER_ZINDEX value (default 0f), read by
@@ -1028,6 +1035,10 @@ object RealRemoteComposeParser {
         // source-confirmed via javap); non-null tells arrangeChildren to wrap into multiple lines
         // instead of packing every child onto one, capping each line at this many children.
         var pendingFlowMaxItemsPerLine: Int? = null
+        // Set by OP_LAYOUT_FLOW alongside pendingFlowMaxItemsPerLine; non-null caps how many rows
+        // arrangeChildren actually shows, hiding (not just leaving unpositioned) every child past
+        // that row count — see ScopeFrame.flowMaxLines's KDoc.
+        var pendingFlowMaxLines: Int? = null
 
         /**
          * This renderer has no measure/layout pass, so a container's "bounds" for
@@ -1268,12 +1279,19 @@ object RealRemoteComposeParser {
                     // behavior-preserving for Column/Row/CollapsibleColumn/Row.
                     val perLineCap = frame.flowMaxItemsPerLine ?: children.size
                     val deltas = arrayOfNulls<FloatArray>(children.size)
+                    // LAYOUT_FLOW's maxLinesInCrossAxis (flowMaxLines != null): every child whose
+                    // row index reaches this line count is hidden below, matching the real
+                    // FlowLayout's own GONE-marking behavior instead of adding another row.
+                    val hiddenChildIndices = mutableSetOf<Int>()
                     var lineCrossCursor = crossAnchor
                     var lineStart = 0
+                    var lineIndex = 0
                     while (lineStart < children.size) {
                         val lineEnd = (lineStart + perLineCap).coerceAtMost(children.size)
                         val lineIndices = lineStart until lineEnd
                         val lineCount = lineEnd - lineStart
+                        val maxLines = frame.flowMaxLines
+                        if (maxLines != null && lineIndex >= maxLines) hiddenChildIndices.addAll(lineIndices)
                         val lineMainSizes = lineIndices.map { mainSizes[it] }
                         val lineCrossSizes = lineIndices.map { crossSizes[it] }
                         val packedMainSize = lineMainSizes.sum() + frame.spacedBy * (lineCount - 1).coerceAtLeast(0)
@@ -1299,11 +1317,19 @@ object RealRemoteComposeParser {
                         }
                         lineCrossCursor += (lineCrossSizes.maxOrNull() ?: 0f) + frame.spacedBy
                         lineStart = lineEnd
+                        lineIndex++
                     }
                     for (i in children.indices.reversed()) {
+                        val range = children[i]
+                        if (i in hiddenChildIndices) {
+                            // Same empty-ClipRect GONE mechanism OP_MODIFIER_VISIBILITY uses —
+                            // this child's own position doesn't matter once it renders nothing.
+                            opcodes.addAll(range[1], listOf(Opcode.MatrixRestore))
+                            opcodes.addAll(range[0], listOf(Opcode.MatrixSave, Opcode.ClipRect(0f, 0f, 0f, 0f)))
+                            continue
+                        }
                         val delta = deltas[i] ?: continue
                         if (delta[0] == 0f && delta[1] == 0f) continue
-                        val range = children[i]
                         // Rewrite every opcode's own coordinates directly instead of wrapping the range in
                         // MatrixSave/Translate/MatrixRestore. A real on-device Compose Canvas target was
                         // confirmed (via a minimal, isolated repro) to corrupt DrawText positioning — even
@@ -1622,9 +1648,7 @@ object RealRemoteComposeParser {
                     val verticalPositioning = reader.readS32()
                     val spacedBy = reader.readFloat32()
                     val maxItemsInMainAxis = reader.readS32()
-                    reader.readS32() // maxLinesInCrossAxis — not modeled: this parser wraps as
-                    // many lines as the children need, rather than capping and (like real Compose)
-                    // hiding/collapsing the overflow past a fixed line count.
+                    val maxLinesInCrossAxis = reader.readS32()
                     pushScope()
                     // FlowLayout extends RowLayout (source-confirmed via javap): the main axis is
                     // always horizontal, wrapping to a new line after maxItemsInMainAxis children —
@@ -1634,6 +1658,11 @@ object RealRemoteComposeParser {
                     pendingHorizontalPositioning = horizontalPositioning
                     pendingVerticalPositioning = verticalPositioning
                     pendingFlowMaxItemsPerLine = maxItemsInMainAxis.takeIf { it > 0 && it < Int.MAX_VALUE }
+                    // Real effect (javap-confirmed on FlowLayout's own measure logic): once a
+                    // child's row index reaches maxLinesInCrossAxis, real Compose marks it
+                    // Component.Visibility.GONE (no space reserved) rather than adding another
+                    // row — see arrangeChildren's flowMaxLines handling for the hide mechanism.
+                    pendingFlowMaxLines = maxLinesInCrossAxis.takeIf { it > 0 && it < Int.MAX_VALUE }
                 }
 
                 OP_LAYOUT_BOX, OP_LAYOUT_FIT_BOX -> {
@@ -1668,8 +1697,10 @@ object RealRemoteComposeParser {
                         scopeStack.last().horizontalPositioning = pendingHorizontalPositioning
                         scopeStack.last().verticalPositioning = pendingVerticalPositioning
                         scopeStack.last().flowMaxItemsPerLine = pendingFlowMaxItemsPerLine
+                        scopeStack.last().flowMaxLines = pendingFlowMaxLines
                         pendingLayoutAxis = null
                         pendingFlowMaxItemsPerLine = null
+                        pendingFlowMaxLines = null
                     }
                 }
 

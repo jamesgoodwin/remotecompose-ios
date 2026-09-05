@@ -662,6 +662,23 @@ private fun buildCoverageSample() {
     }
     writer.endFlow()
 
+    // LAYOUT_FLOW maxLinesInCrossAxis real-effect proof: four Box children again, each drawing an
+    // identical raw (170, 170)-(176, 176) rect, wrapped in startFlow(spacedBy(3f),
+    // maxItemsInMainAxis=2, maxLinesInCrossAxis=1) this time — only the first row (2 children)
+    // should be visible; the second row's 2 children should render nothing at all (javap-confirmed
+    // real FlowLayout marks them Component.Visibility.GONE the moment a 3rd row would start),
+    // proving this parser now really hides the overflow instead of wrapping it into an unbounded
+    // number of visible rows.
+    writer.startFlow(RecordingModifier().spacedBy(3f), 0, 0, 2, 1)
+    val flowMaxLinesColors = intArrayOf(0xFFEF6C00.toInt(), 0xFF00695C.toInt(), 0xFFAD1457.toInt(), 0xFF283593.toInt())
+    for (color in flowMaxLinesColors) {
+        writer.startBox(RecordingModifier(), 0, 0)
+        writer.getRcPaint().setColor(color).commit()
+        writer.drawRect(170f, 170f, 176f, 176f)
+        writer.endBox()
+    }
+    writer.endFlow()
+
     writer.startFitBox(RecordingModifier(), 0, 0)
     writer.getRcPaint()
         .setColor(0xFFE64A19.toInt())
