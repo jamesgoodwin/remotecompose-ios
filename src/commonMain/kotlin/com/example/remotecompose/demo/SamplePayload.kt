@@ -328,7 +328,15 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * (`Translate(dx=14, dy=14)` then `Rotate(degrees=45, pivotX=0, pivotY=0)`) and visually (a clean
  * diagonal bar following the line's own tangent, not the axis-aligned rect the position-only proof
  * renders), proving this op's real arc-length position/tangent computation instead of staying
- * unsupported entirely. Shared by
+ * unsupported entirely, and a real `DRAW_TWEEN_PATH` (`writer.drawTweenPath(squareA, squareB, 0.5f,
+ * 0f, 0.5f)` — previously a completely unhandled opcode) tweening two structurally-identical 20x20
+ * squares (one at `y=[0, 20]`, one shifted straight down by `30` to `y=[30, 50]`) to `y=[15, 35]`
+ * (the same real per-coordinate lerp `PATH_TWEEN` already proves), then real-trimming to only the
+ * first *half* of that square's own perimeter — confirmed via the parsed opcode dump: an exact
+ * `MoveTo(0, 15)`/`LineTo(20, 15)`/`LineTo(20, 35)` "L" shape (the square's first two sides), which
+ * renders (this parser's own `drawTweenPath`, like `drawPath`, always fills) as a clean right
+ * triangle — the top-left half of the square, not the full untrimmed square the old unhandled
+ * behavior could never have computed at all. Shared by
  * every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -438,6 +446,10 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "YXwAAABMKAAAAAIAAAAE///BB3wAAABNZgAAAE4AAAAFZGVidWezAAAATj+AAAAAAAAAKAAAAAIAAAAE/xojfipDIAAAQxYAAEMwAABDJgAAyv///zb/" +
             "////AAAAAAAAAADdQnAAAEKMAADJ////NZ8AAABPAAAAAAAAAACgAAAATwAAAAX/gAALAAAAAAAAAABCIAAAAAAAALUAAABPPwAAAAAAAAAAAAABKAAA" +
             "AAIAAAAE/wCDjyoAAAAAAAAAAEDAAABAwAAA1tbK////NP////8AAAAAAAAAAN1CcAAAQrQAAMn///8znwAAAFAAAAAAAAAAAKAAAABQAAAABf+AAAsA" +
-            "AAAAAAAAAEHgAABB4AAAtQAAAFA/AAAAAAAAAAAAAAMoAAAAAgAAAAT/2EMVKsEAAAC/gAAAQQAAAD+AAADW1g==",
+            "AAAAAAAAAEHgAABB4AAAtQAAAFA/AAAAAAAAAAAAAAMoAAAAAgAAAAT/2EMVKsEAAAC/gAAAQQAAAD+AAADW1sr///8y/////wAAAAAAAAAA3UAAAABC" +
+            "cAAAyf///zGfAAAAUQAAAAAAAAAAoAAAAFEAAAAF/4AACwAAAAAAAAAAQaAAAAAAAACgAAAAUQAAAAX/gAALAAAAAAAAAABBoAAAQaAAAKAAAABRAAAA" +
+            "Bf+AAAsAAAAAAAAAAAAAAABBoAAAoAAAAFEAAAAB/4AAD58AAABSAAAAAEHwAACgAAAAUgAAAAX/gAALAAAAAAAAAABBoAAAQfAAAKAAAABSAAAABf+A" +
+            "AAsAAAAAAAAAAEGgAABCSAAAoAAAAFIAAAAF/4AACwAAAAAAAAAAAAAAAEJIAACgAAAAUgAAAAH/gAAPKAAAAAIAAAAE/2obmn0AAABRAAAAUj8AAAAA" +
+            "AAAAPwAAANbW",
     )
 }

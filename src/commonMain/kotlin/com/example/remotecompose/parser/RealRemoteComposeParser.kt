@@ -302,6 +302,22 @@ object RealRemoteComposeParser {
      */
     private const val OP_MATRIX_FROM_PATH = 181
 
+    /**
+     * `Operations.DRAW_TWEEN_PATH` — `RemoteComposeWriter.drawTweenPath(path1Id, path2Id, tween,
+     * start, stop)` writes `[path1Id:i32][path2Id:i32][tween:f32(NaN-taggable)]
+     * [start:f32(NaN-taggable)][stop:f32(NaN-taggable)]` (source-confirmed via javap on the real
+     * `DrawTweenPath.read()`/`write()`) — the same real per-coordinate lerp [OP_PATH_TWEEN] already
+     * gives via [lerpPath], drawn directly in one opcode instead of registering a new [pathPool]
+     * entry first. `start`/`stop` real-trim to only that `[start, stop)` fraction of the tweened
+     * path's own total arc length (matching Android's own well-documented
+     * `PathMeasure.getSegment()`) via [trimPath] — the same curve-flattening technique
+     * [OP_MATRIX_FROM_PATH] already established, since a trimmed *portion* of a curve isn't
+     * expressible as a shorter `QuadraticTo`/`CubicTo` without real curve-splitting math. A
+     * structural tween mismatch (see [lerpPath]'s own gate) draws nothing, the same honest
+     * fallback every other unresolvable reference in this parser already gets.
+     */
+    private const val OP_DRAW_TWEEN_PATH = 125
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2170,6 +2186,21 @@ object RealRemoteComposeParser {
                     }
                 }
 
+                OP_DRAW_TWEEN_PATH -> {
+                    val path1Id = reader.readS32()
+                    val path2Id = reader.readS32()
+                    val tween = resolveFloat(reader.readFloat32())
+                    val start = resolveFloat(reader.readFloat32())
+                    val stop = resolveFloat(reader.readFloat32())
+                    val lerped = lerpPath(pathPool[path1Id], pathPool[path2Id], tween)
+                    if (lerped != null) {
+                        val trimmed = trimPath(lerped, start, stop)
+                        if (trimmed.isNotEmpty()) {
+                            opcodes += Opcode.DrawPath(trimmed, PaintStyle(currentColor, PaintStyleKind.FILL))
+                        }
+                    }
+                }
+
                 OP_DRAW_PATH -> {
                     val pathId = reader.readS32()
                     val commands = pathPool[pathId] ?: throw RemoteComposeParseException(
@@ -3429,9 +3460,11 @@ object RealRemoteComposeParser {
     // length to the target fraction, and returns [x, y, tangentDx, tangentDy] at that point — the
     // tangent an un-normalized direction vector (only its angle matters to the caller). null for
     // an empty/degenerate (zero-length) path.
-    private fun pointAndTangentAlongPath(commands: List<PathCommand>, fraction: Float): FloatArray? {
-        data class Seg(val x1: Float, val y1: Float, val x2: Float, val y2: Float)
-        val segments = mutableListOf<Seg>()
+    // Shared by [pointAndTangentAlongPath]/[trimPath]: flattens Quadratic/CubicTo segments into
+    // 16 short line samples each (a standard, real curve-length technique — see
+    // OP_MATRIX_FROM_PATH's own KDoc) into one continuous list of [x1, y1, x2, y2] line segments.
+    private fun flattenPathSegments(commands: List<PathCommand>): List<FloatArray> {
+        val segments = mutableListOf<FloatArray>()
         var curX = 0f; var curY = 0f
         var subpathStartX = 0f; var subpathStartY = 0f
         val curveSamples = 16
@@ -3458,7 +3491,7 @@ object RealRemoteComposeParser {
                     subpathStartX = curX; subpathStartY = curY
                 }
                 is PathCommand.LineTo -> {
-                    segments += Seg(curX, curY, command.x, command.y)
+                    segments += floatArrayOf(curX, curY, command.x, command.y)
                     curX = command.x; curY = command.y
                 }
                 is PathCommand.QuadraticTo -> {
@@ -3468,7 +3501,7 @@ object RealRemoteComposeParser {
                             i / curveSamples.toFloat(), curX, curY,
                             command.x1, command.y1, command.x2, command.y2,
                         )
-                        segments += Seg(prevX, prevY, p[0], p[1])
+                        segments += floatArrayOf(prevX, prevY, p[0], p[1])
                         prevX = p[0]; prevY = p[1]
                     }
                     curX = command.x2; curY = command.y2
@@ -3480,18 +3513,23 @@ object RealRemoteComposeParser {
                             i / curveSamples.toFloat(), curX, curY,
                             command.x1, command.y1, command.x2, command.y2, command.x3, command.y3,
                         )
-                        segments += Seg(prevX, prevY, p[0], p[1])
+                        segments += floatArrayOf(prevX, prevY, p[0], p[1])
                         prevX = p[0]; prevY = p[1]
                     }
                     curX = command.x3; curY = command.y3
                 }
                 PathCommand.Close -> {
-                    segments += Seg(curX, curY, subpathStartX, subpathStartY)
+                    segments += floatArrayOf(curX, curY, subpathStartX, subpathStartY)
                     curX = subpathStartX; curY = subpathStartY
                 }
             }
         }
-        val lengths = segments.map { sqrt((it.x2 - it.x1) * (it.x2 - it.x1) + (it.y2 - it.y1) * (it.y2 - it.y1)) }
+        return segments
+    }
+
+    private fun pointAndTangentAlongPath(commands: List<PathCommand>, fraction: Float): FloatArray? {
+        val segments = flattenPathSegments(commands)
+        val lengths = segments.map { sqrt((it[2] - it[0]) * (it[2] - it[0]) + (it[3] - it[1]) * (it[3] - it[1])) }
         val totalLength = lengths.sum()
         if (totalLength <= 0f) return null
         val targetDist = fraction.coerceIn(0f, 1f) * totalLength
@@ -3502,14 +3540,52 @@ object RealRemoteComposeParser {
                 val localT = if (segLen > 0f) ((targetDist - accumulated) / segLen).coerceIn(0f, 1f) else 0f
                 val seg = segments[i]
                 return floatArrayOf(
-                    seg.x1 + (seg.x2 - seg.x1) * localT,
-                    seg.y1 + (seg.y2 - seg.y1) * localT,
-                    seg.x2 - seg.x1,
-                    seg.y2 - seg.y1,
+                    seg[0] + (seg[2] - seg[0]) * localT,
+                    seg[1] + (seg[3] - seg[1]) * localT,
+                    seg[2] - seg[0],
+                    seg[3] - seg[1],
                 )
             }
             accumulated += segLen
         }
         return null
+    }
+
+    // OP_DRAW_TWEEN_PATH's real start/stop trim (matching Android's own well-documented
+    // PathMeasure.getSegment()): keeps only the [start, stop) fraction of the path's own total
+    // arc length, rebuilt as a polyline (MoveTo + LineTo per flattened vertex, the same
+    // curve-flattening [flattenPathSegments] already performs elsewhere) — start == 0f && stop ==
+    // 1f (no real trim) returns the original commands unchanged, so untrimmed callers keep their
+    // own exact Quadratic/CubicTo curves instead of an unnecessarily-flattened approximation.
+    private fun trimPath(commands: List<PathCommand>, start: Float, stop: Float): List<PathCommand> {
+        if (start <= 0f && stop >= 1f) return commands
+        val segments = flattenPathSegments(commands)
+        val lengths = segments.map { sqrt((it[2] - it[0]) * (it[2] - it[0]) + (it[3] - it[1]) * (it[3] - it[1])) }
+        val totalLength = lengths.sum()
+        if (totalLength <= 0f) return commands
+        val startDist = start.coerceIn(0f, 1f) * totalLength
+        val stopDist = stop.coerceIn(0f, 1f) * totalLength
+        val vertices = mutableListOf<FloatArray>()
+        var accumulated = 0f
+        for (i in segments.indices) {
+            val seg = segments[i]
+            val segStart = accumulated
+            val segEnd = accumulated + lengths[i]
+            // segStart < stopDist (strict): a segment that starts exactly at the stop boundary
+            // contributes zero real length inside [start, stop) and must be excluded, or its own
+            // tEnd == 0 vertex would duplicate the previous segment's own already-added endpoint.
+            if (segEnd >= startDist && segStart < stopDist) {
+                val tStart = if (lengths[i] > 0f) ((startDist - segStart) / lengths[i]).coerceIn(0f, 1f) else 0f
+                val tEnd = if (lengths[i] > 0f) ((stopDist - segStart) / lengths[i]).coerceIn(0f, 1f) else 1f
+                if (vertices.isEmpty()) {
+                    vertices += floatArrayOf(seg[0] + (seg[2] - seg[0]) * tStart, seg[1] + (seg[3] - seg[1]) * tStart)
+                }
+                vertices += floatArrayOf(seg[0] + (seg[2] - seg[0]) * tEnd, seg[1] + (seg[3] - seg[1]) * tEnd)
+            }
+            accumulated = segEnd
+        }
+        if (vertices.size < 2) return emptyList()
+        return listOf(PathCommand.MoveTo(vertices[0][0], vertices[0][1])) +
+            vertices.drop(1).map { PathCommand.LineTo(it[0], it[1]) }
     }
 }

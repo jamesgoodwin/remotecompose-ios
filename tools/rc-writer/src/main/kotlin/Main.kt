@@ -1287,6 +1287,31 @@ private fun buildCoverageSample() {
     writer.drawRect(-8f, -1f, 8f, 1f)
     writer.endBox()
 
+    // DRAW_TWEEN_PATH real tween+trim proof: two structurally-identical 20x20 squares (one at
+    // y=[0, 20], one shifted straight down by 30 to y=[30, 50]) — drawTweenPath(squareA, squareB,
+    // 0.5f, 0f, 0.5f) should first tween them to a square at y=[15, 35] (the same real
+    // per-coordinate lerp PATH_TWEEN already proved), then real-trim to only the first *half* of
+    // that square's own 80-long perimeter (matching Android's own PathMeasure.getSegment()) — the
+    // first two sides, an "L" shape from (0,15) to (20,15) to (20,35) that fills (this parser's
+    // own drawTweenPath, like drawPath, always fills) as a right triangle rather than the full
+    // square, proving both this opcode's tween *and* its own real arc-length trim, not the
+    // untrimmed full square the old (DRAW_TWEEN_PATH completely unhandled — would have thrown a
+    // parse exception) behavior could never have computed at all.
+    writer.startBox(RecordingModifier().offset(2f, 60f), 0, 0)
+    val squarePathA = writer.pathCreate(0f, 0f)
+    writer.pathAppendLineTo(squarePathA, 20f, 0f)
+    writer.pathAppendLineTo(squarePathA, 20f, 20f)
+    writer.pathAppendLineTo(squarePathA, 0f, 20f)
+    writer.pathAppendClose(squarePathA)
+    val squarePathB = writer.pathCreate(0f, 30f)
+    writer.pathAppendLineTo(squarePathB, 20f, 30f)
+    writer.pathAppendLineTo(squarePathB, 20f, 50f)
+    writer.pathAppendLineTo(squarePathB, 0f, 50f)
+    writer.pathAppendClose(squarePathB)
+    writer.getRcPaint().setColor(0xFF6A1B9A.toInt()).commit()
+    writer.drawTweenPath(squarePathA, squarePathB, 0.5f, 0f, 0.5f)
+    writer.endBox()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
