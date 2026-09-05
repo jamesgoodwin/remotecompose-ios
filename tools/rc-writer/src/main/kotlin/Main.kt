@@ -423,6 +423,19 @@ private fun buildCoverageSample() {
     writer.drawRect(181f, 15f, 211f, 35f)
     writer.endBox()
 
+    // MODIFIER_ROUNDED_CLIP_RECT real-effect proof: same "oversized content clipped to a smaller
+    // declared box" shape as the plain RectShape proof above, but with real corner rounding this
+    // time — the fuchsia child rect (30x20) is drawn oversized relative to the declared 15x10
+    // box, so its visible top-left 15x10 corner should show a real quarter-round cut at all four
+    // corners (this parser's quadratic approximation of a circular arc), not RectShape's sharp
+    // 90-degree corners.
+    writer.startBox(RecordingModifier().width(15f).height(10f).clip(RoundedRectShape(4f, 4f, 4f, 4f)), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFFE91E8F.toInt())
+        .commit()
+    writer.drawRect(145f, 170f, 175f, 190f)
+    writer.endBox()
+
     writer.startBox(RecordingModifier().onLongClick(HostAction(9)), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF00838F.toInt())

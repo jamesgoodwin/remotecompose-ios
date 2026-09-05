@@ -566,9 +566,19 @@ object RealRemoteComposeParser {
     /**
      * `Operations.MODIFIER_ROUNDED_CLIP_RECT` — `RecordingModifier.clip(RoundedRectShape(topStart,
      * topEnd, bottomStart, bottomEnd))` writes those 4 raw floats, confirmed via
-     * `RoundedRectShape(4f, 4f, 4f, 4f)` decoding to exactly `[4.0, 4.0, 4.0, 4.0]`. Gets the same
-     * explicit-size-gated real clip [OP_MODIFIER_CLIP_RECT] does; the 4 corner radii themselves
-     * aren't modeled (no `ClipRoundRect` `Opcode` primitive exists to carry them).
+     * `RoundedRectShape(4f, 4f, 4f, 4f)` decoding to exactly `[4.0, 4.0, 4.0, 4.0]` — each is
+     * actually a `readNanId`-tagged [floatPool] reference on the real
+     * `RoundedClipRectModifierOperation` (it's built on the same `DrawBase4` base every other
+     * NaN-tagged 4-float operation here uses, javap-confirmed), so each is resolved through
+     * [resolveFloat] the same way [OP_MODIFIER_PADDING]'s four floats already are. Gets the same
+     * explicit-size-gated real clip [OP_MODIFIER_CLIP_RECT] does, but as a real rounded rect
+     * instead of a sharp-cornered one: [Opcode.ClipPath] (already used elsewhere for
+     * `writer.addClipPath(...)`) is built from a quadratic-corner rounded-rect approximation of
+     * this frame's own clip box (see `OP_CONTAINER_END`'s clip-wrap handling) rather than staying
+     * a no-op — the field order (`topStart`/`topEnd`/`bottomStart`/`bottomEnd`, source-confirmed
+     * via javap: an LTR top-left/top-right/bottom-left/bottom-right, same as real Compose's
+     * `RoundedCornerShape`) is trusted from the already-confirmed `RoundedRectShape` constructor,
+     * not re-derived from this quadratic approximation.
      */
     private const val OP_MODIFIER_ROUNDED_CLIP_RECT = 54
 
@@ -981,6 +991,15 @@ object RealRemoteComposeParser {
             // explicit MODIFIER_WIDTH/HEIGHT smaller than its natural content — see
             // OP_CONTAINER_END's clip handling.
             var hasClipRect: Boolean = false
+            // Set by OP_MODIFIER_ROUNDED_CLIP_RECT (LTR corner names, source-confirmed via javap
+            // on the real RoundedRectShape constructor): non-zero only when this frame's clip
+            // came from a RoundedRectShape rather than a plain RectShape, telling
+            // OP_CONTAINER_END's clip-wrap to build a quadratic-corner rounded rect ClipPath
+            // instead of a sharp-cornered ClipRect.
+            var cornerTopStart: Float = 0f
+            var cornerTopEnd: Float = 0f
+            var cornerBottomStart: Float = 0f
+            var cornerBottomEnd: Float = 0f
             // Set by OP_MODIFIER_WIDTH_IN/OP_MODIFIER_HEIGHT_IN; resolved against this frame's own
             // contentBounds() at OP_CONTAINER_END (real Compose constrains to a *measured* size
             // this parser doesn't have) into explicitWidthPx/explicitHeightPx when natural content
@@ -1876,9 +1895,23 @@ object RealRemoteComposeParser {
                             contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
                                 val clipRight = frame.explicitWidthPx?.let { bounds[0] + it } ?: bounds[2]
                                 val clipBottom = frame.explicitHeightPx?.let { bounds[1] + it } ?: bounds[3]
+                                val clipShape = if (
+                                    frame.cornerTopStart > 0f || frame.cornerTopEnd > 0f ||
+                                    frame.cornerBottomStart > 0f || frame.cornerBottomEnd > 0f
+                                ) {
+                                    Opcode.ClipPath(
+                                        roundedRectPath(
+                                            bounds[0], bounds[1], clipRight, clipBottom,
+                                            frame.cornerTopStart, frame.cornerTopEnd,
+                                            frame.cornerBottomStart, frame.cornerBottomEnd,
+                                        ),
+                                    )
+                                } else {
+                                    Opcode.ClipRect(bounds[0], bounds[1], clipRight, clipBottom)
+                                }
                                 opcodes.addAll(
                                     frame.startIndex,
-                                    listOf(Opcode.MatrixSave, Opcode.ClipRect(bounds[0], bounds[1], clipRight, clipBottom)),
+                                    listOf(Opcode.MatrixSave, clipShape),
                                 )
                                 clipWrapped = true
                             }
@@ -2021,10 +2054,16 @@ object RealRemoteComposeParser {
                 OP_MODIFIER_CLIP_RECT -> scopeStack.lastOrNull()?.hasClipRect = true
 
                 OP_MODIFIER_ROUNDED_CLIP_RECT -> {
-                    repeat(4) { reader.readFloat32() } // topStart, topEnd, bottomStart, bottomEnd — corner
-                    // rounding not modeled (no ClipRoundRect Opcode primitive exists), but the
-                    // plain-rect real effect below still applies.
-                    scopeStack.lastOrNull()?.hasClipRect = true
+                    val topStart = resolveFloat(reader.readFloat32())
+                    val topEnd = resolveFloat(reader.readFloat32())
+                    val bottomStart = resolveFloat(reader.readFloat32())
+                    val bottomEnd = resolveFloat(reader.readFloat32())
+                    val frame = scopeStack.lastOrNull()
+                    frame?.hasClipRect = true
+                    frame?.cornerTopStart = topStart
+                    frame?.cornerTopEnd = topEnd
+                    frame?.cornerBottomStart = bottomStart
+                    frame?.cornerBottomEnd = bottomEnd
                 }
 
                 OP_MODIFIER_MULTI_CLICK -> {
@@ -2244,6 +2283,47 @@ object RealRemoteComposeParser {
      * @throws RemoteComposeParseException on [PATH_CMD_CONIC] — declared from source but not yet
      *   byte-verified (see [OP_DATA_PATH]).
      */
+    /**
+     * A quadratic-corner approximation of a rounded rect, for [OP_MODIFIER_ROUNDED_CLIP_RECT]'s
+     * real clip effect: this parser has no dedicated round-rect clip primitive (unlike
+     * [Opcode.DrawRoundRect], which real Compose's own Skia backend draws natively), so each
+     * corner is instead approximated by a quadratic Bézier whose control point sits at the
+     * corner's own sharp vertex — visually close to, but not bit-identical with, a true circular
+     * arc, the same kind of documented approximation [OP_DRAW_TEXT_ON_CIRCLE]'s straight-line
+     * fallback already makes elsewhere in this parser. Each radius is independently clamped to
+     * half this rect's smaller dimension so opposite corners can never overlap. Corner naming
+     * (`topStart`/`topEnd`/`bottomStart`/`bottomEnd`) assumes LTR, matching every other
+     * `Component.Positioning`-based measurement in this parser (which has no bidi/RTL support).
+     */
+    private fun roundedRectPath(
+        left: Float,
+        top: Float,
+        right: Float,
+        bottom: Float,
+        topStart: Float,
+        topEnd: Float,
+        bottomStart: Float,
+        bottomEnd: Float,
+    ): List<PathCommand> {
+        val maxRadius = minOf(right - left, bottom - top) / 2f
+        val rTopStart = topStart.coerceIn(0f, maxRadius)
+        val rTopEnd = topEnd.coerceIn(0f, maxRadius)
+        val rBottomStart = bottomStart.coerceIn(0f, maxRadius)
+        val rBottomEnd = bottomEnd.coerceIn(0f, maxRadius)
+        return listOf(
+            PathCommand.MoveTo(left + rTopStart, top),
+            PathCommand.LineTo(right - rTopEnd, top),
+            PathCommand.QuadraticTo(right, top, right, top + rTopEnd),
+            PathCommand.LineTo(right, bottom - rBottomEnd),
+            PathCommand.QuadraticTo(right, bottom, right - rBottomEnd, bottom),
+            PathCommand.LineTo(left + rBottomStart, bottom),
+            PathCommand.QuadraticTo(left, bottom, left, bottom - rBottomStart),
+            PathCommand.LineTo(left, top + rTopStart),
+            PathCommand.QuadraticTo(left, top, left + rTopStart, top),
+            PathCommand.Close,
+        )
+    }
+
     private fun decodePathArray(reader: BufferReader, floatCount: Int): List<PathCommand> {
         val words = IntArray(floatCount) { reader.readS32() }
         val commands = mutableListOf<PathCommand>()
