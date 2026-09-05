@@ -1101,6 +1101,18 @@ private fun buildCoverageSample() {
     writer.endBox()
     writer.endBox()
 
+    // DRAW_TEXT_ANCHORED real panX proof: the same "Centered" string drawn twice at the identical
+    // x=100 anchor, once with panX=-1 (left-align: x should be the text's own left edge) and once
+    // with panX=1 (right-align: x should be the text's own right edge) — real
+    // DrawTextAnchored.getHorizontalOffset() (source-confirmed via javap) means these two renders
+    // should differ by roughly the text's own full measured width, not sit at the identical
+    // position the old (x always literal left edge, panX byte-consumed) behavior would have given
+    // both, proving panX now really anchors text instead of staying byte-consumed only.
+    writer.getRcPaint().setColor(0xFF1565C0.toInt()).commit()
+    writer.drawTextAnchored("Centered", 100f, 160f, -1f, 0f, 0)
+    writer.getRcPaint().setColor(0xFF6A1B9A.toInt()).commit()
+    writer.drawTextAnchored("Centered", 100f, 180f, 1f, 0f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

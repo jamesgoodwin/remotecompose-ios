@@ -186,11 +186,20 @@ object OpcodeExecutor {
                         } else {
                             fullText
                         }
+                        val style = TextStyle(fontSize = opcode.fontSize.sp, color = Color(opcode.colorArgb))
+                        // panX == -1f (every other DrawText-producing opcode's own implicit
+                        // left-anchor behavior) needs no measurement at all — the common case.
+                        val drawX = if (opcode.panX == -1f) {
+                            opcode.x
+                        } else {
+                            val textWidth = context.textMeasurer.measure(text, style).size.width
+                            opcode.x - textWidth * (1f + opcode.panX) / 2f
+                        }
                         drawScope.drawText(
                             textMeasurer = context.textMeasurer,
                             text = text,
-                            topLeft = Offset(opcode.x, opcode.y),
-                            style = TextStyle(fontSize = opcode.fontSize.sp, color = Color(opcode.colorArgb)),
+                            topLeft = Offset(drawX, opcode.y),
+                            style = style,
                         )
                     }
 

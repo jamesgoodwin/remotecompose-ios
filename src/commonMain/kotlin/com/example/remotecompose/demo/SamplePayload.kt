@@ -175,7 +175,18 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * within the box's own bounds (here, the big child's own 20x20 union), so the small child should
  * end up centered within it rather than still tucked in its documented top-left corner, proving
  * `LAYOUT_BOX`'s own `horizontalPositioning`/`verticalPositioning` now really align each child
- * instead of staying byte-consumed only — and a teal rect wrapped in
+ * instead of staying byte-consumed only, the same "Centered" string drawn twice with
+ * `drawTextAnchored` at the identical `x=100` anchor — once with `panX=-1f` (left-align: `x`
+ * should be the text's own left edge) and once with `panX=1f` (right-align: `x` should be the
+ * text's own right edge) — real `DrawTextAnchored.getHorizontalOffset()` (source-confirmed via
+ * javap) means these two renders should differ by roughly the text's own full measured width
+ * (confirmed via exact pixel sampling: the left-aligned string's own left edge sits almost exactly
+ * at `x=100`, the right-aligned string's own right edge sits almost exactly at the same `x=100`),
+ * not sit at the identical position the old (`x` always the literal left edge, `panX`
+ * byte-consumed) behavior would have given both — the *first* `drawTextAnchored` earlier in this
+ * same document (the plain "Hi" one) also carries a real `panX=0f` (center) from the same real
+ * writer call, so its own rendered position shifts slightly too, now genuinely centered on its `x`
+ * instead of left-anchored there — and a teal rect wrapped in
  * a `startBox`/`endBox` carrying a
  * `padding(writer.addFloatConstant(6f), 0f, 0f, 0f)` modifier — the modifier is given a
  * *NaN-tagged reference* to `6.0` (what `addFloatConstant` actually returns), not the literal
@@ -343,6 +354,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AEM+AABDAgAA1tbK////SP////8AAAAAAAAAAN1BQAAAQnQAAMn///9H6v///0b/////AAAAOQAAAAA/gAAAEAAAAABBgAAAQwAAAABBgAAA1tbWyv//" +
             "/0X/////AAAAAAAAAADdQAAAAEK0AADJ////ROr///9D/////wAAADkAAAABP4AAABAAAAAAQIAAAEMAAAAAQQAAANbW1sr///9C/////wAAAAIAAAAC" +
             "3UAAAABDFgAAyf///0HK////QP////8AAAAAAAAAAMn///8/KAAAAAIAAAAE/11ANyoAAAAAAAAAAEGgAABBoAAA1tbK////Pv////8AAAAAAAAAAMn/" +
-            "//89KAAAAAIAAAAE//+zACoAAAAAAAAAAEEAAABBAAAA1tbW1g==",
+            "//89KAAAAAIAAAAE//+zACoAAAAAAAAAAEEAAABBAAAA1tbW1igAAAACAAAABP8VZcBmAAAAQwAAAAhDZW50ZXJlZIUAAABDQsgAAEMgAAC/gAAAAAAA" +
+            "AAAAAAAoAAAAAgAAAAT/ahuahQAAAENCyAAAQzQAAD+AAAAAAAAAAAAAAA==",
     )
 }

@@ -115,6 +115,16 @@ sealed interface Opcode {
      *   plain `Operations.DRAW_TEXT_ANCHORED` always draws the whole pool entry), only the
      *   `[substringStart, substringEnd)` slice of the resolved string is drawn, resolved at
      *   render time so the pool entry itself stays shared rather than duplicated per opcode.
+     * @property panX Only `Operations.DRAW_TEXT_ANCHORED` carries a real one (source-confirmed via
+     *   javap on the real `DrawTextAnchored.getHorizontalOffset()`): a `-1f..1f` fraction of the
+     *   text's own measured width describing which point of it [x] anchors — `-1f` (this class's
+     *   default, matching every other `DrawText`-producing opcode's own implicit left-anchor
+     *   behavior) means [x] is the left edge, `0f` means [x] is the horizontal center, `1f` means
+     *   [x] is the right edge, linearly interpolated in between. The real formula also involves
+     *   the text's own left-side bearing (`bounds[0]`), approximated here as `0` (a real, honest
+     *   simplification — this renderer has no access to that specific font metric — not a
+     *   byte-level guess), same discipline as `DRAW_TEXT_ON_CIRCLE`'s own documented
+     *   straight-line approximation elsewhere in this codebase.
      */
     data class DrawText(
         val stringIndex: Int,
@@ -124,6 +134,7 @@ sealed interface Opcode {
         val colorArgb: Int,
         val substringStart: Int? = null,
         val substringEnd: Int? = null,
+        val panX: Float = -1f,
     ) : Opcode
 
     /**
