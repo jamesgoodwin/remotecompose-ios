@@ -56,6 +56,23 @@ object RealRemoteComposeParser {
     private const val OP_ROOT_CONTENT_DESCRIPTION = 103
 
     /**
+     * `Operations.TEXT_SUBTEXT` — `RemoteComposeWriter.textSubtext(srcTextId, start, len)` writes
+     * `[textId:i32][srcId1:i32][start:f32(NaN-taggable)][len:f32(NaN-taggable, -1f means "rest of
+     * the string")]` (source-confirmed via javap on the real `TextSubtext.read()`/`apply()`).
+     * `textId` (unlike every other opcode's own leading id, always a *reference*) is a *newly*
+     * allocated text-pool slot the real writer method itself returns for later callers to draw —
+     * this op is what actually computes and registers that slot's real string content
+     * (`srcId1`'s own pool entry, sliced `[start, start+len)`, or `[start, end)` when `len == -1`)
+     * rather than just reserving it. Since [textPool] is a plain mutable map already written once
+     * per [OP_DATA_TEXT] entry, this op writes into it exactly the same way — a real substring
+     * effect (not just byte-consumed) for every later `DRAW_TEXT_ANCHORED`/etc. that references
+     * `textId`, as long as `start`/`len` are literal (not `NaN`-tagged live variable references
+     * this parser can't evaluate; the substring is simply skipped then, leaving `textId`
+     * unresolved the same honest way an unresolved reference anywhere else in this parser is).
+     */
+    private const val OP_TEXT_SUBTEXT = 182
+
+    /**
      * A paint-property bundle (observed opcode id 40; the real symbolic `Operations` name wasn't
      * confirmed against source, only its wire shape). Framed as
      * `[wordCount:i32][wordCount × i32]`, i.e. self-describing by word count rather than a fixed
@@ -1795,6 +1812,23 @@ object RealRemoteComposeParser {
                     val id = reader.readS32()
                     val length = reader.readS32()
                     textPool[id] = reader.readUtf8(length)
+                }
+
+                OP_TEXT_SUBTEXT -> {
+                    val textId = reader.readS32()
+                    val srcId = reader.readS32()
+                    val start = resolveFloat(reader.readFloat32())
+                    val len = resolveFloat(reader.readFloat32())
+                    val src = textPool[srcId]
+                    if (src != null && !start.isNaN() && !len.isNaN()) {
+                        val startIdx = start.toInt().coerceIn(0, src.length)
+                        val endIdx = if (len == -1f) {
+                            src.length
+                        } else {
+                            (startIdx + len.toInt()).coerceIn(startIdx, src.length)
+                        }
+                        textPool[textId] = src.substring(startIdx, endIdx)
+                    }
                 }
 
                 OP_ROOT_CONTENT_DESCRIPTION -> {

@@ -1182,6 +1182,21 @@ private fun buildCoverageSample() {
     writer.endLoop()
     writer.endRow()
 
+    // TEXT_SUBTEXT real substring proof: writer.textSubtext(srcId, start=6f, len=-1f) on a
+    // registered "Hello World" string should compute "World" (chars [6, end) — len=-1f means
+    // "rest of the string", real TextSubtext.apply() source-confirmed via javap) and register it
+    // as a *new* text-pool entry, drawn here via drawTextAnchored's own int-textId overload — a
+    // real substring effect (not just byte-consumed), proven by comparing against the full
+    // "Hello World" string drawn right below it: the computed substring should visibly read only
+    // "World", not the full source string the old (TEXT_SUBTEXT completely unhandled — would have
+    // thrown a parse exception) behavior could never have computed at all.
+    val subtextSrcId = writer.addText("Hello World")
+    val subtextId = writer.textSubtext(subtextSrcId, 6f, -1f)
+    writer.getRcPaint().setColor(0xFF00838F.toInt()).commit()
+    writer.drawTextAnchored(subtextId, 155f, 196f, -1f, 1f, 0)
+    writer.getRcPaint().setColor(0xFF5D4037.toInt()).commit()
+    writer.drawTextAnchored(subtextSrcId, 60f, 196f, -1f, 1f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
