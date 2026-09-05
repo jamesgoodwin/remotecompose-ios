@@ -1211,6 +1211,23 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF00695C.toInt()).commit()
     writer.drawTextAnchored(transformSrcId, 2f, 30f, -1f, -1f, 0)
 
+    // PATH_CREATE/PATH_ADD real incremental-path proof: a triangle built via
+    // pathCreate(2f, 150f)/pathAppendLineTo(id, 18f, 150f)/pathAppendLineTo(id, 10f, 165f)/
+    // pathAppendClose(id) — the *incremental*, multi-opcode path-building protocol (distinct from
+    // the already-handled single-opcode DATA_PATH/drawPath test elsewhere in this codebase),
+    // drawn via the same public drawPath(id) real DATA_PATH-built paths already use. Real
+    // RemotePathBase array shape (2-word padding bug included) reused verbatim from the existing
+    // decodePathArray helper — a real triangle shape (not the single MoveTo point the old
+    // (PATH_CREATE/PATH_ADD completely unhandled — would have thrown a parse exception) behavior
+    // could never have rendered at all) proves both opcodes now really build up this shared path
+    // pool incrementally.
+    val trianglePathId = writer.pathCreate(2f, 150f)
+    writer.pathAppendLineTo(trianglePathId, 18f, 150f)
+    writer.pathAppendLineTo(trianglePathId, 10f, 165f)
+    writer.pathAppendClose(trianglePathId)
+    writer.getRcPaint().setColor(0xFFC2185B.toInt()).commit()
+    writer.drawPath(trianglePathId)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

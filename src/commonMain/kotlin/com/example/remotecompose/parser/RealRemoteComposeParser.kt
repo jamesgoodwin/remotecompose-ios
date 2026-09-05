@@ -234,6 +234,33 @@ object RealRemoteComposeParser {
      */
     private const val OP_CLIP_PATH = 38
 
+    /**
+     * `Operations.PATH_CREATE` — `RemoteComposeWriter.pathCreate(startX, startY)` writes
+     * `[pathId:i32][startX:f32(NaN-taggable)][startY:f32(NaN-taggable)]` (source-confirmed via
+     * javap on the real `PathCreate.read()`) — unlike [OP_DATA_PATH]'s single self-contained
+     * array, this starts a path *incrementally*: just the initial `MoveTo`, with every further
+     * segment appended by a later [OP_PATH_ADD] referencing this same `pathId`. Real byte-coverage
+     * *and* a real semantic effect together with [OP_PATH_ADD] — see its own KDoc.
+     */
+    private const val OP_PATH_CREATE = 159
+
+    /**
+     * `Operations.PATH_ADD` — `RemoteComposeWriter.pathAppend(pathId, vararg floats)` (or its
+     * `pathAppendLineTo`/`QuadTo`/`CubicTo`/`MoveTo`/`Close` convenience wrappers) writes
+     * `[pathId:i32][floatCount:i32]` followed by `floatCount` raw i32 words — the exact same
+     * `RemotePathBase` flat NaN-tagged command array [OP_DATA_PATH]'s own [decodePathArray]
+     * already decodes (same padding bug, same tag set), confirmed identical via javap on the real
+     * `pathAppendLineTo`/`QuadTo`/`CubicTo`/`MoveTo`/`Close` convenience methods' own bytecode
+     * (each builds exactly the array shape [decodePathArray] expects). Real semantic effect: this
+     * op *appends* the decoded commands to [OP_PATH_CREATE]'s already-started path (rather than
+     * replacing it, the way [OP_DATA_PATH] does for a brand new one) — real support for the
+     * *incremental*, multi-opcode path-building protocol real `pathCreate()`/`pathAppend*()...`/
+     * (no explicit close call) leaves as a genuinely separate wire shape from [OP_DATA_PATH]'s own
+     * single-opcode array, even though both ultimately populate the same [pathPool] any
+     * [OP_DRAW_PATH]/[OP_CLIP_PATH] can reference by id.
+     */
+    private const val OP_PATH_ADD = 160
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2048,6 +2075,20 @@ object RealRemoteComposeParser {
                     val pathId = reader.readS32()
                     val floatCount = reader.readS32()
                     pathPool[pathId] = decodePathArray(reader, floatCount)
+                }
+
+                OP_PATH_CREATE -> {
+                    val pathId = reader.readS32()
+                    val startX = resolveFloat(reader.readFloat32())
+                    val startY = resolveFloat(reader.readFloat32())
+                    pathPool[pathId] = listOf(PathCommand.MoveTo(startX, startY))
+                }
+
+                OP_PATH_ADD -> {
+                    val pathId = reader.readS32()
+                    val floatCount = reader.readS32()
+                    val appended = decodePathArray(reader, floatCount)
+                    pathPool[pathId] = (pathPool[pathId] ?: emptyList()) + appended
                 }
 
                 OP_DRAW_PATH -> {

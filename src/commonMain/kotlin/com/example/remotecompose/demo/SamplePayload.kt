@@ -302,7 +302,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `TextTransform.apply()`'s own bytecode) title-cases only the first letter of *every* word,
  * leaving the rest of each word's own case untouched — drawn via the same int-`textId`
  * `drawTextAnchored` overload right above the untransformed "hello world" source string for
- * comparison. Shared by every
+ * comparison, and a real `PATH_CREATE`/`PATH_ADD` triangle (`writer.pathCreate(2f, 150f)` then
+ * `pathAppendLineTo`/`pathAppendClose` — both previously completely unhandled opcodes) drawn via
+ * `drawPath` — the *incremental*, multi-opcode path-building protocol (distinct from this
+ * document's own already-handled single-opcode `DATA_PATH` paths elsewhere), confirmed via the
+ * parsed opcode dump: a real `MoveTo`/`LineTo`/`LineTo`/`Close` triangle, not the single point the
+ * old unhandled behavior could never have rendered at all. Shared by every
  * platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -405,6 +410,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "/zj/////AAAAAAAAAAAAAAAA3UAAAABDKgAAyf///zfXAAAAAAAAAAA/gAAAQEAAACgAAAACAAAABP9tTEEqAAAAAAAAAABAwAAAQMAAANbW1rYAAABH" +
             "AAAAPkDAAAC/gAAAKAAAAAIAAAAE/wCDj4UAAABHQxsAAENEAAC/gAAAP4AAAAAAAAAoAAAAAgAAAAT/XUA3hQAAAD5CcAAAQ0QAAL+AAAA/gAAAAAAA" +
             "AGYAAABIAAAAC2hlbGxvIHdvcmxkxwAAAEkAAABIAAAAAL+AAAAAAAAEKAAAAAIAAAAE/0UnoIUAAABJQAAAAEFAAAC/gAAAv4AAAAAAAAAoAAAAAgAA" +
-            "AAT/AGlchQAAAEhAAAAAQfAAAL+AAAC/gAAAAAAAAA==",
+            "AAT/AGlchQAAAEhAAAAAQfAAAL+AAAC/gAAAAAAAAJ8AAABKQAAAAEMWAACgAAAASgAAAAX/gAALAAAAAAAAAABBkAAAQxYAAKAAAABKAAAABf+AAAsA" +
+            "AAAAAAAAAEEgAABDJQAAoAAAAEoAAAAB/4AADygAAAACAAAABP/CGFt8AAAASg==",
     )
 }
