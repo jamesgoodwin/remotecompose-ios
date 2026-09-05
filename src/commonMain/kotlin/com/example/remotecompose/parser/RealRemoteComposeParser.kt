@@ -544,7 +544,11 @@ object RealRemoteComposeParser {
     /**
      * `Operations.MODIFIER_ZINDEX` — the (not directly exposed on `RecordingModifier`, reached via
      * `.then(ZIndexModifier(value))`) z-index modifier writes a single raw float, confirmed via
-     * `ZIndexModifier(3f)` decoding to exactly `[3.0]`.
+     * `ZIndexModifier(3f)` decoding to exactly `[3.0]`. Gets a real semantic effect for siblings
+     * inside a `LAYOUT_COLUMN`/`LAYOUT_ROW`: [ScopeFrame.zIndex] is carried into the parent's
+     * [ScopeFrame.childZIndices] at [OP_CONTAINER_END], and `arrangeChildren` reorders sibling
+     * *paint* order (not position) by it afterward, so a higher z-index child draws on top of
+     * lower ones that would otherwise cover it, without changing where either one sits.
      */
     private const val OP_MODIFIER_ZINDEX = 223
 
@@ -784,6 +788,13 @@ object RealRemoteComposeParser {
             var horizontalPositioning: Int = POS_START
             var verticalPositioning: Int = POS_START
             val childRanges = mutableListOf<IntArray>() // only populated/consumed when layoutAxis != null
+            // Parallel to childRanges (same index correspondence) — each entry is the
+            // corresponding child's own OP_MODIFIER_ZINDEX value (default 0f), read by
+            // arrangeChildren to reorder sibling paint order after positioning.
+            val childZIndices = mutableListOf<Float>()
+            // Set by OP_MODIFIER_ZINDEX on this frame itself; read when *this* frame registers
+            // into its own parent's childZIndices at OP_CONTAINER_END.
+            var zIndex: Float = 0f
             // Captured from a MODIFIER_WIDTH/MODIFIER_HEIGHT with an EXACT(_DP) mode directly on
             // *this* frame (i.e. this container's own declared size, not a child's) — read by
             // arrangeChildren on the LAYOUT_CONTENT frame this one is the parent of, since only a
@@ -1038,62 +1049,96 @@ object RealRemoteComposeParser {
          * always ≥ any not-yet-processed, earlier child's end index).
          */
         fun arrangeChildren(frame: ScopeFrame) {
-            val axis = frame.layoutAxis ?: return
+            val axis = frame.layoutAxis
+            // Captured before sorting: childZIndices is parallel to frame.childRanges' original
+            // (document) order, keyed here by each child's unique start index since sortedBy below
+            // produces a new list that no longer corresponds positionally to childZIndices.
+            val zIndexByStart = frame.childRanges.indices.associate { i ->
+                frame.childRanges[i][0] to frame.childZIndices.getOrElse(i) { 0f }
+            }
             val children = frame.childRanges.sortedBy { it[0] }
             if (children.isEmpty()) return
-            val naturalBounds = children.map { range -> contentBounds(opcodes.subList(range[0], range[1])) }
-            val anchorIndex = naturalBounds.indexOfFirst { it != null }
-            if (anchorIndex == -1) return
-            val anchor = naturalBounds[anchorIndex]!!
-            val anchorMainStart = if (axis == 'V') anchor[1] else anchor[0] // top (Column) or left (Row)
-            val crossAnchor = if (axis == 'V') anchor[0] else anchor[1] // left (Column) or top (Row)
+            // Position-arrangement only applies to a real LAYOUT_COLUMN/LAYOUT_ROW content frame
+            // (axis != null); a Box's own content frame has no axis, so its children keep their
+            // own document-authored position — but MODIFIER_ZINDEX's paint-order reordering below
+            // still applies to *any* frame with registered children, Box included.
+            if (axis != null) {
+                val naturalBounds = children.map { range -> contentBounds(opcodes.subList(range[0], range[1])) }
+                val anchorIndex = naturalBounds.indexOfFirst { it != null }
+                if (anchorIndex != -1) {
+                    val anchor = naturalBounds[anchorIndex]!!
+                    val anchorMainStart = if (axis == 'V') anchor[1] else anchor[0] // top (Column) or left (Row)
+                    val crossAnchor = if (axis == 'V') anchor[0] else anchor[1] // left (Column) or top (Row)
 
-            val mainMode = if (axis == 'V') frame.verticalPositioning else frame.horizontalPositioning
-            val crossMode = if (axis == 'V') frame.horizontalPositioning else frame.verticalPositioning
+                    val mainMode = if (axis == 'V') frame.verticalPositioning else frame.horizontalPositioning
+                    val crossMode = if (axis == 'V') frame.horizontalPositioning else frame.verticalPositioning
 
-            val mainSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[3] - it[1] else it[2] - it[0] } ?: 0f }
-            val crossSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[2] - it[0] else it[3] - it[1] } ?: 0f }
-            val packedMainSize = mainSizes.sum() + frame.spacedBy * (children.size - 1).coerceAtLeast(0)
-            val declaredMainExtent = if (axis == 'V') frame.parent?.explicitHeightPx else frame.parent?.explicitWidthPx
-            val declaredCrossExtent = if (axis == 'V') frame.parent?.explicitWidthPx else frame.parent?.explicitHeightPx
-            val mainExtent = declaredMainExtent ?: packedMainSize
-            val crossExtent = declaredCrossExtent ?: (crossSizes.maxOrNull() ?: 0f)
+                    val mainSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[3] - it[1] else it[2] - it[0] } ?: 0f }
+                    val crossSizes = naturalBounds.map { b -> b?.let { if (axis == 'V') it[2] - it[0] else it[3] - it[1] } ?: 0f }
+                    val packedMainSize = mainSizes.sum() + frame.spacedBy * (children.size - 1).coerceAtLeast(0)
+                    val declaredMainExtent = if (axis == 'V') frame.parent?.explicitHeightPx else frame.parent?.explicitWidthPx
+                    val declaredCrossExtent = if (axis == 'V') frame.parent?.explicitWidthPx else frame.parent?.explicitHeightPx
+                    val mainExtent = declaredMainExtent ?: packedMainSize
+                    val crossExtent = declaredCrossExtent ?: (crossSizes.maxOrNull() ?: 0f)
 
-            val (leadingGap, betweenGap) = mainAxisGaps(mainMode, mainExtent - packedMainSize, children.size)
-            var cursorMain = anchorMainStart + leadingGap
-            val deltas = arrayOfNulls<FloatArray>(children.size)
-            for (i in children.indices) {
-                val bounds = naturalBounds[i] ?: continue
-                val crossOffset = crossAxisOffset(crossMode, crossExtent, crossSizes[i])
-                val dx: Float
-                val dy: Float
-                if (axis == 'V') {
-                    dx = (crossAnchor + crossOffset) - bounds[0]
-                    dy = cursorMain - bounds[1]
-                } else {
-                    dx = cursorMain - bounds[0]
-                    dy = (crossAnchor + crossOffset) - bounds[1]
+                    val (leadingGap, betweenGap) = mainAxisGaps(mainMode, mainExtent - packedMainSize, children.size)
+                    var cursorMain = anchorMainStart + leadingGap
+                    val deltas = arrayOfNulls<FloatArray>(children.size)
+                    for (i in children.indices) {
+                        val bounds = naturalBounds[i] ?: continue
+                        val crossOffset = crossAxisOffset(crossMode, crossExtent, crossSizes[i])
+                        val dx: Float
+                        val dy: Float
+                        if (axis == 'V') {
+                            dx = (crossAnchor + crossOffset) - bounds[0]
+                            dy = cursorMain - bounds[1]
+                        } else {
+                            dx = cursorMain - bounds[0]
+                            dy = (crossAnchor + crossOffset) - bounds[1]
+                        }
+                        deltas[i] = floatArrayOf(dx, dy)
+                        cursorMain += mainSizes[i] + frame.spacedBy + betweenGap
+                    }
+                    for (i in children.indices.reversed()) {
+                        val delta = deltas[i] ?: continue
+                        if (delta[0] == 0f && delta[1] == 0f) continue
+                        val range = children[i]
+                        // Rewrite every opcode's own coordinates directly instead of wrapping the range in
+                        // MatrixSave/Translate/MatrixRestore. A real on-device Compose Canvas target was
+                        // confirmed (via a minimal, isolated repro) to corrupt DrawText positioning — even
+                        // *unwrapped* DrawText elsewhere in the same render — after two or more repeated
+                        // canvas.save()/translate()/restore() cycles from sibling arranged children, the
+                        // exact shape every stat card's icon-then-value-then-label triplet has. Since a
+                        // shape's own position is just as easy to rewrite directly as text's, arrangeChildren
+                        // never emits real Matrix ops at all — sidestepping the bug at its root rather than
+                        // only where it was first noticed. Nested Translate/MatrixSave/MatrixRestore inside
+                        // this range (from an inner, already-arranged nested Column/Row) pass through
+                        // shiftOpcode unchanged, since a relative delta stays correct under an outer shift.
+                        for (j in range[0] until range[1]) {
+                            opcodes[j] = shiftOpcode(opcodes[j], delta[0], delta[1])
+                        }
+                    }
                 }
-                deltas[i] = floatArrayOf(dx, dy)
-                cursorMain += mainSizes[i] + frame.spacedBy + betweenGap
             }
-            for (i in children.indices.reversed()) {
-                val delta = deltas[i] ?: continue
-                if (delta[0] == 0f && delta[1] == 0f) continue
-                val range = children[i]
-                // Rewrite every opcode's own coordinates directly instead of wrapping the range in
-                // MatrixSave/Translate/MatrixRestore. A real on-device Compose Canvas target was
-                // confirmed (via a minimal, isolated repro) to corrupt DrawText positioning — even
-                // *unwrapped* DrawText elsewhere in the same render — after two or more repeated
-                // canvas.save()/translate()/restore() cycles from sibling arranged children, the
-                // exact shape every stat card's icon-then-value-then-label triplet has. Since a
-                // shape's own position is just as easy to rewrite directly as text's, arrangeChildren
-                // never emits real Matrix ops at all — sidestepping the bug at its root rather than
-                // only where it was first noticed. Nested Translate/MatrixSave/MatrixRestore inside
-                // this range (from an inner, already-arranged nested Column/Row) pass through
-                // shiftOpcode unchanged, since a relative delta stays correct under an outer shift.
-                for (j in range[0] until range[1]) {
-                    opcodes[j] = shiftOpcode(opcodes[j], delta[0], delta[1])
+
+            // MODIFIER_ZINDEX: reorder sibling *paint* order (not position, already fixed above)
+            // by z-index — a stable sort, so same-z-index siblings keep their original relative
+            // (document) order, matching real Compose's tie-breaking. Only safe to do as a blind
+            // remove-and-reinsert over [overallStart, overallEnd) when every child range *exactly
+            // tiles* that span with no gaps — guards against a bare, unwrapped draw call between
+            // children (which pushes no scope, so never registers in childRanges) silently
+            // getting dropped; skips the reorder entirely rather than risk losing content.
+            val zIndices = children.map { zIndexByStart[it[0]] ?: 0f }
+            if (zIndices.any { it != 0f }) {
+                val overallStart = children.minOf { it[0] }
+                val overallEnd = children.maxOf { it[1] }
+                val totalChildLength = children.sumOf { it[1] - it[0] }
+                if (totalChildLength == overallEnd - overallStart) {
+                    val paintOrder = children.indices.sortedBy { zIndices[it] }
+                    val blocks = children.map { range -> opcodes.subList(range[0], range[1]).toList() }
+                    val reordered = paintOrder.flatMap { blocks[it] }
+                    for (j in overallEnd - 1 downTo overallStart) opcodes.removeAt(j)
+                    opcodes.addAll(overallStart, reordered)
                 }
             }
         }
@@ -1501,9 +1546,11 @@ object RealRemoteComposeParser {
                                 )
                             }
                         }
-                        if (frame.layoutAxis != null) {
-                            arrangeChildren(frame)
-                        }
+                        // Always called (not gated on frame.layoutAxis): a Box's own inner
+                        // content frame has no layoutAxis, so position-arrangement inside it is a
+                        // no-op, but its registered children still need MODIFIER_ZINDEX's
+                        // paint-order reordering — see arrangeChildren's own gating on axis.
+                        arrangeChildren(frame)
                         // MODIFIER_BORDER: a real stroked-outline effect, drawn *on top of* this
                         // container's now-finished content (appended, not inserted at
                         // frame.startIndex like the background fill above) around the same
@@ -1579,8 +1626,13 @@ object RealRemoteComposeParser {
                         opcodes.addAll(frame.cleanupOpcodes)
                         if (transformWrapped) opcodes += Opcode.MatrixRestore
                         val parent = frame.parent
-                        if (parent != null && parent.layoutAxis != null) {
+                        if (parent != null) {
+                            // Registered regardless of parent.layoutAxis: a Box's children need
+                            // this too, just for MODIFIER_ZINDEX's paint-order reordering below
+                            // rather than arrangeChildren's position-arrangement (Box already
+                            // paints children at their own document-authored position).
                             parent.childRanges.add(intArrayOf(frame.startIndex, opcodes.size))
+                            parent.childZIndices.add(frame.zIndex)
                         }
                     }
                 }
@@ -1708,7 +1760,10 @@ object RealRemoteComposeParser {
                     reader.readS32() // flag
                 }
 
-                OP_MODIFIER_ZINDEX -> reader.readFloat32() // z-index value
+                OP_MODIFIER_ZINDEX -> {
+                    val zIndex = reader.readFloat32()
+                    scopeStack.lastOrNull()?.zIndex = zIndex
+                }
 
                 OP_MODIFIER_RIPPLE -> Unit // no payload
 

@@ -441,6 +441,23 @@ private fun buildCoverageSample() {
     writer.drawRect(128f, 15f, 143f, 25f)
     writer.endBox()
 
+    // MODIFIER_ZINDEX real paint-order proof: two Box children at the *identical* overlapping
+    // (150,65)-(175,80) rect, inside a plain startBox (not a Column/Row) so they naturally
+    // overlap rather than getting spaced apart. The red child is authored *first* but carries the
+    // *higher* z-index (5 vs 1) — without real z-index reordering, the blue child (authored
+    // second) would paint on top just from document order; with it, red should end up on top
+    // instead, since arrangeChildren reorders sibling paint order by z-index after positioning.
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.startBox(RecordingModifier().then(ZIndexModifier(5f)), 0, 0)
+    writer.getRcPaint().setColor(0xFFD32F2F.toInt()).commit()
+    writer.drawRect(150f, 65f, 175f, 80f)
+    writer.endBox()
+    writer.startBox(RecordingModifier().then(ZIndexModifier(1f)), 0, 0)
+    writer.getRcPaint().setColor(0xFF1976D2.toInt()).commit()
+    writer.drawRect(150f, 65f, 175f, 80f)
+    writer.endBox()
+    writer.endBox()
+
     writer.startBox(RecordingModifier().then(RippleModifier()), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF1976D2.toInt())
