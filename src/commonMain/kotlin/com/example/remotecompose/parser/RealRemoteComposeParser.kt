@@ -362,19 +362,22 @@ object RealRemoteComposeParser {
      * draw into — this renderer has no measure pass to size it from the bitmap's own dimensions
      * or `scaleType` otherwise, so an image with no explicit size stays byte-consumed only, same
      * as before this parser attempted real rendering. `scaleType` itself now gets a real effect
-     * for `SCALE_FIT`(`4`)/`SCALE_CROP`(`5`) (javap-confirmed constants and algorithm, on the real
-     * `ImageScaling.adjustDrawToType()`): the bitmap's own *natural* pixel size — read straight out
-     * of its raw PNG bytes' `IHDR` chunk (`bitmapPool`'s bytes are always a real PNG, so this is
-     * exact, not a heuristic) rather than needing any platform image-decoding this common-code
-     * parser doesn't have — is compared against this leaf's own explicit declared box to letterbox
-     * (`FIT`, centered, preserving aspect ratio, both axes fitting inside the box) or overscan
-     * (`CROP`, centered, preserving aspect ratio, clipped to the box since one axis overflows it —
-     * real Compose's own `Image`/`Modifier.paint` clips automatically whenever a mismatched
-     * `contentScale` makes the painted size larger than the layout box). Every other `scaleType`
-     * value (`SCALE_NONE`/`INSIDE`/`FILL_WIDTH`/`FILL_HEIGHT`/`SCALE_FIXED_SCALE`) still falls back
-     * to the same stretch-to-fill-the-box behavior this parser has always used (identical to what
-     * `SCALE_FILL_BOUNDS`(`6`) itself really means) — a real effect for exactly two scale types
-     * rather than none, not full parity with all eight.
+     * for `SCALE_NONE`(`0`)/`SCALE_INSIDE`(`1`)/`SCALE_FIT`(`4`)/`SCALE_CROP`(`5`) (javap-confirmed
+     * constants and algorithm, on the real `ImageScaling.adjustDrawToType()`): the bitmap's own
+     * *natural* pixel size — read straight out of its raw PNG bytes' `IHDR` chunk (`bitmapPool`'s
+     * bytes are always a real PNG, so this is exact, not a heuristic) rather than needing any
+     * platform image-decoding this common-code parser doesn't have — is compared against this
+     * leaf's own explicit declared box to draw at natural size centered (`NONE`, clipped to the box
+     * if it overflows — harmless no-op otherwise), at natural size centered *or* letterboxed like
+     * `FIT` when it doesn't already fit both dimensions (`INSIDE` — never scales *up*, unlike
+     * `FIT`), letterboxed (`FIT`, centered, preserving aspect ratio, both axes fitting inside the
+     * box), or overscanned (`CROP`, centered, preserving aspect ratio, clipped to the box since one
+     * axis overflows it — real Compose's own `Image`/`Modifier.paint` clips automatically whenever
+     * a mismatched `contentScale` makes the painted size larger than the layout box). Every other
+     * `scaleType` value (`FILL_WIDTH`/`FILL_HEIGHT`/`SCALE_FIXED_SCALE`) still falls back to the
+     * same stretch-to-fill-the-box behavior this parser has always used (identical to what
+     * `SCALE_FILL_BOUNDS`(`6`) itself really means) — a real effect for four of the eight scale
+     * types, not full parity with all of them.
      */
     private const val OP_LAYOUT_IMAGE = 234
 
@@ -2095,15 +2098,19 @@ object RealRemoteComposeParser {
                             if (wrapAlpha) opcodes += Opcode.SaveLayerAlpha(frame.imageAlpha)
                             val naturalSize = bitmapPool[imageBitmapId]?.let { pngNaturalSize(it) }
                             var clipWrappedImage = false
-                            if (naturalSize != null && (frame.imageScaleType == 4 || frame.imageScaleType == 5)) {
+                            val realScaleTypes = frame.imageScaleType == 0 || frame.imageScaleType == 1 ||
+                                frame.imageScaleType == 4 || frame.imageScaleType == 5
+                            if (naturalSize != null && realScaleTypes) {
                                 val dst = imageScaleDstRect(
                                     frame.imageScaleType, naturalSize[0], naturalSize[1],
                                     0f, 0f, imageWidth, imageHeight,
                                 )
-                                if (frame.imageScaleType == 5) {
-                                    // SCALE_CROP can overflow this box on one axis — real
-                                    // Compose's own Image/Modifier.paint clips automatically
-                                    // whenever a mismatched contentScale overflows the layout box.
+                                if (frame.imageScaleType == 0 || frame.imageScaleType == 5) {
+                                    // SCALE_NONE (an oversized natural bitmap) / SCALE_CROP (one
+                                    // axis always) can overflow this box — real Compose's own
+                                    // Image/Modifier.paint clips automatically whenever a
+                                    // mismatched contentScale overflows the layout box. Harmless
+                                    // (a no-op clip) when SCALE_NONE's natural size already fits.
                                     opcodes += Opcode.MatrixSave
                                     opcodes += Opcode.ClipRect(0f, 0f, imageWidth, imageHeight)
                                     clipWrappedImage = true
@@ -2743,7 +2750,9 @@ object RealRemoteComposeParser {
         dstRight: Float,
         dstBottom: Float,
     ): FloatArray {
-        if (naturalWidth <= 0 || naturalHeight <= 0 || (scaleType != 4 && scaleType != 5)) {
+        if (naturalWidth <= 0 || naturalHeight <= 0 ||
+            (scaleType != 0 && scaleType != 1 && scaleType != 4 && scaleType != 5)
+        ) {
             return floatArrayOf(dstLeft, dstTop, dstRight, dstBottom)
         }
         val dstW = (dstRight - dstLeft).toInt()
@@ -2752,16 +2761,40 @@ object RealRemoteComposeParser {
         var rightOffset = dstW
         var topOffset = 0
         var bottomOffset = dstH
-        val srcWiderThanDst = naturalWidth * dstH > dstW * naturalHeight
-        val shrinkHeight = if (scaleType == 4) srcWiderThanDst else !srcWiderThanDst
-        if (shrinkHeight) {
-            val adjustedHeight = dstW * naturalHeight / naturalWidth
-            topOffset = (dstH - adjustedHeight) / 2
-            bottomOffset = adjustedHeight + topOffset
-        } else {
-            val adjustedWidth = dstH * naturalWidth / naturalHeight
-            leftOffset = (dstW - adjustedWidth) / 2
-            rightOffset = adjustedWidth + leftOffset
+        // SCALE_NONE: natural size, centered — no scaling at all (javap-confirmed: real
+        // ImageScaling.adjustDrawToType()'s case 0 uses srcW/srcH directly, unadjusted).
+        fun centerAtNaturalSize() {
+            leftOffset = (dstW - naturalWidth) / 2
+            rightOffset = naturalWidth + leftOffset
+            topOffset = (dstH - naturalHeight) / 2
+            bottomOffset = naturalHeight + topOffset
+        }
+        // Shared FIT/CROP/SCALE_INSIDE's-shrink-branch math: compare srcW*dstH against dstW*srcH
+        // to decide which axis to adjust, with the branch flipped between FIT (shrink whichever
+        // axis would overflow) and CROP (grow whichever axis would leave a gap) — see
+        // imageScaleDstRect's own original KDoc above [OP_LAYOUT_IMAGE] for the full rationale.
+        fun shrinkOrGrowToFit(shrinkHeightWhenSrcWider: Boolean) {
+            val srcWiderThanDst = naturalWidth * dstH > dstW * naturalHeight
+            val shrinkHeight = if (shrinkHeightWhenSrcWider) srcWiderThanDst else !srcWiderThanDst
+            if (shrinkHeight) {
+                val adjustedHeight = dstW * naturalHeight / naturalWidth
+                topOffset = (dstH - adjustedHeight) / 2
+                bottomOffset = adjustedHeight + topOffset
+            } else {
+                val adjustedWidth = dstH * naturalWidth / naturalHeight
+                leftOffset = (dstW - adjustedWidth) / 2
+                rightOffset = adjustedWidth + leftOffset
+            }
+        }
+        when (scaleType) {
+            0 -> centerAtNaturalSize()
+            // SCALE_INSIDE: keep natural size (centered, never scaled up) when it already fits
+            // both dimensions of the box, otherwise shrink exactly like SCALE_FIT (javap-confirmed
+            // on the real case 1: an early-exit when dst is at least as large as src in both
+            // dimensions, else it falls through to the identical shrink-to-fit branch case 4 uses).
+            1 -> if (dstW >= naturalWidth && dstH >= naturalHeight) centerAtNaturalSize() else shrinkOrGrowToFit(true)
+            4 -> shrinkOrGrowToFit(true) // SCALE_FIT
+            5 -> shrinkOrGrowToFit(false) // SCALE_CROP
         }
         return floatArrayOf(dstLeft + leftOffset, dstTop + topOffset, dstLeft + rightOffset, dstTop + bottomOffset)
     }

@@ -1064,6 +1064,23 @@ private fun buildCoverageSample() {
     writer.drawRect(189f, 129f, 190f, 130f)
     writer.endBox()
 
+    // LAYOUT_IMAGE real scaleType=SCALE_NONE proof: the same 8x4 bitmap into a 16x16 box — NONE
+    // never scales at all, just centers the bitmap at its own natural size, so the visible green
+    // should be a narrow 8x4 patch in the middle (corners *and* top/bottom margins showing the
+    // background) rather than FIT's wider 16x8 letterboxed strip.
+    writer.startBox(RecordingModifier().offset(12f, 61f), 0, 0)
+    writer.image(RecordingModifier().width(16f).height(16f), wideBitmapId, RemoteComposeWriter.IMAGE_SCALE_NONE, 1f)
+    writer.endBox()
+
+    // LAYOUT_IMAGE real scaleType=SCALE_INSIDE proof: the same 8x4 bitmap into a 4x8 box (smaller
+    // than the bitmap's own 8-wide natural size) — INSIDE shrinks like FIT whenever natural size
+    // doesn't already fit (unlike NONE, which would just overflow/clip without shrinking): here
+    // that means a 4-wide x2-tall strip vertically centered in the box, not a 4x8 rect stretched
+    // to fill it (the old stretch-to-fill default) or a 4x4 square (CROP's math).
+    writer.startBox(RecordingModifier().offset(2f, 90f), 0, 0)
+    writer.image(RecordingModifier().width(4f).height(8f), wideBitmapId, RemoteComposeWriter.IMAGE_SCALE_INSIDE, 1f)
+    writer.endBox()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

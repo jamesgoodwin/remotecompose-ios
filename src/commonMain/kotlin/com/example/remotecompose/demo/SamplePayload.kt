@@ -161,7 +161,14 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * overflows the box and gets clipped back to it — the same auto-clip real Compose's own
  * `Image`/`Modifier.paint` applies whenever a mismatched `contentScale` overflows the layout box)
  * — proving `scaleType` now gets a real letterbox/overscan effect for these two values instead of
- * staying byte-consumed only — and a teal rect wrapped in a `startBox`/`endBox` carrying a
+ * staying byte-consumed only, the same bitmap again into a 16x16 box with `IMAGE_SCALE_NONE` —
+ * never scales at all, just centers it at its own natural 8x4 size, so only a narrow patch in the
+ * middle should show green, with margins on *all four* sides (unlike `FIT`'s wider letterboxed
+ * strip) — and into a 4x8 box (smaller than the bitmap's own natural width) with
+ * `IMAGE_SCALE_INSIDE` — shrinks like `FIT` whenever natural size doesn't already fit (unlike
+ * `NONE`, which would just overflow/clip without shrinking), so a narrow 4-wide x2-tall strip
+ * vertically centered in the box, not the old stretch-to-fill default — and a teal rect wrapped in
+ * a `startBox`/`endBox` carrying a
  * `padding(writer.addFloatConstant(6f), 0f, 0f, 0f)` modifier — the modifier is given a
  * *NaN-tagged reference* to `6.0` (what `addFloatConstant` actually returns), not the literal
  * value itself, so the child rendering shifted right by exactly 6 (not disappearing into a `NaN`
@@ -325,6 +332,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "HgAA1tbW1oJ7AAAAQQAAAA7/gAAKQtIAAEMoAAD/gAALAAAAAAAAAABC+gAAQxYAAP+AAAsAAAAAAAAAAEL6AABDKAAA/4AADyYAAABBKAAAAAIAAAAE" +
             "/2obmipC0gAAQxYAAEMCAABDKgAAgygAAAACAAAABP8hISFmAAAAQgAAAAZDdXJ2ZWQ5AAAAQkLIAABDOQAAQSAAAEOHAAAAAAAAAQDK////Sv////8A" +
             "AAAAAAAAADcAAAAAAAAAAAAAAAAAAAAAPxmZmj5MzM0AAAAAP4AAAAAAAAHJ////SSgAAAACAAAABP////8qQxYAAELcAABDFwAAQt4AACpDPQAAQwEA" +
-            "AEM+AABDAgAA1tY=",
+            "AEM+AABDAgAA1tbK////SP////8AAAAAAAAAAN1BQAAAQnQAAMn///9H6v///0b/////AAAAOQAAAAA/gAAAEAAAAABBgAAAQwAAAABBgAAA1tbWyv//" +
+            "/0X/////AAAAAAAAAADdQAAAAEK0AADJ////ROr///9D/////wAAADkAAAABP4AAABAAAAAAQIAAAEMAAAAAQQAAANbW1g==",
     )
 }
