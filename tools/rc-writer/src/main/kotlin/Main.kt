@@ -667,6 +667,15 @@ private fun buildCoverageSample() {
     writer.drawRect(40f, 90f, 55f, 100f)
     writer.endBox()
 
+    // DATA_INT/DATA_BOOLEAN/DATA_LONG: the same real-value-pool pattern as DATA_FLOAT/
+    // COLOR_CONSTANT, registering real values this parser doesn't yet resolve against anywhere
+    // (ints have no spare NaN-like bit pattern to tag a reference into, so DATA_INT is always a
+    // literal; DATA_LONG's value is read via the real SDK's own readLongNanId(), hinting long
+    // fields elsewhere may support a similar tagged reference, unconfirmed and not modeled here).
+    writer.addInteger(7)
+    writer.addBoolean(true)
+    writer.addLong(123456789012L)
+
     writer.performHaptic(4)
     writer.setTheme(1)
     writer.setRootContentBehavior(1, 2, 3, 4)

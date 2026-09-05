@@ -475,6 +475,33 @@ object RealRemoteComposeParser {
     private const val OP_DATA_FLOAT = 80
 
     /**
+     * `Operations.DATA_INT` — `RemoteComposeWriter.addInteger(value)` writes `[id:i32][value:i32]`
+     * (source-confirmed via javap on the real `IntegerConstant` class: `value` is written with a
+     * plain `writeInt`, not the `readNanId()`-style reference [OP_DATA_FLOAT]'s value gets — ints
+     * have no spare NaN-like bit pattern to tag a reference into, so this is always a literal).
+     * Registers into [intPool], the same real-value-pool pattern [OP_COLOR_CONSTANT]/
+     * [OP_DATA_FLOAT] already established; not yet resolved against by anything.
+     */
+    private const val OP_DATA_INT = 140
+
+    /**
+     * `Operations.DATA_BOOLEAN` — `RemoteComposeWriter.addBoolean(value)` writes `[id:i32]
+     * [value:byte]` (source-confirmed via javap on the real `BooleanConstant` class). Registers
+     * into [booleanPool], the same real-value-pool pattern as [OP_DATA_INT].
+     */
+    private const val OP_DATA_BOOLEAN = 143
+
+    /**
+     * `Operations.DATA_LONG` — `RemoteComposeWriter.addLong(value)` writes `[id:i32][value:i64]`
+     * (source-confirmed via javap on the real `LongConstant` class). `value` *is* read via
+     * `readLongNanId()` on the real side, hinting long fields elsewhere may support a similar
+     * tagged-reference scheme to [OP_DATA_FLOAT]'s — unconfirmed and not modeled here; this parser
+     * always reads it as a literal 64-bit value into [longPool], the same real-value-pool pattern
+     * as [OP_DATA_INT].
+     */
+    private const val OP_DATA_LONG = 148
+
+    /**
      * `Operations.COLOR_CONSTANT` — `RemoteComposeWriter.addColor(argb)` writes
      * `[colorId:i32][colorArgb:i32]` (source-confirmed via javap: a plain packed-ARGB int, the
      * same convention [Opcode.DrawText.colorArgb] already uses). Registers a real color into
@@ -802,6 +829,9 @@ object RealRemoteComposeParser {
         val bitmapPool = mutableMapOf<Int, ByteArray>()
         val colorPool = mutableMapOf<Int, Color>()
         val floatPool = mutableMapOf<Int, Float>()
+        val intPool = mutableMapOf<Int, Int>()
+        val booleanPool = mutableMapOf<Int, Boolean>()
+        val longPool = mutableMapOf<Int, Long>()
         val opcodes = mutableListOf<Opcode>()
 
         /**
@@ -1838,6 +1868,24 @@ object RealRemoteComposeParser {
                     floatPool[id] = value
                 }
 
+                OP_DATA_INT -> {
+                    val id = reader.readS32()
+                    val value = reader.readS32()
+                    intPool[id] = value
+                }
+
+                OP_DATA_BOOLEAN -> {
+                    val id = reader.readS32()
+                    val value = reader.readU8() != 0
+                    booleanPool[id] = value
+                }
+
+                OP_DATA_LONG -> {
+                    val id = reader.readS32()
+                    val value = reader.readS64()
+                    longPool[id] = value
+                }
+
                 OP_COLOR_CONSTANT -> {
                     val colorId = reader.readS32()
                     val colorArgb = reader.readS32()
@@ -2032,7 +2080,8 @@ object RealRemoteComposeParser {
                         "ValueFloatChange/ValueIntegerExpressionChange/ValueFloatExpressionChange/" +
                         "MatrixSave/MatrixRestore/MatrixTranslate/MatrixScale/MatrixRotate/ClipRect/" +
                         "ClipPath/DrawBitmapInt/DrawTextOnCircle/MatrixSkew/DrawTextRun/" +
-                        "DrawTextOnPath/ColorConstant/ModifierScroll/TouchExpression/DataFloat)",
+                        "DrawTextOnPath/ColorConstant/ModifierScroll/TouchExpression/DataFloat/" +
+                        "DataInt/DataBoolean/DataLong)",
                 )
             }
         }
