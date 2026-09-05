@@ -18,6 +18,25 @@ import androidx.compose.remote.creation.modifiers.ZIndexModifier
 import androidx.compose.remote.core.operations.DrawTextOnCircle
 import java.io.File
 
+/**
+ * MODIFIER_BACKGROUND's real shapeType=1 (CIRCLE) has no public `RecordingModifier` fluent
+ * wrapper — `SolidBackgroundModifier.write()` (backing `.background(...)`) always hardcodes
+ * shapeType 0, javap-confirmed. Reaching shapeType 1 on the wire needs the lower-level
+ * `RemoteComposeWriter.addModifierBackground(r,g,b,a,shapeType)` writer method directly; this
+ * small `RecordingModifier.Element` just calls that real method from inside `.then(...)`, so the
+ * resulting bytes are still 100% real SDK output, not a hand-rolled encoding.
+ */
+class CircleBackgroundElement(
+    private val r: Float,
+    private val g: Float,
+    private val b: Float,
+    private val a: Float,
+) : RecordingModifier.Element {
+    override fun write(writer: RemoteComposeWriter) {
+        writer.addModifierBackground(r, g, b, a, 1)
+    }
+}
+
 fun main(args: Array<String>) {
     if (args.getOrNull(0) == "showcase") {
         buildShowcase()
@@ -862,6 +881,21 @@ private fun buildCoverageSample() {
         circleTextId, 100f, 185f, 10f, 270f, 0f,
         DrawTextOnCircle.Alignment.CENTER, DrawTextOnCircle.Placement.OUTSIDE,
     )
+
+    // MODIFIER_BACKGROUND shapeType real-effect proof: a wide, short (40x20) box carrying a
+    // shapeType=1 (CIRCLE) background — the real BackgroundModifierOperation.paint() draws an
+    // oval inscribed in the box instead of a rect, so this parser should render it as a rounded
+    // ellipse (corners visibly cut off) rather than a sharp-cornered rectangle — the same
+    // DrawOval-vs-DrawRect choice MODIFIER_BORDER's shapeType already gets for its stroke. The
+    // box's own content is two tiny 1x1 markers at opposite corners (not a rect that fills the
+    // full 40x20 box, which would just paint over the inferred background and hide its shape
+    // entirely): contentBounds() still spans the full (150,110)-(190,130) box from those two
+    // markers alone, but the ellipse itself stays visible everywhere else inside it.
+    writer.startBox(RecordingModifier().then(CircleBackgroundElement(0.6f, 0.2f, 0f, 1f)), 0, 0)
+    writer.getRcPaint().setColor(0xFFFFFFFF.toInt()).commit()
+    writer.drawRect(150f, 110f, 151f, 111f)
+    writer.drawRect(189f, 129f, 190f, 130f)
+    writer.endBox()
 
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)

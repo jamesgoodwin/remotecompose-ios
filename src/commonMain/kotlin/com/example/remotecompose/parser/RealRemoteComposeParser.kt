@@ -449,12 +449,28 @@ object RealRemoteComposeParser {
     private const val OP_MODIFIER_PADDING = 58
 
     /**
-     * `Operations.MODIFIER_BACKGROUND` — `RecordingModifier.background(Int)` writes nine raw
-     * floats: four leading values (observed all `0.0` here — presumably per-corner radii,
-     * unconfirmed since this call used no rounding), then the color as four **normalized `0f..1f`
-     * channel floats** (not a packed ARGB int — confirmed: `0xFF7B1FA2` decoded here as
-     * `[0.4824, 0.1216, 0.6353, 1.0]`, exactly `R/255, G/255, B/255, A/255`), then one trailing
-     * `0.0` whose role isn't confirmed.
+     * `Operations.MODIFIER_BACKGROUND` — `RecordingModifier.background(Int)`/`background(FFFF)`
+     * write **4 raw ints, then 4 raw floats, then 1 raw int** (36 bytes total, source-confirmed
+     * via javap on the real `BackgroundModifierOperation`: its `write()` always calls a 9-arg
+     * `apply(WireBuffer,IIIIFFFFI)`, never `IIII` + 4 rounding floats as an earlier pass through
+     * this same opcode guessed — the four leading values previously described as "presumably
+     * per-corner radii" are actually `[colorIdFlag][colorId][0][0]` (colorIdFlag/colorId used only
+     * by the separate `backgroundId(...)` dynamic-color path this parser doesn't need to resolve,
+     * since [OP_COLOR_CONSTANT]'s pool only matters when those two ints are non-zero). The middle
+     * four floats are the color as normalized `0f..1f` channels (not a packed ARGB int — confirmed:
+     * `0xFF7B1FA2` decoded here as `[0.4824, 0.1216, 0.6353, 1.0]`, exactly `R/255, G/255, B/255,
+     * A/255`) — reading them as the 5th-8th field in the byte stream happens to be correct under
+     * both the old and new understanding, which is why the resulting color was never actually
+     * wrong despite the mislabeled fields around it. The trailing int is a real `shapeType`
+     * (`0`=RECTANGLE, `1`=CIRCLE — the same two values [OP_MODIFIER_BORDER]'s shapeType uses,
+     * javap-confirmed via `BackgroundModifierOperation.paint()`'s own `mShapeType`-gated
+     * `drawRect`/`drawCircle` dispatch) that this parser now gives the same real effect: a `1`
+     * background draws as [Opcode.DrawOval] instead of [Opcode.DrawRect] at `OP_CONTAINER_END`,
+     * the same shapeType-gated shape choice [OP_MODIFIER_BORDER] already makes for its stroke.
+     * `RecordingModifier.background(...)`'s public fluent API only ever emits shapeType `0`
+     * (`SolidBackgroundModifier.write()` hardcodes it); reaching shapeType `1` on the wire needs
+     * `RemoteComposeWriter.addModifierBackground(r,g,b,a,1)` called directly (still a real,
+     * genuine writer method — just not one `RecordingModifier` exposes a chainable wrapper for).
      */
     private const val OP_MODIFIER_BACKGROUND = 55
 
@@ -898,6 +914,10 @@ object RealRemoteComposeParser {
         class ScopeFrame(val startIndex: Int, val parent: ScopeFrame?) {
             val cleanupOpcodes = mutableListOf<Opcode>()
             var backgroundColor: Color? = null
+            // Set by OP_MODIFIER_BACKGROUND's real (javap-confirmed) trailing shapeType int:
+            // 0=RECTANGLE (default), 1=CIRCLE — same two values and same DrawOval-vs-DrawRect
+            // choice OP_MODIFIER_BORDER's borderShapeType already gets at OP_CONTAINER_END.
+            var backgroundShapeType: Int = 0
             var layoutAxis: Char? = null // 'V' (LAYOUT_COLUMN) or 'H' (LAYOUT_ROW); null otherwise
             var spacedBy: Float = 0f
             // RowLayout/ColumnLayout.{START,CENTER,END,TOP,BOTTOM,SPACE_BETWEEN,SPACE_EVENLY,
@@ -1708,15 +1728,23 @@ object RealRemoteComposeParser {
                         val bg = frame.backgroundColor
                         if (bg != null) {
                             contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
+                                val left = bounds[0] - frame.paddingLeft
+                                val top = bounds[1] - frame.paddingTop
+                                val right = bounds[2] + frame.paddingRight
+                                val bottom = bounds[3] + frame.paddingBottom
+                                val paint = PaintStyle(bg, PaintStyleKind.FILL)
                                 opcodes.add(
                                     frame.startIndex,
-                                    Opcode.DrawRect(
-                                        bounds[0] - frame.paddingLeft,
-                                        bounds[1] - frame.paddingTop,
-                                        bounds[2] + frame.paddingRight,
-                                        bounds[3] + frame.paddingBottom,
-                                        PaintStyle(bg, PaintStyleKind.FILL),
-                                    ),
+                                    // shapeType 1 (CIRCLE, javap-confirmed on the real
+                                    // BackgroundModifierOperation.paint()) draws a filled oval
+                                    // inscribed in the box instead of a rect — the same
+                                    // shapeType-gated shape choice OP_MODIFIER_BORDER's stroke
+                                    // already makes below.
+                                    if (frame.backgroundShapeType == 1) {
+                                        Opcode.DrawOval(left, top, right, bottom, paint)
+                                    } else {
+                                        Opcode.DrawRect(left, top, right, bottom, paint)
+                                    },
                                 )
                             }
                         }
@@ -1900,13 +1928,15 @@ object RealRemoteComposeParser {
                 }
 
                 OP_MODIFIER_BACKGROUND -> {
-                    repeat(4) { reader.readFloat32() } // corner radii — not modeled (no rounded-fill Opcode variant used here)
+                    repeat(4) { reader.readS32() } // [colorIdFlag][colorId][0][0] — dynamic-color-by-id path, unused here
                     val r = reader.readFloat32()
                     val g = reader.readFloat32()
                     val b = reader.readFloat32()
                     val a = reader.readFloat32()
-                    reader.readFloat32() // trailing float — role unconfirmed
-                    scopeStack.lastOrNull()?.backgroundColor = Color(r, g, b, a)
+                    val shapeType = reader.readS32() // 0=RECTANGLE, 1=CIRCLE
+                    val frame = scopeStack.lastOrNull()
+                    frame?.backgroundColor = Color(r, g, b, a)
+                    frame?.backgroundShapeType = shapeType
                 }
 
                 OP_MODIFIER_VISIBILITY -> {

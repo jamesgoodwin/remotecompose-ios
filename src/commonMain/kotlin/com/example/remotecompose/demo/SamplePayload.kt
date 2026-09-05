@@ -155,7 +155,16 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `UnsupportedOperationException` in this SDK version, so there is no real curved-text algorithm
  * to reverse-engineer; this parser fully decodes the wire format but renders only a straight-line
  * approximation anchored where `startAngle` points on the circle (here, straight up from a center
- * 10 units below it) — not by anything in this codebase. Shared by every
+ * 10 units below it), and a brown-orange 40x20 `startBox`/`endBox` carrying a real
+ * `RemoteComposeWriter.addModifierBackground(r,g,b,a,1)` call (shapeType=1/CIRCLE — javap-confirmed
+ * on the real `BackgroundModifierOperation.paint()`'s own `mShapeType`-gated `drawRect`/
+ * `drawCircle` dispatch; `RecordingModifier.background(...)`'s public fluent API only ever emits
+ * shapeType 0, so this one is reached via a small custom `RecordingModifier.Element` calling that
+ * real writer method directly) whose only content is two 1x1 marker rects at opposite corners of
+ * the box (not a rect that fills it, which would just paint over the inferred background and hide
+ * its shape) — the background renders as a real oval inscribed in the box, corners visibly cut off
+ * against the green round-rect behind it, rather than a sharp-cornered rectangle — the same
+ * shapeType-gated shape choice `MODIFIER_BORDER`'s stroke already gets. Shared by every
  * platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -230,6 +239,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "QbAAAEMWAABB8AAAQx4AANbWyv///3z/////AAAAAAAAAADJ////eygAAAACAAAABP/5qCUqQbAAAEMWAABB8AAAQyYAANbWyv///3r/////AAAAAAAA" +
             "AADJ////eSgAAAACAAAABP8Ag48qQbAAAEMWAABB8AAAQx4AANbW1taCewAAAEAAAAAO/4AACkLSAABDKAAA/4AACwAAAAAAAAAAQvoAAEMWAAD/gAAL" +
             "AAAAAAAAAABC+gAAQygAAP+AAA8mAAAAQCgAAAACAAAABP9qG5oqQtIAAEMWAABDAgAAQyoAAIMoAAAAAgAAAAT/ISEhZgAAAEEAAAAGQ3VydmVkOQAA" +
-            "AEFCyAAAQzkAAEEgAABDhwAAAAAAAAEA",
+            "AEFCyAAAQzkAAEEgAABDhwAAAAAAAAEAyv///3j/////AAAAAAAAAAA3AAAAAAAAAAAAAAAAAAAAAD8ZmZo+TMzNAAAAAD+AAAAAAAAByf///3coAAAA" +
+            "AgAAAAT/////KkMWAABC3AAAQxcAAELeAAAqQz0AAEMBAABDPgAAQwIAANbW",
     )
 }
