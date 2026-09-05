@@ -1081,6 +1081,26 @@ private fun buildCoverageSample() {
     writer.image(RecordingModifier().width(4f).height(8f), wideBitmapId, RemoteComposeWriter.IMAGE_SCALE_INSIDE, 1f)
     writer.endBox()
 
+    // LAYOUT_BOX real horizontalPositioning/verticalPositioning=CENTER,CENTER proof: a startBox
+    // declaring CENTER/CENTER alignment (2, 2) wrapping two startBox/endBox children that both
+    // draw their own rect at the *identical* raw (0, 0)-(20, 20)/(0, 0)-(8, 8) top-left-anchored
+    // position (the small one deliberately drawn at the same corner as the big one, not
+    // pre-centered by the document itself) — real BoxLayout positions every child independently
+    // within the box's own bounds (here, the big child's own 20x20 union), so the small 8x8 child
+    // should end up centered at (6, 6)-(14, 6+8) relative to the box, not still tucked in its
+    // documented top-left corner, proving horizontalPositioning/verticalPositioning now really
+    // align each child instead of staying byte-consumed only.
+    writer.startBox(RecordingModifier().offset(2f, 150f), 2, 2)
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFF5D4037.toInt()).commit()
+    writer.drawRect(0f, 0f, 20f, 20f)
+    writer.endBox()
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFFFFB300.toInt()).commit()
+    writer.drawRect(0f, 0f, 8f, 8f)
+    writer.endBox()
+    writer.endBox()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

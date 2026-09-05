@@ -167,7 +167,15 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * strip) — and into a 4x8 box (smaller than the bitmap's own natural width) with
  * `IMAGE_SCALE_INSIDE` — shrinks like `FIT` whenever natural size doesn't already fit (unlike
  * `NONE`, which would just overflow/clip without shrinking), so a narrow 4-wide x2-tall strip
- * vertically centered in the box, not the old stretch-to-fill default — and a teal rect wrapped in
+ * vertically centered in the box, not the old stretch-to-fill default, a `startBox` declaring
+ * `CENTER`/`CENTER` alignment (`2, 2`) wrapping two more `startBox`/`endBox` children that both
+ * draw their own rect at the *identical* raw top-left-anchored `(0, 0)` position — a brown 20x20
+ * one and an amber 8x8 one, the small one deliberately drawn at the same corner as the big one,
+ * not pre-centered by the document itself: real `BoxLayout` positions every child independently
+ * within the box's own bounds (here, the big child's own 20x20 union), so the small child should
+ * end up centered within it rather than still tucked in its documented top-left corner, proving
+ * `LAYOUT_BOX`'s own `horizontalPositioning`/`verticalPositioning` now really align each child
+ * instead of staying byte-consumed only — and a teal rect wrapped in
  * a `startBox`/`endBox` carrying a
  * `padding(writer.addFloatConstant(6f), 0f, 0f, 0f)` modifier — the modifier is given a
  * *NaN-tagged reference* to `6.0` (what `addFloatConstant` actually returns), not the literal
@@ -333,6 +341,8 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "/2obmipC0gAAQxYAAEMCAABDKgAAgygAAAACAAAABP8hISFmAAAAQgAAAAZDdXJ2ZWQ5AAAAQkLIAABDOQAAQSAAAEOHAAAAAAAAAQDK////Sv////8A" +
             "AAAAAAAAADcAAAAAAAAAAAAAAAAAAAAAPxmZmj5MzM0AAAAAP4AAAAAAAAHJ////SSgAAAACAAAABP////8qQxYAAELcAABDFwAAQt4AACpDPQAAQwEA" +
             "AEM+AABDAgAA1tbK////SP////8AAAAAAAAAAN1BQAAAQnQAAMn///9H6v///0b/////AAAAOQAAAAA/gAAAEAAAAABBgAAAQwAAAABBgAAA1tbWyv//" +
-            "/0X/////AAAAAAAAAADdQAAAAEK0AADJ////ROr///9D/////wAAADkAAAABP4AAABAAAAAAQIAAAEMAAAAAQQAAANbW1g==",
+            "/0X/////AAAAAAAAAADdQAAAAEK0AADJ////ROr///9D/////wAAADkAAAABP4AAABAAAAAAQIAAAEMAAAAAQQAAANbW1sr///9C/////wAAAAIAAAAC" +
+            "3UAAAABDFgAAyf///0HK////QP////8AAAAAAAAAAMn///8/KAAAAAIAAAAE/11ANyoAAAAAAAAAAEGgAABBoAAA1tbK////Pv////8AAAAAAAAAAMn/" +
+            "//89KAAAAAIAAAAE//+zACoAAAAAAAAAAEEAAABBAAAA1tbW1g==",
     )
 }

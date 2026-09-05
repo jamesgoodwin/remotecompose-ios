@@ -404,7 +404,18 @@ object RealRemoteComposeParser {
      * `Operations.LAYOUT_BOX` — `[componentId:i32][animationId:i32][horizontalPositioning:i32]
      * [verticalPositioning:i32]`, i.e. [OP_LAYOUT_COLUMN]'s shape minus the trailing `spacedBy`
      * float (source-confirmed: `BoxLayout.apply()` has no spacing concept, boxes stack children
-     * rather than distributing them along an axis).
+     * rather than distributing them along an axis). `horizontalPositioning`/`verticalPositioning`
+     * get a real effect too now (javap-confirmed on the real `BoxLayout.internalLayoutMeasure()`):
+     * real `Box(contentAlignment = ...)` positions *every* child independently within the box's
+     * own bounds using the exact same `START`/`CENTER`/`END`(horizontal) and `TOP`/`CENTER`/
+     * `BOTTOM`(vertical) ordinals — and even the same fallback-to-zero-offset behavior for any
+     * other value — [OP_LAYOUT_COLUMN]/[OP_LAYOUT_ROW]'s own cross-axis alignment already uses, so
+     * `arrangeChildren`'s existing `crossAxisOffset` helper is reused verbatim for *both* axes here
+     * (a `POS_START`/`POS_TOP` value — including the raw `0` many existing calls in this codebase
+     * pass for "no override" — offsets identically under it, so this is behavior-preserving for
+     * every already-existing Box test). Unlike Column/Row's sequential main-axis stacking, this is
+     * a single per-child pass with no packing at all — see `arrangeChildren`'s own Box-alignment
+     * block.
      */
     private const val OP_LAYOUT_BOX = 202
 
@@ -1049,6 +1060,12 @@ object RealRemoteComposeParser {
             // no live state to evaluate) shows only the *first* child, hiding every other one the
             // same way [Component.Visibility.GONE] already does elsewhere.
             var isStateLayout: Boolean = false
+            // Set (from pendingIsBoxAlignment) only for a LAYOUT_BOX/LAYOUT_FIT_BOX content frame.
+            // arrangeChildren's per-child 2D-alignment pass (real BoxLayout.internalLayoutMeasure
+            // behavior, source-confirmed via javap — see OP_LAYOUT_BOX's own KDoc) only runs when
+            // this is set, so a Custom/Canvas/Root/State content frame (also axis == null, also
+            // registers children for MODIFIER_ZINDEX) never gets it by accident.
+            var isBoxAlignment: Boolean = false
             val childRanges = mutableListOf<IntArray>() // only populated/consumed when layoutAxis != null
             // Parallel to childRanges (same index correspondence) — each entry is the
             // corresponding child's own OP_MODIFIER_ZINDEX value (default 0f), read by
@@ -1191,6 +1208,12 @@ object RealRemoteComposeParser {
         // ScopeFrame.isStateLayout. Propagated independently of pendingLayoutAxis (LAYOUT_STATE
         // never sets that — see ScopeFrame.isStateLayout's KDoc).
         var pendingIsStateLayout = false
+        // Set by OP_LAYOUT_BOX/OP_LAYOUT_FIT_BOX; tells the very next OP_LAYOUT_CONTENT frame to
+        // set ScopeFrame.isBoxAlignment. Propagated independently of pendingLayoutAxis (Box has no
+        // main/cross axis — see OP_LAYOUT_BOX's own KDoc) — kept distinct from other axis-less
+        // containers (Custom/Canvas/Root/State) so arrangeChildren's Box-alignment pass only
+        // applies to a real Box/FitBox, never accidentally to one of those.
+        var pendingIsBoxAlignment = false
 
         /**
          * This renderer has no measure/layout pass, so a container's "bounds" for
@@ -1574,6 +1597,33 @@ object RealRemoteComposeParser {
                 }
             }
 
+            // LAYOUT_BOX/LAYOUT_FIT_BOX's real per-child 2D alignment (source-confirmed via javap
+            // on BoxLayout.internalLayoutMeasure — see OP_LAYOUT_BOX's own KDoc): unlike Column/
+            // Row's sequential main-axis stacking, every child is independently positioned within
+            // the box's own bounds (the union of every child's own natural bounds, or this box's
+            // own declared width/height when explicit — same anchor-at-natural-bounds,
+            // extent-from-declared-size split Column/Row's own arrangement already uses) via the
+            // same crossAxisOffset helper, reused verbatim for *both* axes here since Box's
+            // horizontalPositioning/verticalPositioning share Column/Row's own ordinals exactly.
+            if (frame.isBoxAlignment) {
+                contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { boxBounds ->
+                    val boxWidth = frame.parent?.explicitWidthPx ?: (boxBounds[2] - boxBounds[0])
+                    val boxHeight = frame.parent?.explicitHeightPx ?: (boxBounds[3] - boxBounds[1])
+                    for (i in children.indices.reversed()) {
+                        val range = children[i]
+                        val childBounds = contentBounds(opcodes.subList(range[0], range[1])) ?: continue
+                        val childWidth = childBounds[2] - childBounds[0]
+                        val childHeight = childBounds[3] - childBounds[1]
+                        val dx = (boxBounds[0] + crossAxisOffset(frame.horizontalPositioning, boxWidth, childWidth)) - childBounds[0]
+                        val dy = (boxBounds[1] + crossAxisOffset(frame.verticalPositioning, boxHeight, childHeight)) - childBounds[1]
+                        if (dx == 0f && dy == 0f) continue
+                        for (j in range[0] until range[1]) {
+                            opcodes[j] = shiftOpcode(opcodes[j], dx, dy)
+                        }
+                    }
+                }
+            }
+
             // LAYOUT_STATE's real default: only the first child (index 0, matching the real
             // StateLayout's own currentLayoutIndex default) stays visible; every other child is
             // hidden via the same empty-ClipRect GONE mechanism used above, in place at its own
@@ -1908,9 +1958,18 @@ object RealRemoteComposeParser {
                 OP_LAYOUT_BOX, OP_LAYOUT_FIT_BOX -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
-                    reader.readS32() // horizontalPositioning
-                    reader.readS32() // verticalPositioning
+                    val horizontalPositioning = reader.readS32()
+                    val verticalPositioning = reader.readS32()
                     pushScope()
+                    // Consumed by this container's own LAYOUT_CONTENT next, same handoff shape as
+                    // LAYOUT_COLUMN/LAYOUT_ROW's own positioning — but Box has no main/cross axis
+                    // (pendingLayoutAxis is deliberately left null), so arrangeChildren's *separate*
+                    // per-child 2D-alignment pass applies these instead of the sequential-stacking
+                    // packing loop Column/Row use — see its own KDoc for BoxLayout's real algorithm
+                    // (source-confirmed via javap).
+                    pendingHorizontalPositioning = horizontalPositioning
+                    pendingVerticalPositioning = verticalPositioning
+                    pendingIsBoxAlignment = true
                 }
 
                 OP_LAYOUT_ROOT -> {
@@ -1933,12 +1992,20 @@ object RealRemoteComposeParser {
                 OP_LAYOUT_CONTENT, OP_LAYOUT_CANVAS_CONTENT -> {
                     reader.readS32() // componentId
                     pushScope() // the children scope itself — this is where real children attach
+                    // Assigned unconditionally (not gated on axis != null): a Box's own
+                    // horizontalPositioning/verticalPositioning (from OP_LAYOUT_BOX) need to reach
+                    // this frame too, for arrangeChildren's per-child 2D-alignment pass — see
+                    // OP_LAYOUT_BOX's own KDoc.
+                    scopeStack.last().horizontalPositioning = pendingHorizontalPositioning
+                    scopeStack.last().verticalPositioning = pendingVerticalPositioning
+                    scopeStack.last().isBoxAlignment = pendingIsBoxAlignment
+                    pendingHorizontalPositioning = POS_START
+                    pendingVerticalPositioning = POS_START
+                    pendingIsBoxAlignment = false
                     val axis = pendingLayoutAxis
                     if (axis != null) {
                         scopeStack.last().layoutAxis = axis
                         scopeStack.last().spacedBy = pendingSpacedBy
-                        scopeStack.last().horizontalPositioning = pendingHorizontalPositioning
-                        scopeStack.last().verticalPositioning = pendingVerticalPositioning
                         scopeStack.last().flowMaxItemsPerLine = pendingFlowMaxItemsPerLine
                         scopeStack.last().flowMaxLines = pendingFlowMaxLines
                         scopeStack.last().isCollapsible = pendingIsCollapsible
