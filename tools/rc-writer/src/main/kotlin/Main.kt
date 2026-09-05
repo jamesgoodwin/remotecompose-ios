@@ -624,6 +624,20 @@ private fun buildCoverageSample() {
     writer.drawRect(38f, 28f, 53f, 38f)
     writer.endBox()
 
+    // MODIFIER_DIMENSION_CONSTRAINTS real-effect proof: same "oversized content clipped to a
+    // declared max" shape as OP_MODIFIER_WIDTH_IN's own proof, but reached through
+    // WidthInModifier's 3-arg constructor (type=0/HORIZONTAL_CONSTRAINTS) — a different wire
+    // opcode entirely (MODIFIER_DIMENSION_CONSTRAINTS, not MODIFIER_WIDTH_IN) that this parser
+    // previously only byte-consumed. A 30-wide child inside a HORIZONTAL_CONSTRAINTS(5f, 15f)
+    // constraint should clip down to exactly the declared max (15), the same real effect
+    // MODIFIER_WIDTH_IN's own type gets.
+    writer.startBox(RecordingModifier().then(WidthInModifier(0, 5f, 15f)), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF00695C.toInt())
+        .commit()
+    writer.drawRect(116f, 112f, 146f, 122f)
+    writer.endBox()
+
     writer.startBox(RecordingModifier().onClick(ValueIntegerChange(3, 7)), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF00695C.toInt())

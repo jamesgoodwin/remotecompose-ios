@@ -825,7 +825,19 @@ object RealRemoteComposeParser {
      * max))`'s 3-arg constructor (the public 2-arg `widthIn(min, max)` always takes the
      * [OP_MODIFIER_WIDTH_IN] path instead) — writes `[type:byte][min:f32][max:f32]`, a single raw
      * **byte** rather than the usual `i32`, confirmed via `WidthInModifier(1, 5f, 40f)` decoding to
-     * exactly `[1, 5.0, 40.0]` in a 9-byte payload (1+4+4, not 1+4+4+3 padding).
+     * exactly `[1, 5.0, 40.0]` in a 9-byte payload (1+4+4, not 1+4+4+3 padding). `min`/`max` are
+     * each a `readNanId`-tagged [floatPool] reference on the real
+     * `DimensionConstraintsModifierOperation` (javap-confirmed, same as [OP_MODIFIER_PADDING]'s
+     * floats), now resolved through [resolveFloat]. `type` (`0`=`HORIZONTAL_CONSTRAINTS`,
+     * `1`=`VERTICAL_CONSTRAINTS`, `2`=`REQUIRED_HORIZONTAL_CONSTRAINTS`,
+     * `3`=`REQUIRED_VERTICAL_CONSTRAINTS`, javap-confirmed constants) picks which axis this
+     * constrains — exactly [OP_MODIFIER_WIDTH_IN]'s own shape for `0`/`2`, [OP_MODIFIER_HEIGHT_IN]'s
+     * for `1`/`3` (the `REQUIRED_*` variants only differ in real Compose's constraint-propagation
+     * semantics — whether this overrides an *incoming* measure constraint rather than merely
+     * narrowing it — a distinction this parser's post-hoc, no-measure-pass clamp against inferred
+     * content bounds has no way to tell apart from the plain variant, so both get the identical
+     * real effect) — see [ScopeFrame.widthInMin]/[heightInMin]'s KDoc, now populated by this opcode
+     * too instead of staying byte-consumed only.
      */
     private const val OP_MODIFIER_DIMENSION_CONSTRAINTS = 243
 
@@ -2514,9 +2526,25 @@ object RealRemoteComposeParser {
                 }
 
                 OP_MODIFIER_DIMENSION_CONSTRAINTS -> {
-                    reader.readS8() // type
-                    reader.readFloat32() // min
-                    reader.readFloat32() // max
+                    val type = reader.readS8()
+                    val min = resolveFloat(reader.readFloat32())
+                    val max = resolveFloat(reader.readFloat32())
+                    val frame = scopeStack.lastOrNull()
+                    when (type) {
+                        // HORIZONTAL_CONSTRAINTS(0)/REQUIRED_HORIZONTAL_CONSTRAINTS(2): same real
+                        // effect OP_MODIFIER_WIDTH_IN already gets — see ScopeFrame.widthInMin's
+                        // KDoc and OP_CONTAINER_END's clamp/clip handling for it.
+                        0, 2 -> {
+                            frame?.widthInMin = min
+                            frame?.widthInMax = max
+                        }
+                        // VERTICAL_CONSTRAINTS(1)/REQUIRED_VERTICAL_CONSTRAINTS(3): same real
+                        // effect OP_MODIFIER_HEIGHT_IN already gets.
+                        1, 3 -> {
+                            frame?.heightInMin = min
+                            frame?.heightInMax = max
+                        }
+                    }
                 }
 
                 OP_VALUE_INTEGER_CHANGE -> {
