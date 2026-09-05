@@ -62,7 +62,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * raw `writer.save()`/`writer.rotate(45f, 175f, 46f)`/`writer.restore()`, a burnt-orange rect
  * drawn after a raw `writer.save()`/`writer.skew(0.5f, 0f)`/`writer.restore()` that should read
  * as a parallelogram leaning right (`skewX`/`skewY` are direct shear factors, the
- * `android.graphics.Matrix.setSkew(kx, ky)` convention, not an angle like `ROTATION_Z`), and a
+ * `android.graphics.Matrix.setSkew(kx, ky)` convention, not an angle like `ROTATION_Z`), a
+ * pink/purple/indigo trio of `startBox`/`endBox` children — each drawing its rect at the
+ * *identical* raw `(22, 130)-(32, 140)` document coordinates — wrapped in a
+ * `startCollapsibleColumn(RecordingModifier().spacedBy(3f), 0, 0)`/`endCollapsibleColumn`, so a
+ * render showing them stacked without overlap proves real Column arrangement now covers this
+ * shape-identical opcode pair too, not only plain `LAYOUT_COLUMN`/`LAYOUT_ROW`, and a
  * magenta rect drawn
  * oversized then clipped by a raw `writer.save()`/`writer.clipRect(190f, 41f, 205f, 51f)`/
  * `writer.restore()`, and a blue rect plus a separate green circle wrapped in a
@@ -146,14 +151,16 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "BD8AAAABQQAAAAEAAAACAAAAAwAAAATK////rv////8AAAAAAAAAAA4AAAADQ5YAAAAAAAFDlgAAAAAAAQAAAAAAAAAByf///60oAAAAAgAAAAT/XUA3" +
             "KkLcAABCJAAAQvoAAEJMAADW1oJ/QwIAAEIkAAAoAAAAAgAAAAT/AKzBKgAAAAAAAAAAQXAAAEEgAACDgn5AAAAAQAAAAEMRAABCOAAAKAAAAAIAAAAE" +
             "//V/FypDEQAAQiQAAEMYAABCOAAAg4KBQjQAAEMvAABCOAAAKAAAAAIAAAAE/2obmipDKAAAQiQAAEM3AABCTAAAg4InQz4AAEIkAABDTQAAQkwAACgA" +
-            "AAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIOCgD8AAAAAAAAAKAAAAAIAAAAE/9hDFSpAAAAAQwIAAEGIAABDEQAAg8r///+s/////wAAAAAAAAAA" +
-            "NwAAAAAAAAAAAAAAAAAAAAA/gAAAPt7e3wAAAAA/gAAAAAAAAMn///+rKAAAAAIAAAAE/xVlwCpAAAAAQnQAAEFAAABCjgAAKAAAAAIAAAAE/y59Mi5C" +
-            "DAAAQpwAAEDAAADW1sz///+q/////wAAAAAAAAAAQEAAAMn///+pyv///6j/////AAAAAAAAAADJ////pygAAAACAAAABP/TLy8qQAAAAEK0AABBQAAA" +
-            "QsgAANbWyv///6b/////AAAAAAAAAADJ////pSgAAAACAAAABP8ZdtIqQAAAAEK0AABBQAAAQsgAANbWyv///6T/////AAAAAAAAAADJ////oygAAAAC" +
-            "AAAABP84jjwqQAAAAEK0AABBQAAAQsgAANbW1tbL////ov////8AAAAGAAAAAgAAAAAQAAAAAEKgAADJ////ocr///+g/////wAAAAAAAAAAyf///58o" +
-            "AAAAAgAAAAT/xigoKkGwAABDFgAAQfAAAEMeAADW1sr///+e/////wAAAAAAAAAAyf///50oAAAAAgAAAAT/+aglKkGwAABDFgAAQfAAAEMmAADW1sr/" +
-            "//+c/////wAAAAAAAAAAyf///5soAAAAAgAAAAT/AIOPKkGwAABDFgAAQfAAAEMeAADW1tbWgnsAAAA2AAAADv+AAApC0gAAQygAAP+AAAsAAAAAAAAA" +
-            "AEL6AABDFgAA/4AACwAAAAAAAAAAQvoAAEMoAAD/gAAPJgAAADYoAAAAAgAAAAT/ahuaKkLSAABDFgAAQwIAAEMqAACDKAAAAAIAAAAE/yEhIWYAAAA3" +
-            "AAAABkN1cnZlZDkAAAA3QsgAAEM5AABBIAAAQ4cAAAAAAAABAA==",
+            "AAACAAAABP+qAP8qQzkAAEIQAABDUgAAQmAAAIOCgD8AAAAAAAAAKAAAAAIAAAAE/9hDFSpAAAAAQwIAAEGIAABDEQAAg+n///+s/////wAAAAAAAAAA" +
+            "QEAAAMn///+ryv///6r/////AAAAAAAAAADJ////qSgAAAACAAAABP/CGFsqQbAAAEMCAABCAAAAQwwAANbWyv///6j/////AAAAAAAAAADJ////pygA" +
+            "AAACAAAABP97H6IqQbAAAEMCAABCAAAAQwwAANbWyv///6b/////AAAAAAAAAADJ////pSgAAAACAAAABP8wP58qQbAAAEMCAABCAAAAQwwAANbW1tbK" +
+            "////pP////8AAAAAAAAAADcAAAAAAAAAAAAAAAAAAAAAP4AAAD7e3t8AAAAAP4AAAAAAAADJ////oygAAAACAAAABP8VZcAqQAAAAEJ0AABBQAAAQo4A" +
+            "ACgAAAACAAAABP8ufTIuQgwAAEKcAABAwAAA1tbM////ov////8AAAAAAAAAAEBAAADJ////ocr///+g/////wAAAAAAAAAAyf///58oAAAAAgAAAAT/" +
+            "0y8vKkAAAABCtAAAQUAAAELIAADW1sr///+e/////wAAAAAAAAAAyf///50oAAAAAgAAAAT/GXbSKkAAAABCtAAAQUAAAELIAADW1sr///+c/////wAA" +
+            "AAAAAAAAyf///5soAAAAAgAAAAT/OI48KkAAAABCtAAAQUAAAELIAADW1tbWy////5r/////AAAABgAAAAIAAAAAEAAAAABCoAAAyf///5nK////mP//" +
+            "//8AAAAAAAAAAMn///+XKAAAAAIAAAAE/8YoKCpBsAAAQxYAAEHwAABDHgAA1tbK////lv////8AAAAAAAAAAMn///+VKAAAAAIAAAAE//moJSpBsAAA" +
+            "QxYAAEHwAABDJgAA1tbK////lP////8AAAAAAAAAAMn///+TKAAAAAIAAAAE/wCDjypBsAAAQxYAAEHwAABDHgAA1tbW1oJ7AAAANgAAAA7/gAAKQtIA" +
+            "AEMoAAD/gAALAAAAAAAAAABC+gAAQxYAAP+AAAsAAAAAAAAAAEL6AABDKAAA/4AADyYAAAA2KAAAAAIAAAAE/2obmipC0gAAQxYAAEMCAABDKgAAgygA" +
+            "AAACAAAABP8hISFmAAAANwAAAAZDdXJ2ZWQ5AAAAN0LIAABDOQAAQSAAAEOHAAAAAAAAAQA=",
     )
 }

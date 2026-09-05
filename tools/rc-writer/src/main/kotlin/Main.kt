@@ -636,6 +636,27 @@ private fun buildCoverageSample() {
     writer.drawRect(2f, 130f, 17f, 145f)
     writer.restore()
 
+    // Three Box children, each drawn at the *same* raw (22,130)-(32,140) rect — deliberately
+    // overlapping in the document's own absolute coordinates, same proof-of-real-arrangement
+    // pattern as the plain startColumn test below, but for startCollapsibleColumn: real
+    // arrangement was previously only wired up for LAYOUT_COLUMN/LAYOUT_ROW, not this shape-
+    // identical opcode pair, so a render showing these stacked without overlap now proves that
+    // gap is closed.
+    writer.startCollapsibleColumn(RecordingModifier().spacedBy(3f), 0, 0)
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFFC2185B.toInt()).commit()
+    writer.drawRect(22f, 130f, 32f, 140f)
+    writer.endBox()
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFF7B1FA2.toInt()).commit()
+    writer.drawRect(22f, 130f, 32f, 140f)
+    writer.endBox()
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFF303F9F.toInt()).commit()
+    writer.drawRect(22f, 130f, 32f, 140f)
+    writer.endBox()
+    writer.endCollapsibleColumn()
+
     writer.startBox(RecordingModifier().background(0xFFFF6F00.toInt()), 0, 0)
     writer.getRcPaint().setColor(0xFF1565C0.toInt()).commit()
     writer.drawRect(2f, 61f, 12f, 71f)

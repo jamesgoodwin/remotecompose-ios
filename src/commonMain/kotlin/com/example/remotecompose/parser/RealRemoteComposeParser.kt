@@ -1242,12 +1242,19 @@ object RealRemoteComposeParser {
                 OP_LAYOUT_COLLAPSIBLE_COLUMN, OP_LAYOUT_COLLAPSIBLE_ROW -> {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
-                    reader.readS32() // horizontalPositioning
-                    reader.readS32() // verticalPositioning
-                    reader.readFloat32() // spacedBy
-                    // Real arrangement isn't wired up for the collapsible variants yet (unlike plain
-                    // LAYOUT_COLUMN/LAYOUT_ROW below) — deliberately deferred, not an oversight.
-                    pushScope()
+                    val horizontalPositioning = reader.readS32()
+                    val verticalPositioning = reader.readS32()
+                    val spacedBy = reader.readFloat32()
+                    pushScope() // this container's own scope — closed by its outermost CONTAINER_END
+                    // Identical shape to OP_LAYOUT_COLUMN/OP_LAYOUT_ROW's own fields, and — since
+                    // OP_LAYOUT_CONTENT is a single generic children-marker shared by every
+                    // container type, not a Column/Row-specific one — the exact same
+                    // pendingLayoutAxis handoff gives these real arrangement too, with no changes
+                    // needed to arrangeChildren or OP_LAYOUT_CONTENT itself.
+                    pendingLayoutAxis = if (opId == OP_LAYOUT_COLLAPSIBLE_COLUMN) 'V' else 'H'
+                    pendingSpacedBy = spacedBy
+                    pendingHorizontalPositioning = horizontalPositioning
+                    pendingVerticalPositioning = verticalPositioning
                 }
 
                 OP_LAYOUT_FLOW -> {
