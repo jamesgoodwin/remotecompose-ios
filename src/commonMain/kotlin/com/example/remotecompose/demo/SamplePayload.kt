@@ -22,7 +22,9 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * un-padded box rather than just matching the inset child's own bounds — a small green rect
  * wrapped in a `startBox`/`endBox` carrying a `visibility()` modifier, and a small orange rect
  * wrapped in a `startBox`/`endBox` carrying an `offset()` modifier, a small teal rect wrapped in a
- * `startBox`/`endBox` carrying a `border()` modifier, a small purple rect wrapped in a
+ * `startBox`/`endBox` carrying a `border(2f, 4f, 0xFF000000, 0)` modifier — a real stroked black
+ * rounded-rect outline around the teal child's own inferred bounds, not just a byte-consumed
+ * field — a small purple rect wrapped in a
  * `startBox`/`endBox` carrying a `clip(RectShape(...))` modifier, a small olive rect wrapped in
  * a `startBox`/`endBox` carrying a `clip(RoundedRectShape(...))` modifier, a small teal rect
  * wrapped in a `startBox`/`endBox` carrying an `onLongClick(HostAction(9))` modifier, a second row

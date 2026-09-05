@@ -460,9 +460,15 @@ object RealRemoteComposeParser {
      * `Operations.MODIFIER_BORDER` — `RecordingModifier.border(width, roundedCorner, color,
      * shapeType)` writes 4 raw ints then 6 raw floats then 1 raw int (44 bytes), confirmed via
      * `border(2f, 4f, 0xFF000000, 0)`: `[0, 0, 0, 0][2.0, 4.0, 0.0, 0.0, 0.0, 1.0][0]` — a
-     * colorId-ref flag/id/legacy-flag/reserved int quad, then borderWidth, roundedCorner, and the
-     * color as normalized r/g/b/a floats (same normalized-channel convention as
-     * [OP_MODIFIER_BACKGROUND]), then a trailing shapeType int.
+     * colorId-ref flag/id/legacy-flag/reserved int quad (source-confirmed via javap on the real
+     * `BorderModifierOperation`: the 4th int is always a literal `0`, not merely unused — the
+     * flag is only ever `2` when the color comes from a resolved color-pool reference rather than
+     * literal `r/g/b/a` floats, a case this parser doesn't resolve and so doesn't render), then
+     * borderWidth, roundedCorner, and the color as normalized r/g/b/a floats (same
+     * normalized-channel convention as [OP_MODIFIER_BACKGROUND]), then a trailing shapeType int
+     * (`0`=RECTANGLE, `1`=CIRCLE, also javap-confirmed). Gets a real stroked-outline effect (see
+     * `OP_CONTAINER_END`'s `borderColor` handling) using the same `contentBounds()`-inferred,
+     * padding-expanded box [OP_MODIFIER_BACKGROUND] already uses.
      */
     private const val OP_MODIFIER_BORDER = 107
 
@@ -795,6 +801,13 @@ object RealRemoteComposeParser {
             var paddingTop: Float = 0f
             var paddingRight: Float = 0f
             var paddingBottom: Float = 0f
+            // Set by OP_MODIFIER_BORDER when the color is a literal r/g/b/a (not a color-pool
+            // reference this parser doesn't resolve); consumed at OP_CONTAINER_END to draw a real
+            // stroked outline around this container's own (padding-expanded) inferred bounds.
+            var borderColor: Color? = null
+            var borderWidth: Float = 0f
+            var borderRoundedCorner: Float = 0f
+            var borderShapeType: Int = 0
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
@@ -1478,6 +1491,33 @@ object RealRemoteComposeParser {
                         if (frame.layoutAxis != null) {
                             arrangeChildren(frame)
                         }
+                        // MODIFIER_BORDER: a real stroked-outline effect, drawn *on top of* this
+                        // container's now-finished content (appended, not inserted at
+                        // frame.startIndex like the background fill above) around the same
+                        // contentBounds()-inferred, padding-expanded box the background uses.
+                        // shapeType 1 (CIRCLE) draws a stroked oval inscribed in that box instead
+                        // of a rect/round-rect.
+                        val border = frame.borderColor
+                        if (border != null) {
+                            contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
+                                val left = bounds[0] - frame.paddingLeft
+                                val top = bounds[1] - frame.paddingTop
+                                val right = bounds[2] + frame.paddingRight
+                                val bottom = bounds[3] + frame.paddingBottom
+                                val paint = PaintStyle(border, PaintStyleKind.STROKE, frame.borderWidth)
+                                opcodes += if (frame.borderShapeType == 1) {
+                                    Opcode.DrawOval(left, top, right, bottom, paint)
+                                } else if (frame.borderRoundedCorner > 0f) {
+                                    Opcode.DrawRoundRect(
+                                        left, top, right, bottom,
+                                        frame.borderRoundedCorner, frame.borderRoundedCorner,
+                                        paint,
+                                    )
+                                } else {
+                                    Opcode.DrawRect(left, top, right, bottom, paint)
+                                }
+                            }
+                        }
                         // LAYOUT_IMAGE carries no position/size of its own, so real rendering only
                         // happens when an explicit MODIFIER_WIDTH/HEIGHT on the same modifier gave
                         // this frame a real box to draw into — the same real-vs-byte-consumed-only
@@ -1601,9 +1641,24 @@ object RealRemoteComposeParser {
                 }
 
                 OP_MODIFIER_BORDER -> {
-                    repeat(4) { reader.readS32() } // colorId-ref flag / colorId / legacy flag / reserved
-                    repeat(6) { reader.readFloat32() } // borderWidth, roundedCorner, r, g, b, a
-                    reader.readS32() // shapeType
+                    val colorRefFlag = reader.readS32()
+                    reader.readS32() // colorId — only meaningful when colorRefFlag == 2
+                    reader.readS32() // legacy flag
+                    reader.readS32() // reserved — always a literal 0 on the wire
+                    val borderWidth = reader.readFloat32()
+                    val roundedCorner = reader.readFloat32()
+                    val r = reader.readFloat32()
+                    val g = reader.readFloat32()
+                    val b = reader.readFloat32()
+                    val a = reader.readFloat32()
+                    val shapeType = reader.readS32()
+                    if (colorRefFlag != 2) {
+                        val frame = scopeStack.lastOrNull()
+                        frame?.borderColor = Color(r, g, b, a)
+                        frame?.borderWidth = borderWidth
+                        frame?.borderRoundedCorner = roundedCorner
+                        frame?.borderShapeType = shapeType
+                    }
                 }
 
                 OP_MODIFIER_CLIP_RECT -> Unit // no payload
