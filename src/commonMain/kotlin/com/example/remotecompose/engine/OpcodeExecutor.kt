@@ -187,18 +187,30 @@ object OpcodeExecutor {
                             fullText
                         }
                         val style = TextStyle(fontSize = opcode.fontSize.sp, color = Color(opcode.colorArgb))
-                        // panX == -1f (every other DrawText-producing opcode's own implicit
-                        // left-anchor behavior) needs no measurement at all — the common case.
-                        val drawX = if (opcode.panX == -1f) {
-                            opcode.x
+                        // panX/panY == -1f (every other DrawText-producing opcode's own implicit
+                        // top-left-anchor behavior) needs no measurement at all — the common case.
+                        val drawX: Float
+                        val drawY: Float
+                        if (opcode.panX == -1f && opcode.panY == -1f) {
+                            drawX = opcode.x
+                            drawY = opcode.y
                         } else {
-                            val textWidth = context.textMeasurer.measure(text, style).size.width
-                            opcode.x - textWidth * (1f + opcode.panX) / 2f
+                            val measured = context.textMeasurer.measure(text, style).size
+                            drawX = if (opcode.panX == -1f) {
+                                opcode.x
+                            } else {
+                                opcode.x - measured.width * (1f + opcode.panX) / 2f
+                            }
+                            drawY = if (opcode.panY == -1f) {
+                                opcode.y
+                            } else {
+                                opcode.y - measured.height * (1f + opcode.panY) / 2f
+                            }
                         }
                         drawScope.drawText(
                             textMeasurer = context.textMeasurer,
                             text = text,
-                            topLeft = Offset(drawX, opcode.y),
+                            topLeft = Offset(drawX, drawY),
                             style = style,
                         )
                     }

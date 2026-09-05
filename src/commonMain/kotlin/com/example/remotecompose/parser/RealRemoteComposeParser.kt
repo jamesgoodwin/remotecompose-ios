@@ -1755,11 +1755,7 @@ object RealRemoteComposeParser {
                     val x = resolveFloat(reader.readFloat32())
                     val y = resolveFloat(reader.readFloat32())
                     val panX = resolveFloat(reader.readFloat32())
-                    reader.readFloat32() // panY — real vertical-anchor effect not modeled (its
-                    // formula also depends on the ANCHOR_MONOSPACE_MEASURE/BASELINE_RELATIVE flags
-                    // below and the text's own ascent/descent, real font metrics this renderer
-                    // can't confidently reproduce byte-for-byte the way panX's simpler, purely
-                    // width-based formula could be — see Opcode.DrawText.panX's own KDoc).
+                    val panY = resolveFloat(reader.readFloat32())
                     reader.readS32() // flags
                     opcodes += Opcode.DrawText(
                         stringIndex = textId,
@@ -1768,6 +1764,7 @@ object RealRemoteComposeParser {
                         fontSize = DEFAULT_TEXT_SIZE_SP,
                         colorArgb = currentColor.toArgb(),
                         panX = panX,
+                        panY = panY,
                     )
                 }
 

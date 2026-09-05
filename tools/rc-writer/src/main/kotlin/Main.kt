@@ -1113,6 +1113,20 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF6A1B9A.toInt()).commit()
     writer.drawTextAnchored("Centered", 100f, 180f, 1f, 0f, 0)
 
+    // DRAW_TEXT_ANCHORED real panY proof: the same "Tall" string drawn twice at the identical
+    // y=100 anchor, once with panY=-1 (top-align: y should be the text's own top edge) and once
+    // with panY=1 (bottom-align: y should be the text's own bottom edge) — this renderer's own
+    // topLeft-based drawText means these two renders should differ by roughly the text's own
+    // full measured height, not sit at the identical position the old (y always literal top
+    // edge, panY byte-consumed) behavior would have given both, proving panY now really anchors
+    // text vertically instead of staying byte-consumed only. Kept well within the document's own
+    // declared 200x200 bounds (unlike x/y, which can safely overlap earlier content since this is
+    // drawn last) so neither render risks being clipped off the rendered canvas.
+    writer.getRcPaint().setColor(0xFF2E7D32.toInt()).commit()
+    writer.drawTextAnchored("Tall", 140f, 100f, -1f, -1f, 0)
+    writer.getRcPaint().setColor(0xFFC62828.toInt()).commit()
+    writer.drawTextAnchored("Tall", 170f, 100f, -1f, 1f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

@@ -259,7 +259,15 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * the box (not a rect that fills it, which would just paint over the inferred background and hide
  * its shape) — the background renders as a real oval inscribed in the box, corners visibly cut off
  * against the green round-rect behind it, rather than a sharp-cornered rectangle — the same
- * shapeType-gated shape choice `MODIFIER_BORDER`'s stroke already gets. Shared by every
+ * shapeType-gated shape choice `MODIFIER_BORDER`'s stroke already gets, and the same "Tall"
+ * string drawn twice with `drawTextAnchored` at the identical `y=100` anchor — once with
+ * `panY=-1f` (top-align: `y` should be the text's own top edge) and once with `panY=1f`
+ * (bottom-align: `y` should be the text's own bottom edge) — this renderer's own topLeft-based
+ * `drawText` means these two renders differ by roughly the text's own full measured height
+ * (confirmed via pixel sampling: the top-aligned string sits visibly lower/below `y=100`, the
+ * bottom-aligned string sits visibly higher/above it, ending almost exactly at the same `y=100`),
+ * not the identical position the old (`y` always the literal top edge, `panY` byte-consumed)
+ * behavior would have given both. Shared by every
  * platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -355,6 +363,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "/0X/////AAAAAAAAAADdQAAAAEK0AADJ////ROr///9D/////wAAADkAAAABP4AAABAAAAAAQIAAAEMAAAAAQQAAANbW1sr///9C/////wAAAAIAAAAC" +
             "3UAAAABDFgAAyf///0HK////QP////8AAAAAAAAAAMn///8/KAAAAAIAAAAE/11ANyoAAAAAAAAAAEGgAABBoAAA1tbK////Pv////8AAAAAAAAAAMn/" +
             "//89KAAAAAIAAAAE//+zACoAAAAAAAAAAEEAAABBAAAA1tbW1igAAAACAAAABP8VZcBmAAAAQwAAAAhDZW50ZXJlZIUAAABDQsgAAEMgAAC/gAAAAAAA" +
-            "AAAAAAAoAAAAAgAAAAT/ahuahQAAAENCyAAAQzQAAD+AAAAAAAAAAAAAAA==",
+            "AAAAAAAoAAAAAgAAAAT/ahuahQAAAENCyAAAQzQAAD+AAAAAAAAAAAAAACgAAAACAAAABP8ufTJmAAAARAAAAARUYWxshQAAAERDDAAAQsgAAL+AAAC/" +
+            "gAAAAAAAACgAAAACAAAABP/GKCiFAAAAREMqAABCyAAAv4AAAD+AAAAAAAAA",
     )
 }
