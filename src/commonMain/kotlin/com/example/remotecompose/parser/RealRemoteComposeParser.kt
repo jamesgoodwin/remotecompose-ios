@@ -354,7 +354,20 @@ object RealRemoteComposeParser {
      * an explicit `MODIFIER_WIDTH`/`MODIFIER_HEIGHT` on the same modifier to know what rect to
      * draw into — this renderer has no measure pass to size it from the bitmap's own dimensions
      * or `scaleType` otherwise, so an image with no explicit size stays byte-consumed only, same
-     * as before this parser attempted real rendering.
+     * as before this parser attempted real rendering. `scaleType` itself now gets a real effect
+     * for `SCALE_FIT`(`4`)/`SCALE_CROP`(`5`) (javap-confirmed constants and algorithm, on the real
+     * `ImageScaling.adjustDrawToType()`): the bitmap's own *natural* pixel size — read straight out
+     * of its raw PNG bytes' `IHDR` chunk (`bitmapPool`'s bytes are always a real PNG, so this is
+     * exact, not a heuristic) rather than needing any platform image-decoding this common-code
+     * parser doesn't have — is compared against this leaf's own explicit declared box to letterbox
+     * (`FIT`, centered, preserving aspect ratio, both axes fitting inside the box) or overscan
+     * (`CROP`, centered, preserving aspect ratio, clipped to the box since one axis overflows it —
+     * real Compose's own `Image`/`Modifier.paint` clips automatically whenever a mismatched
+     * `contentScale` makes the painted size larger than the layout box). Every other `scaleType`
+     * value (`SCALE_NONE`/`INSIDE`/`FILL_WIDTH`/`FILL_HEIGHT`/`SCALE_FIXED_SCALE`) still falls back
+     * to the same stretch-to-fill-the-box behavior this parser has always used (identical to what
+     * `SCALE_FILL_BOUNDS`(`6`) itself really means) — a real effect for exactly two scale types
+     * rather than none, not full parity with all eight.
      */
     private const val OP_LAYOUT_IMAGE = 234
 
@@ -1050,6 +1063,10 @@ object RealRemoteComposeParser {
             // same modifier, since this opcode carries no position/size fields of its own.
             var imageBitmapId: Int? = null
             var imageAlpha: Float = 1f
+            // Set by OP_LAYOUT_IMAGE; SCALE_FIT(4)/SCALE_CROP(5) get a real letterbox/overscan
+            // effect at OP_CONTAINER_END (see imageScaleDstRect), every other value falls back to
+            // the original stretch-to-fill-the-box behavior.
+            var imageScaleType: Int = 6 // SCALE_FILL_BOUNDS default: matches this parser's original stretch behavior
             // Set by OP_MODIFIER_PADDING; consumed by OP_CONTAINER_END's MODIFIER_BACKGROUND
             // handling to expand the inferred background rect back out to cover this container's
             // full (un-padded) box — contentBounds() alone would only ever measure the *inset*
@@ -1833,11 +1850,12 @@ object RealRemoteComposeParser {
                     reader.readS32() // componentId
                     reader.readS32() // animationId
                     val bitmapId = reader.readS32()
-                    reader.readS32() // scaleType — no measure pass to apply FIT/CROP/etc. against
+                    val scaleType = reader.readS32()
                     val alpha = reader.readFloat32()
                     pushScope() // a leaf — no LAYOUT_CONTENT, just its own single CONTAINER_END
                     scopeStack.last().imageBitmapId = bitmapId
                     scopeStack.last().imageAlpha = alpha
+                    scopeStack.last().imageScaleType = scaleType
                 }
 
                 OP_HAPTIC_FEEDBACK -> reader.readS32() // hapticId
@@ -1949,7 +1967,26 @@ object RealRemoteComposeParser {
                         if (imageBitmapId != null && imageWidth != null && imageHeight != null) {
                             val wrapAlpha = frame.imageAlpha < 1f
                             if (wrapAlpha) opcodes += Opcode.SaveLayerAlpha(frame.imageAlpha)
-                            opcodes += Opcode.DrawBitmap(imageBitmapId, 0f, 0f, imageWidth, imageHeight)
+                            val naturalSize = bitmapPool[imageBitmapId]?.let { pngNaturalSize(it) }
+                            var clipWrappedImage = false
+                            if (naturalSize != null && (frame.imageScaleType == 4 || frame.imageScaleType == 5)) {
+                                val dst = imageScaleDstRect(
+                                    frame.imageScaleType, naturalSize[0], naturalSize[1],
+                                    0f, 0f, imageWidth, imageHeight,
+                                )
+                                if (frame.imageScaleType == 5) {
+                                    // SCALE_CROP can overflow this box on one axis — real
+                                    // Compose's own Image/Modifier.paint clips automatically
+                                    // whenever a mismatched contentScale overflows the layout box.
+                                    opcodes += Opcode.MatrixSave
+                                    opcodes += Opcode.ClipRect(0f, 0f, imageWidth, imageHeight)
+                                    clipWrappedImage = true
+                                }
+                                opcodes += Opcode.DrawBitmap(imageBitmapId, dst[0], dst[1], dst[2], dst[3])
+                            } else {
+                                opcodes += Opcode.DrawBitmap(imageBitmapId, 0f, 0f, imageWidth, imageHeight)
+                            }
+                            if (clipWrappedImage) opcodes += Opcode.MatrixRestore
                             if (wrapAlpha) opcodes += Opcode.MatrixRestore
                         }
                         // MODIFIER_GRAPHICS_LAYER's SHAPE/SHAPE_RADIUS: a real clip, nested
@@ -2514,6 +2551,71 @@ object RealRemoteComposeParser {
             PathCommand.QuadraticTo(left, top, left + rTopStart, top),
             PathCommand.Close,
         )
+    }
+
+    /**
+     * A PNG's natural pixel size, read directly from its `IHDR` chunk (always the first chunk,
+     * immediately after the 8-byte signature: 4-byte length, 4-byte `"IHDR"` tag, then a 4-byte
+     * big-endian width and a 4-byte big-endian height) — exact for any real PNG, so no platform
+     * image-decoding is needed just to answer "how big is this bitmap really", which this
+     * common-code parser has no access to anyway. [bitmapPool]'s entries are always real PNG bytes
+     * (the real writer's own `storeBitmap`/`addBitmap` always encodes one), so this never needs a
+     * fallback. Returns `null` if `bytes` is too short to hold an `IHDR` chunk at all.
+     */
+    private fun pngNaturalSize(bytes: ByteArray): IntArray? {
+        if (bytes.size < 24) return null
+        fun beInt(offset: Int) =
+            ((bytes[offset].toInt() and 0xFF) shl 24) or
+                ((bytes[offset + 1].toInt() and 0xFF) shl 16) or
+                ((bytes[offset + 2].toInt() and 0xFF) shl 8) or
+                (bytes[offset + 3].toInt() and 0xFF)
+        return intArrayOf(beInt(16), beInt(20))
+    }
+
+    /**
+     * `Operations.LAYOUT_IMAGE`'s real `scaleType` effect for `SCALE_FIT`(`4`)/`SCALE_CROP`(`5`) —
+     * a faithful port of the real `ImageScaling.adjustDrawToType()`'s own integer arithmetic
+     * (javap-confirmed), not a from-scratch reimplementation, so it matches real Compose's pixel
+     * rounding too. Both scale types compare `srcW*dstH` against `dstW*srcH` to decide which axis
+     * needs adjusting, but with the comparison flipped between them: `FIT` shrinks whichever axis
+     * would otherwise overflow (letterboxing — the result always fits *inside* [dstLeft, dstTop,
+     * dstRight, dstBottom]); `CROP` grows whichever axis would otherwise leave a gap (the result
+     * can extend *outside* those bounds on one axis, so the caller must clip to them — real
+     * Compose's own `Image`/`Modifier.paint` does exactly that whenever a mismatched
+     * `contentScale` overflows the layout box). Every other `scaleType` returns the box unchanged
+     * (this parser's original stretch-to-fill behavior, identical to what `SCALE_FILL_BOUNDS`
+     * itself really means).
+     */
+    private fun imageScaleDstRect(
+        scaleType: Int,
+        naturalWidth: Int,
+        naturalHeight: Int,
+        dstLeft: Float,
+        dstTop: Float,
+        dstRight: Float,
+        dstBottom: Float,
+    ): FloatArray {
+        if (naturalWidth <= 0 || naturalHeight <= 0 || (scaleType != 4 && scaleType != 5)) {
+            return floatArrayOf(dstLeft, dstTop, dstRight, dstBottom)
+        }
+        val dstW = (dstRight - dstLeft).toInt()
+        val dstH = (dstBottom - dstTop).toInt()
+        var leftOffset = 0
+        var rightOffset = dstW
+        var topOffset = 0
+        var bottomOffset = dstH
+        val srcWiderThanDst = naturalWidth * dstH > dstW * naturalHeight
+        val shrinkHeight = if (scaleType == 4) srcWiderThanDst else !srcWiderThanDst
+        if (shrinkHeight) {
+            val adjustedHeight = dstW * naturalHeight / naturalWidth
+            topOffset = (dstH - adjustedHeight) / 2
+            bottomOffset = adjustedHeight + topOffset
+        } else {
+            val adjustedWidth = dstH * naturalWidth / naturalHeight
+            leftOffset = (dstW - adjustedWidth) / 2
+            rightOffset = adjustedWidth + leftOffset
+        }
+        return floatArrayOf(dstLeft + leftOffset, dstTop + topOffset, dstLeft + rightOffset, dstTop + bottomOffset)
     }
 
     private fun decodePathArray(reader: BufferReader, floatCount: Int): List<PathCommand> {

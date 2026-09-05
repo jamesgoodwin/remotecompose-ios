@@ -789,6 +789,28 @@ private fun buildCoverageSample() {
     val imageBitmapId = writer.storeBitmap(imageBitmap)
     writer.image(RecordingModifier().width(16f).height(16f), imageBitmapId, RemoteComposeWriter.IMAGE_SCALE_FIT, 0.8f)
 
+    // LAYOUT_IMAGE real scaleType=SCALE_FIT/SCALE_CROP proof: a solid-green 8x4 bitmap (2:1
+    // aspect ratio) drawn into a 16x16 square box two ways. FIT preserves aspect ratio and shrinks
+    // to fit entirely inside the box — letterboxed to a 16-wide x 8-tall strip vertically centered
+    // in the box, so the box's own top/bottom margins should show the red background behind it,
+    // not green. CROP preserves aspect ratio but grows to cover the whole box — the scaled image
+    // ends up wider than the box (clipped back to it, the same auto-clip real Compose's own
+    // Image/Modifier.paint applies whenever contentScale overflows the layout box), so unlike FIT
+    // it should show solid green corner-to-corner with no red margin visible anywhere.
+    val wideBitmap = java.awt.image.BufferedImage(8, 4, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+    for (py in 0 until 4) {
+        for (px in 0 until 8) {
+            wideBitmap.setRGB(px, py, 0xFF2E7D32.toInt())
+        }
+    }
+    val wideBitmapId = writer.storeBitmap(wideBitmap)
+    writer.startBox(RecordingModifier().offset(110f, 56f), 0, 0)
+    writer.image(RecordingModifier().width(16f).height(16f), wideBitmapId, RemoteComposeWriter.IMAGE_SCALE_FIT, 1f)
+    writer.endBox()
+    writer.startBox(RecordingModifier().offset(130f, 56f), 0, 0)
+    writer.image(RecordingModifier().width(16f).height(16f), wideBitmapId, RemoteComposeWriter.IMAGE_SCALE_CROP, 1f)
+    writer.endBox()
+
     // DATA_FLOAT + resolveFloat: addFloatConstant(...) registers a real value in a float pool
     // then returns a NaN-tagged *reference* to it, not the literal value — passing that reference
     // straight into padding(...) (as real documents can) means the parser must resolve it back to
