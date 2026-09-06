@@ -256,6 +256,35 @@ sealed interface Operation {
     data class LoopStart(val indexVariableId: Int, val from: Float, val step: Float, val until: Float) : Operation
 
     /**
+     * `ShaderData`: an AGSL shader — its source is the text at [shaderTextId] — and the uniforms
+     * to bind when it is used. Decoded so the stream stays aligned and the document can be
+     * inspected; painting one needs a runtime shader compiler this renderer does not have, so
+     * `PaintBundle`'s `SHADER` attribute ignores it (see `docs/OPCODES.md`).
+     */
+    data class ShaderData(
+        val id: Int,
+        val shaderTextId: Int,
+        val floatUniforms: Map<String, FloatArray>,
+        val intUniforms: Map<String, IntArray>,
+        val bitmapUniforms: Map<String, Int>,
+    ) : Operation {
+        override fun equals(other: Any?): Boolean =
+            other is ShaderData && id == other.id && shaderTextId == other.shaderTextId &&
+                bitmapUniforms == other.bitmapUniforms &&
+                floatUniforms.keys == other.floatUniforms.keys &&
+                floatUniforms.all { (k, v) -> v.contentEquals(other.floatUniforms[k]) } &&
+                intUniforms.keys == other.intUniforms.keys &&
+                intUniforms.all { (k, v) -> v.contentEquals(other.intUniforms[k]) }
+
+        override fun hashCode(): Int = id * 31 + shaderTextId
+
+        override fun toString(): String =
+            "ShaderData(id=$id, shaderTextId=$shaderTextId, " +
+                "floats=${floatUniforms.mapValues { it.value.toList() }}, " +
+                "ints=${intUniforms.mapValues { it.value.toList() }}, bitmaps=$bitmapUniforms)"
+    }
+
+    /**
      * `MatrixConstant`: stores [values] — 16 for a full matrix, 9 for a 3x3 affine one — as the
      * matrix [id]. Each value may be a NaN-tagged float id.
      */

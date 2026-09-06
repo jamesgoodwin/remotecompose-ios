@@ -180,6 +180,32 @@ internal object OperationReader {
             )
         }
         Operations.DATA_MAP_LOOKUP -> Op.DataMapLookup(r.readS32(), r.readS32(), r.readS32())
+        Operations.DATA_SHADER -> {
+            val id = r.readS32()
+            val shaderTextId = r.readS32()
+            val counts = r.readS32()
+            val floatCount = counts and 0xFF
+            val intCount = (counts shr 8) and 0xFF
+            val bitmapCount = (counts shr 16) and 0xFF
+            val floats = buildMap {
+                repeat(floatCount) {
+                    val name = r.readUtf8(r.readS32())
+                    val length = r.readS32()
+                    if (length > 200) throw RemoteComposeParseException("Shader uniform $name has $length floats")
+                    put(name, FloatArray(length) { r.readFloat32() })
+                }
+            }
+            val ints = buildMap {
+                repeat(intCount) {
+                    val name = r.readUtf8(r.readS32())
+                    val length = r.readS32()
+                    if (length > 200) throw RemoteComposeParseException("Shader uniform $name has $length ints")
+                    put(name, IntArray(length) { r.readS32() })
+                }
+            }
+            val bitmaps = buildMap { repeat(bitmapCount) { put(r.readUtf8(r.readS32()), r.readS32()) } }
+            Op.ShaderData(id, shaderTextId, floats, ints, bitmaps)
+        }
         Operations.MATRIX_CONSTANT -> {
             val id = r.readS32()
             val type = r.readS32()
@@ -204,7 +230,7 @@ internal object OperationReader {
             if (inCount !in 1..4) throw RemoteComposeParseException("Matrix vector math reads $inCount values")
             Op.MatrixVectorMath(type, outputs, matrixId, FloatArray(inCount) { r.readFloat32() })
         }
-        Operations.PARTICLES_CREATE -> {
+        Operations.PARTICLE_DEFINE -> {
             val id = r.readS32()
             val particleCount = r.readS32()
             if (particleCount >= 8000) throw RemoteComposeParseException("Particle system $id declares $particleCount particles")
@@ -218,14 +244,14 @@ internal object OperationReader {
             }
             Op.ParticlesCreate(id, varIds, equations, particleCount)
         }
-        Operations.PARTICLES_LOOP -> {
+        Operations.PARTICLE_LOOP -> {
             val id = r.readS32()
             val restart = readEquation(r, 32)
             val count = r.readS32()
             if (count > 2000) throw RemoteComposeParseException("Particle loop $id has $count equations")
             Op.ParticlesLoop(id, restart, List(count) { readEquation(r, 32) })
         }
-        Operations.PARTICLES_COMPARE -> {
+        Operations.PARTICLE_COMPARE -> {
             val id = r.readS32()
             val flags = r.readU16()
             val min = r.readFloat32()
@@ -271,7 +297,7 @@ internal object OperationReader {
                 x = r.readFloat32(), y = r.readFloat32(), glyphSpacing = glyphSpacing,
             )
         }
-        Operations.DRAW_BITMAP_FONT_TEXT_ON_PATH -> {
+        Operations.DRAW_BITMAP_FONT_TEXT_RUN_ON_PATH -> {
             val tagged = r.readS32()
             val textId = tagged and 0x7FFFFFFF
             val glyphSpacing = if (tagged and GLYPH_SPACING_FLAG != 0) r.readFloat32() else 0f
@@ -299,13 +325,13 @@ internal object OperationReader {
             if (lengthY > 32) throw RemoteComposeParseException("Path expression $id has a $lengthY-entry y expression (max 32)")
             Op.PathExpression(id, flags, min, max, count, expressionX, FloatArray(lengthY) { r.readFloat32() })
         }
-        Operations.FLOAT_FUNCTION_DEFINE -> {
+        Operations.FUNCTION_DEFINE -> {
             val id = r.readS32()
             val count = r.readS32()
             if (count > 32) throw RemoteComposeParseException("Float function $id declares $count arguments (max 32)")
             Op.FloatFunctionDefine(id, List(count) { r.readS32() })
         }
-        Operations.FLOAT_FUNCTION_CALL -> {
+        Operations.FUNCTION_CALL -> {
             val id = r.readS32()
             val count = r.readS32()
             if (count > 80) throw RemoteComposeParseException("Float function call $id passes $count arguments (max 80)")

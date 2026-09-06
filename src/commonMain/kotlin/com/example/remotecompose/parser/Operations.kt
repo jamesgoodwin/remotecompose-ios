@@ -16,8 +16,9 @@ internal object Operations {
     const val DRAW_BITMAP = 44
     const val DRAW_CIRCLE = 46
     const val DRAW_LINE = 47
+    const val DATA_SHADER = 45
     const val DRAW_BITMAP_FONT_TEXT_RUN = 48
-    const val DRAW_BITMAP_FONT_TEXT_ON_PATH = 49
+    const val DRAW_BITMAP_FONT_TEXT_RUN_ON_PATH = 49
     const val DRAW_ROUND_RECT = 51
     const val DRAW_SECTOR = 52
     const val DRAW_TEXT_ON_PATH = 53
@@ -72,11 +73,11 @@ internal object Operations {
     const val PATH_TWEEN = 158
     const val PATH_CREATE = 159
     const val PATH_ADD = 160
-    const val PARTICLES_CREATE = 161
-    const val PARTICLES_LOOP = 163
-    const val FLOAT_FUNCTION_CALL = 166
+    const val PARTICLE_DEFINE = 161
+    const val PARTICLE_LOOP = 163
+    const val FUNCTION_CALL = 166
     const val DATA_BITMAP_FONT = 167
-    const val FLOAT_FUNCTION_DEFINE = 168
+    const val FUNCTION_DEFINE = 168
     const val CANVAS_OPERATIONS = 173
     const val MODIFIER_DRAW_CONTENT = 174
     const val CONDITIONAL_OPERATIONS = 178
@@ -93,7 +94,7 @@ internal object Operations {
     const val REM = 185
     const val ID_LOOKUP = 192
     const val PATH_EXPRESSION = 193
-    const val PARTICLES_COMPARE = 194
+    const val PARTICLE_COMPARE = 194
     const val TEXT_TRANSFORM = 199
     const val LAYOUT_ROOT = 200
     const val LAYOUT_CONTENT = 201

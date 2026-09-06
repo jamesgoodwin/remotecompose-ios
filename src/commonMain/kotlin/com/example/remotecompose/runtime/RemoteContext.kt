@@ -30,6 +30,9 @@ class RemoteContext {
     val bitmaps = mutableMapOf<Int, ByteArray>()
     val bitmapFonts = mutableMapOf<Int, BitmapFont>()
 
+    /** Shaders, keyed by id. Decoded only: nothing here paints one. */
+    val shaders = mutableMapOf<Int, Operation.ShaderData>()
+
     /** Matrices, keyed by id, as the raw values a `MatrixAccess` hands out. */
     val matrices = mutableMapOf<Int, FloatArray>()
 

@@ -72,7 +72,52 @@ fun main(args: Array<String>) {
         buildAdvancedSample()
         return
     }
+    if (args.getOrNull(0) == "shader") {
+        buildShaderSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * A document carrying an AGSL shader with float, int and bitmap uniforms, plus two plain draws
+ * either side of the shaded one. This renderer decodes `DATA_SHADER` and keeps the stream
+ * aligned, but paints nothing with it — `ShaderFixtureTest` asserts both halves of that: the
+ * uniforms decode, and the draws that do not depend on the shader still come out.
+ */
+private fun buildShaderSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(120, 120, "shader", platform)
+
+    writer.getRcPaint().setColor(0xFF1E88E5.toInt()).commit()
+    writer.drawRect(8f, 8f, 52f, 52f)
+
+    val texture = java.awt.image.BufferedImage(2, 2, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+    texture.setRGB(0, 0, 0xFFFF0000.toInt())
+    texture.setRGB(1, 1, 0xFF00FF00.toInt())
+    val shader = writer.createShader(
+        """
+        uniform float2 iResolution;
+        uniform int iSteps;
+        half4 main(float2 coord) {
+          float2 uv = coord / iResolution;
+          return half4(uv.x, uv.y, float(iSteps) / 8.0, 1.0);
+        }
+        """.trimIndent(),
+    )
+        .setFloatUniform("iResolution", 120f, 120f)
+        .setIntUniform("iSteps", 4)
+        .setBitmapUniform("iTexture", writer.storeBitmap(texture))
+    val shaderId = shader.commit()
+    writer.getRcPaint().setShader(shaderId).commit()
+    writer.drawRect(60f, 8f, 112f, 60f)
+
+    writer.getRcPaint().setShader(0).setColor(0xFF43A047.toInt()).commit()
+    writer.drawCircle(60f, 90f, 20f)
+
+    val bytes = writer.encodeToByteArray()
+    File("shader.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to shader.rc")
 }
 
 /**

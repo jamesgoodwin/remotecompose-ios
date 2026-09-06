@@ -174,17 +174,26 @@ green on Desktop tests and visually checked on one device.
    `TOUCH_EXPRESSION` follows the pointer in its default mode (`ID_TOUCH_POS_X`/`_Y`, drag delta
    from the press, clamped to min/max); velocity easing, wrap and notch stops are decoded but
    not applied. Both composables send gestures to the document first.
-8. **Remaining draw opcodes by real effect (partly done).** Done: `DRAW_TEXT_ON_PATH` and
-   `DRAW_TEXT_ON_CIRCLE` now place each glyph individually along the curve, rotated to the tangent,
-   replacing the straight-line approximations (`text/GlyphPlacement`, `geometry/PathGeometry`,
-   which also took over the path maths `MATRIX_FROM_PATH` and the tween trim were using);
-   `TEXT_MEASURE` stores a real measurement; `CONDITIONAL_OPERATIONS` gates its block on all
-   seven comparison types. Fixture `textpath.rc` plus unit tests for the geometry, the placement
-   and the comparisons.
-   Still open: bitmap fonts (`DATA_BITMAP_FONT`, `DRAW_BITMAP_FONT_TEXT_RUN`), shaders
-   (`DATA_SHADER`, which needs a runtime shader compiler), `PATH_EXPRESSION` (needs the
-   evaluator's `VAR1..3` slots and `PathGenerator`'s spline/polar sampling), matrix expressions
-   (3D), particles, and `FUNCTION_DEFINE`/`CALL`.
+8. **Remaining draw opcodes by real effect (done).** Text on curves came first:
+   `DRAW_TEXT_ON_PATH` and `DRAW_TEXT_ON_CIRCLE` place each glyph individually along the curve,
+   rotated to the tangent, replacing the straight-line approximations (`text/GlyphPlacement`,
+   `geometry/PathGeometry`, which also took over the path maths `MATRIX_FROM_PATH` and the tween
+   trim were using); `TEXT_MEASURE` stores a real measurement; `CONDITIONAL_OPERATIONS` gates its
+   block on all seven comparison types. Then the operations that generate their own content:
+   `FUNCTION_DEFINE`/`CALL` bind arguments into float ids and run a body; `PATH_EXPRESSION`
+   samples a pair of expressions into a path through `geometry/PathGenerator` (spline, monotonic,
+   linear and polar), which needed the evaluator's `VAR1..3` slots and `CUBIC`; bitmap fonts
+   (`DATA_BITMAP_FONT`, `DRAW_BITMAP_FONT_TEXT_RUN`, `..._ON_PATH`, `BITMAP_TEXT_MEASURE`) draw a
+   glyph bitmap per character through `text/BitmapFont`'s advance loop; particles
+   (`PARTICLE_DEFINE`/`LOOP`/`COMPARE`) create, advance and draw per-particle bodies; and matrix
+   expressions (`MATRIX_CONSTANT`, `MATRIX_EXPRESSION`, `MATRIX_VECTOR_MATH`) run the 4x4 machine
+   in `geometry/Matrix4` and write transformed components back as float ids. Fixtures `textpath.rc`
+   and `advanced.rc` (demo pages 5 and 6) plus `shader.rc`, with unit tests for the geometry, the
+   placement, the font, the particle system and the matrix machine.
+   Deliberately not supported, and listed as such in `docs/OPCODES.md`: painting a shader
+   (`DATA_SHADER` decodes, uniforms and all, but drawing with it needs a runtime shader compiler
+   this renderer does not have), the two-body form of `PARTICLE_COMPARE`, FitBox scaling,
+   intrinsic min/max dimensions, scroll, and touch velocity easing, wrap and notch stops.
 9. **Cross-platform pixel test harness.** Automate what the loop did by hand: render a fixture on
    Desktop, Android emulator and iOS Simulator, crop with the known offsets, diff, fail above a
    threshold. Text is compared with a tolerance; shapes are compared exactly.

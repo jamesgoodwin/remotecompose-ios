@@ -1023,6 +1023,11 @@ object RemoteComposeParser {
                         }
                     }
 
+                    is Op.ShaderData -> {
+                        // Decoded and kept, never painted: see the operation's KDoc.
+                        context.shaders[op.id] = op
+                    }
+
                     is Op.MatrixConstant -> {
                         // MatrixConstant.apply(): the values, each of which may be a float id.
                         context.matrices[op.id] = resolveExpression(op.values)
@@ -1289,7 +1294,7 @@ object RemoteComposeParser {
     private fun Op.isConstant(): Boolean = when (this) {
         is Op.TextData, is Op.FloatConstant, is Op.IntegerConstant, is Op.BooleanConstant,
         is Op.LongConstant, is Op.ColorConstant, is Op.BitmapData, is Op.PathData,
-        is Op.PathCreate, is Op.PathAdd, is Op.IdList, is Op.DataMapIds, is Op.BitmapFontData -> true
+        is Op.PathCreate, is Op.PathAdd, is Op.IdList, is Op.DataMapIds, is Op.BitmapFontData, is Op.ShaderData -> true
         else -> false
     }
 
