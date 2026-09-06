@@ -28,6 +28,12 @@ class RemoteContext {
     val dataMaps = mutableMapOf<Int, List<Operation.DataMapEntry>>()
     val bitmaps = mutableMapOf<Int, ByteArray>()
 
+    /**
+     * Previous operands of each `ConditionalOperations`, keyed by its index in the operation
+     * list, so `TYPE_CHANGED` can compare against the last evaluation.
+     */
+    internal val conditionalPrevious = mutableMapOf<Int, FloatArray>()
+
     /** Per-expression animation state, keyed by the operation instance. */
     internal val floatExpressions = mutableMapOf<Operation.FloatExpression, FloatExpressionState>()
 

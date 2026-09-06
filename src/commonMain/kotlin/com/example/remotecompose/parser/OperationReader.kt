@@ -80,6 +80,7 @@ internal object OperationReader {
         Operations.PATH_TWEEN -> Op.PathTween(r.readS32(), r.readS32(), r.readS32(), r.readFloat32())
         Operations.MATRIX_FROM_PATH -> Op.MatrixFromPath(r.readS32(), r.readFloat32(), r.readFloat32(), r.readS32())
         Operations.DRAW_TWEEN_PATH -> Op.DrawTweenPath(r.readS32(), r.readS32(), r.readFloat32(), r.readFloat32(), r.readFloat32())
+        Operations.CONDITIONAL_OPERATIONS -> Op.ConditionalOperations(r.readS8().toByte(), r.readFloat32(), r.readFloat32())
         Operations.PATH_COMBINE -> Op.PathCombine(r.readS32(), r.readS32(), r.readS32(), r.readS8())
         Operations.DRAW_PATH -> Op.DrawPath(r.readS32())
         Operations.CLIP_PATH -> Op.ClipPath(r.readS32())
@@ -146,6 +147,7 @@ internal object OperationReader {
             val length = r.readS32()
             Op.Rem(r.readUtf8(length))
         }
+        Operations.TEXT_MEASURE -> Op.TextMeasure(r.readS32(), r.readS32(), r.readS32())
         Operations.TEXT_LENGTH -> Op.TextLength(r.readS32(), r.readS32())
         Operations.ID_LIST -> {
             val id = r.readS32()

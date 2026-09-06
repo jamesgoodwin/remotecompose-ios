@@ -442,7 +442,26 @@ DrawRect(left=22.0, top=130.0, right=32.0, bottom=140.0, paint=PaintStyle(color=
 MatrixRestore
 MatrixRestore
 DrawText(stringIndex=62, x=36.0, y=136.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=6, substringEnd=11, panX=null, panY=null, baselineRelative=false)
-DrawText(stringIndex=64, x=105.0, y=191.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=null, panY=null, baselineRelative=false)
+MatrixSave
+Translate(dx=108.3, dy=191.0)
+Rotate(degrees=0.0, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=64, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=0, substringEnd=1, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
+MatrixSave
+Translate(dx=114.9, dy=191.0)
+Rotate(degrees=0.0, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=64, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=1, substringEnd=2, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
+MatrixSave
+Translate(dx=121.5, dy=191.0)
+Rotate(degrees=0.0, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=64, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=2, substringEnd=3, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
+MatrixSave
+Translate(dx=125.0, dy=191.0)
+Rotate(degrees=0.0, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=64, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=3, substringEnd=4, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
 MatrixSave
 Translate(dx=0.0, dy=0.0)
 DrawRect(left=0.0, top=0.0, right=0.0, bottom=0.0, paint=PaintStyle(color=Color(1.0, 0.43529412, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
@@ -492,7 +511,36 @@ MatrixSave
 ClipPath(commands=[MoveTo(x=105.0, y=168.0), LineTo(x=125.0, y=150.0), LineTo(x=125.0, y=168.0), Close])
 DrawRect(left=105.0, top=150.0, right=130.0, bottom=170.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
-DrawText(stringIndex=66, x=100.0, y=175.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=null, panY=null, baselineRelative=false)
+MatrixSave
+Translate(dx=90.03135, dy=185.7912)
+Rotate(degrees=265.46198, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=66, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=0, substringEnd=1, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
+MatrixSave
+Translate(dx=91.63974, dy=179.51309)
+Rotate(degrees=303.2772, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=66, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=1, substringEnd=2, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
+MatrixSave
+Translate(dx=96.759575, dy=175.53958)
+Rotate(degrees=341.0924, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=66, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=2, substringEnd=3, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
+MatrixSave
+Translate(dx=103.24043, dy=175.53958)
+Rotate(degrees=378.90762, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=66, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=3, substringEnd=4, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
+MatrixSave
+Translate(dx=108.36026, dy=179.5131)
+Rotate(degrees=416.7228, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=66, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=4, substringEnd=5, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
+MatrixSave
+Translate(dx=109.96865, dy=185.79121)
+Rotate(degrees=454.53802, pivotX=0.0, pivotY=0.0)
+DrawText(stringIndex=66, x=-3.3000002, y=0.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=5, substringEnd=6, panX=null, panY=null, baselineRelative=false)
+MatrixRestore
 MatrixSave
 Translate(dx=0.0, dy=0.0)
 DrawCircle(centerX=0.0, centerY=0.0, radius=0.0, paint=PaintStyle(color=Color(0.6, 0.2, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))

@@ -62,7 +62,64 @@ fun main(args: Array<String>) {
         buildActionsSample()
         return
     }
+    if (args.getOrNull(0) == "textpath") {
+        buildTextPathSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * Text laid along curves, plus the two value operations that read and branch on it:
+ * `DRAW_TEXT_ON_PATH` over a wave and an arc, `DRAW_TEXT_ON_CIRCLE` outside and inside a circle,
+ * `TEXT_MEASURE` sizing a bar to the width of a string, and `CONDITIONAL_OPERATIONS` drawing a
+ * marker only when that measurement passes a threshold.
+ */
+private fun buildTextPathSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(200, 200, "textpath", platform)
+
+    // 1. A wave: text follows the curve and rotates with its tangent.
+    val wave = RemotePath()
+    wave.moveTo(10f, 40f)
+    wave.cubicTo(50f, 5f, 100f, 65f, 150f, 25f)
+    val waveId = writer.addPathData(wave)
+    writer.getRcPaint().setColor(0xFF1E88E5.toInt()).setTextSize(13f).commit()
+    writer.drawTextOnPath(writer.textCreateId("following a wave"), waveId, 4f, 0f)
+
+    // 2. The same path with a positive vOffset, which pushes the glyphs off it.
+    writer.getRcPaint().setColor(0xFFB0BEC5.toInt()).setTextSize(9f).commit()
+    writer.drawTextOnPath(writer.textCreateId("offset below"), waveId, 8f, 14f)
+
+    // 3. Around a circle, outside and inside, both centered on the start angle.
+    writer.getRcPaint().setColor(0xFF43A047.toInt()).setTextSize(12f).commit()
+    writer.drawTextOnCircle(
+        writer.textCreateId("OUTSIDE THE RING"), 100f, 120f, 45f, 270f, 0f,
+        DrawTextOnCircle.Alignment.CENTER, DrawTextOnCircle.Placement.OUTSIDE,
+    )
+    writer.getRcPaint().setColor(0xFFE53935.toInt()).setTextSize(10f).commit()
+    writer.drawTextOnCircle(
+        writer.textCreateId("inside the ring"), 100f, 120f, 32f, 90f, 0f,
+        DrawTextOnCircle.Alignment.CENTER, DrawTextOnCircle.Placement.INSIDE,
+    )
+
+    // 4. TEXT_MEASURE: a bar exactly as wide as the measured string.
+    val measured = writer.textCreateId("measure me")
+    writer.getRcPaint().setColor(0xFF37474F.toInt()).setTextSize(12f).commit()
+    writer.drawTextAnchored(measured, 12f, 182f, -1f, -1f, 0)
+    val measuredWidth = writer.textMeasure(measured, 0) // MEASURE_WIDTH
+    writer.getRcPaint().setColor(0xFFFB8C00.toInt()).commit()
+    writer.drawRect(12f, 186f, writer.floatExpression(measuredWidth, 12f, Rc.FloatExpression.ADD), 192f)
+
+    // 5. CONDITIONAL_OPERATIONS: the marker draws only because the bar is wider than 20.
+    writer.conditionalOperations(4.toByte(), measuredWidth, 20f) // TYPE_GT
+    writer.getRcPaint().setColor(0xFF8E24AA.toInt()).commit()
+    writer.drawCircle(190f, 189f, 5f)
+    writer.endConditionalOperations()
+
+    val bytes = writer.encodeToByteArray()
+    File("textpath.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to textpath.rc")
 }
 
 /**

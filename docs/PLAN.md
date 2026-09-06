@@ -174,8 +174,17 @@ green on Desktop tests and visually checked on one device.
    `TOUCH_EXPRESSION` follows the pointer in its default mode (`ID_TOUCH_POS_X`/`_Y`, drag delta
    from the press, clamped to min/max); velocity easing, wrap and notch stops are decoded but
    not applied. Both composables send gestures to the document first.
-8. **Remaining draw opcodes by real effect.** Bitmap fonts, shaders, text on path/circle (real
-   glyph placement), matrix expressions, path expressions. Each with fixture and test.
+8. **Remaining draw opcodes by real effect (partly done).** Done: `DRAW_TEXT_ON_PATH` and
+   `DRAW_TEXT_ON_CIRCLE` now placeeach glyph individually along the curve, rotated to the tangent,
+   replacing the straight-line approximations (`text/GlyphPlacement`, `geometry/PathGeometry`,
+   which also took over the path maths `MATRIX_FROM_PATH` and the tween trim were using);
+   `TEXT_MEASURE` stores a real measurement; `CONDITIONAL_OPERATIONS` gates its block on all
+   seven comparison types. Fixture `textpath.rc` plus unit tests for the geometry, the placement
+   and the comparisons.
+   Still open: bitmap fonts (`DATA_BITMAP_FONT`, `DRAW_BITMAP_FONT_TEXT_RUN`), shaders
+   (`DATA_SHADER`, which needs a runtime shader compiler), `PATH_EXPRESSION` (needs the
+   evaluator's `VAR1..3` slots and `PathGenerator`'s spline/polar sampling), matrix expressions
+   (3D), particles, and `FUNCTION_DEFINE`/`CALL`.
 9. **Cross-platform pixel test harness.** Automate what the loop did by hand: render a fixture on
    Desktop, Android emulator and iOS Simulator, crop with the known offsets, diff, fail above a
    threshold. Text is compared with a tolerance; shapes are compared exactly.

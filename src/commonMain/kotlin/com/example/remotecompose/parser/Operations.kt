@@ -64,6 +64,7 @@ internal object Operations {
     const val DRAW_ARC = 152
     const val TEXT_LOOKUP_INT = 153
     const val DATA_MAP_LOOKUP = 154
+    const val TEXT_MEASURE = 155
     const val TEXT_LENGTH = 156
     const val TOUCH_EXPRESSION = 157
     const val PATH_TWEEN = 158
@@ -71,6 +72,7 @@ internal object Operations {
     const val PATH_ADD = 160
     const val CANVAS_OPERATIONS = 173
     const val MODIFIER_DRAW_CONTENT = 174
+    const val CONDITIONAL_OPERATIONS = 178
     const val PATH_COMBINE = 175
     const val LAYOUT_FIT_BOX = 176
     const val HAPTIC_FEEDBACK = 177

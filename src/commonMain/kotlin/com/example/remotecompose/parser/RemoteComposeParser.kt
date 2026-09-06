@@ -8,6 +8,7 @@ import com.example.remotecompose.model.PaintStyle
 import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
+import com.example.remotecompose.geometry.PathGeometry
 import com.example.remotecompose.layout.Dimension
 import com.example.remotecompose.layout.DimensionType
 import com.example.remotecompose.layout.LayoutEngine
@@ -21,6 +22,7 @@ import com.example.remotecompose.runtime.DocumentAction
 import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.EstimatedTextMetrics
+import com.example.remotecompose.text.GlyphPlacement
 import com.example.remotecompose.text.TextAnchoring
 import com.example.remotecompose.text.TextMetricsProvider
 import kotlin.math.PI
@@ -138,6 +140,8 @@ object RemoteComposeParser {
             if (!tree.addCleanup(Opcode.MatrixRestore)) trailing += Opcode.MatrixRestore
         }
         val scopeEnds = matchScopes(operations)
+        // ConditionalOperations TYPE_CHANGED compares against the previous frame's operands.
+        val conditionalPrevious = context.conditionalPrevious
 
         fun walk(from: Int, to: Int) {
             var i = from
@@ -305,33 +309,36 @@ object RemoteComposeParser {
                     }
 
                     is Op.DrawTextOnCircle -> {
-                        val textId = op.textId
-                        val centerX = resolveFloat(op.centerX)
-                        val centerY = resolveFloat(op.centerY)
-                        val radius = resolveFloat(op.radius)
-                        val startAngleDegrees = resolveFloat(op.startAngleDegrees)
-                        val startAngleRadians = startAngleDegrees * (PI.toFloat() / 180f)
-                        emit(Opcode.DrawText(
-                            stringIndex = textId,
-                            x = centerX + radius * cos(startAngleRadians),
-                            y = centerY + radius * sin(startAngleRadians),
+                        val glyphs = GlyphPlacement.onCircle(
+                            text = textPool[op.textId] ?: "",
+                            stringIndex = op.textId,
+                            centerX = resolveFloat(op.centerX),
+                            centerY = resolveFloat(op.centerY),
+                            radius = resolveFloat(op.radius),
+                            startAngleDegrees = resolveFloat(op.startAngleDegrees),
+                            warpRadiusOffset = resolveFloat(op.warpRadiusOffset),
+                            alignment = op.alignment,
+                            placement = op.placement,
                             paint = paint.snapshot(),
-                        ))
+                            metrics = textMetrics,
+                        )
+                        for (glyph in glyphs) emit(glyph)
                     }
 
                     is Op.DrawTextOnPath -> {
-                        val textId = op.textId
-                        val pathId = op.pathId
-                        val vOffset = op.vOffset // written before hOffset — see KDoc above
-                        val hOffset = op.hOffset
-                        val anchor = pathPool[pathId]?.filterIsInstance<PathCommand.MoveTo>()?.firstOrNull()
-                        if (anchor != null) {
-                            emit(Opcode.DrawText(
-                                stringIndex = textId,
-                                x = anchor.x + hOffset,
-                                y = anchor.y + vOffset,
+                        // Wire order is vOffset then hOffset, the reverse of the call's arguments.
+                        val commands = pathPool[op.pathId]
+                        if (commands != null) {
+                            val glyphs = GlyphPlacement.onPath(
+                                text = textPool[op.textId] ?: "",
+                                stringIndex = op.textId,
+                                commands = commands,
+                                hOffset = resolveFloat(op.hOffset),
+                                vOffset = resolveFloat(op.vOffset),
                                 paint = paint.snapshot(),
-                            ))
+                                metrics = textMetrics,
+                            )
+                            for (glyph in glyphs) emit(glyph)
                         }
                     }
 
@@ -402,9 +409,10 @@ object RemoteComposeParser {
                         val fraction = resolveFloat(op.fraction)
                         val vOffset = resolveFloat(op.vOffset)
                         val flags = op.flags
-                        val posTan = pathPool[pathId]?.let { pointAndTangentAlongPath(it, fraction) }
+                        val posTan = pathPool[pathId]?.let { PathGeometry.pointAtFraction(it, fraction) }
                         if (posTan != null) {
-                            val (px, py, tx, ty) = posTan
+                            val px = posTan.x; val py = posTan.y
+                            val tx = posTan.tangentX; val ty = posTan.tangentY
                             val len = sqrt(tx * tx + ty * ty).takeIf { it > 0f } ?: 1f
                             val perpX = -ty / len * vOffset
                             val perpY = tx / len * vOffset
@@ -440,8 +448,8 @@ object RemoteComposeParser {
                         val path1 = pathPool[pathId1]
                         val path2 = pathPool[pathId2]
                         if (operation == 1 && path1 != null && path2 != null) { // OP_INTERSECT only
-                            val subject = flattenPathSegments(path1).map { floatArrayOf(it[0], it[1]) }
-                            val clip = flattenPathSegments(path2).map { floatArrayOf(it[0], it[1]) }
+                            val subject = PathGeometry.flatten(path1).map { floatArrayOf(it[0], it[1]) }
+                            val clip = PathGeometry.flatten(path2).map { floatArrayOf(it[0], it[1]) }
                             val result = sutherlandHodgmanIntersect(subject, clip)
                             if (result.size >= 3) {
                                 pathPool[outId] = listOf(PathCommand.MoveTo(result[0][0], result[0][1])) +
@@ -533,6 +541,24 @@ object RemoteComposeParser {
                         val bottom = resolveFloat(op.bottom)
                         val metadataTextId = op.metadataTextId
                         emit(Opcode.ActionClick(actionId, metadataTextId, left, top, right, bottom))
+                    }
+
+                    is Op.TextMeasure -> {
+                        // TextMeasure: measures the text with the current paint and stores one
+                        // component of its bounds. Types are WIDTH(0), HEIGHT(1) and the four
+                        // bounds edges LEFT(2)/RIGHT(3)/TOP(4)/BOTTOM(5), with the bounds box
+                        // being [0, -ascent, width, descent] as elsewhere in this renderer.
+                        val measured = textMetrics.measure(textPool[op.textId] ?: "", paint.snapshot())
+                        val value = when (op.type and 0xFF) {
+                            0 -> measured.width
+                            1 -> measured.height
+                            2 -> 0f
+                            3 -> measured.width
+                            4 -> -measured.ascent
+                            5 -> measured.descent
+                            else -> Float.NaN
+                        }
+                        if (!value.isNaN()) floatPool[op.id] = value
                     }
 
                     is Op.TextLength -> {
@@ -836,6 +862,29 @@ object RemoteComposeParser {
 
                     is Op.ContainerEnd -> tree.close(paint)?.let { opcodes.addAll(it) }
 
+                    is Op.ConditionalOperations -> {
+                        // ConditionalOperations: its block runs only when the comparison holds.
+                        // TYPE_EQ(0)/NEQ(1)/LT(2)/LTE(3)/GT(4)/GTE(5), plus CHANGED(6) which the
+                        // real operation tracks across frames.
+                        val end = scopeEnds[i] ?: operations.size
+                        val a = resolveFloat(op.varA)
+                        val b = resolveFloat(op.varB)
+                        val previous = conditionalPrevious[i]
+                        val holds = when (op.type.toInt()) {
+                            0 -> a == b
+                            1 -> a != b
+                            2 -> a < b
+                            3 -> a <= b
+                            4 -> a > b
+                            5 -> a >= b
+                            6 -> previous != null && (previous[0] != a || previous[1] != b)
+                            else -> false
+                        }
+                        conditionalPrevious[i] = floatArrayOf(a, b)
+                        if (holds) walk(i + 1, end)
+                        i = end // the block's own CONTAINER_END
+                    }
+
                     is Op.LoopStart -> {
                         // LoopOperation: re-apply the body once per index with the loop variable set.
                         val end = scopeEnds[i] ?: operations.size
@@ -956,7 +1005,7 @@ object RemoteComposeParser {
                 is Op.LayoutRoot, is Op.LayoutColumn, is Op.LayoutRow, is Op.LayoutCollapsibleColumn,
                 is Op.LayoutCollapsibleRow, is Op.LayoutFlow, is Op.LayoutBox, is Op.LayoutFitBox,
                 is Op.LayoutText, is Op.LayoutImage, is Op.LayoutCanvas, is Op.LayoutCustom, is Op.LayoutState,
-                is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations, is Op.LoopStart,
+                is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations, is Op.LoopStart, is Op.ConditionalOperations,
                 is Op.ModifierClick, is Op.ModifierMultiClick, is Op.ModifierTouchDown, is Op.ModifierTouchUp,
                 is Op.ModifierTouchCancel -> open.addLast(i)
                 is Op.ContainerEnd -> open.removeLastOrNull()?.let { ends[it] = i }
@@ -1120,112 +1169,15 @@ object RemoteComposeParser {
         }
     }
 
-    // Op.MatrixFromPath's real position-along-path semantic (matching Android's own
-    // PathMeasure.getPosTan()): flattens Quadratic/CubicTo into short line segments (a standard,
-    // real curve-length technique) to build one continuous polyline, walks it by cumulative arc
-    // length to the target fraction, and returns [x, y, tangentDx, tangentDy] at that point — the
-    // tangent an un-normalized direction vector (only its angle matters to the caller). null for
-    // an empty/degenerate (zero-length) path.
-    // Shared by [pointAndTangentAlongPath]/[trimPath]: flattens Quadratic/CubicTo segments into
-    // 16 short line samples each (a standard, real curve-length technique — see
-    // Op.MatrixFromPath's own KDoc) into one continuous list of [x1, y1, x2, y2] line segments.
-    private fun flattenPathSegments(commands: List<PathCommand>): List<FloatArray> {
-        val segments = mutableListOf<FloatArray>()
-        var curX = 0f; var curY = 0f
-        var subpathStartX = 0f; var subpathStartY = 0f
-        val curveSamples = 16
-        fun quadPoint(t: Float, x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float): FloatArray {
-            val u = 1f - t
-            return floatArrayOf(
-                u * u * x0 + 2f * u * t * x1 + t * t * x2,
-                u * u * y0 + 2f * u * t * y1 + t * t * y2,
-            )
-        }
-        fun cubicPoint(
-            t: Float, x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float,
-        ): FloatArray {
-            val u = 1f - t
-            return floatArrayOf(
-                u * u * u * x0 + 3f * u * u * t * x1 + 3f * u * t * t * x2 + t * t * t * x3,
-                u * u * u * y0 + 3f * u * u * t * y1 + 3f * u * t * t * y2 + t * t * t * y3,
-            )
-        }
-        for (command in commands) {
-            when (command) {
-                is PathCommand.MoveTo -> {
-                    curX = command.x; curY = command.y
-                    subpathStartX = curX; subpathStartY = curY
-                }
-                is PathCommand.LineTo -> {
-                    segments += floatArrayOf(curX, curY, command.x, command.y)
-                    curX = command.x; curY = command.y
-                }
-                is PathCommand.QuadraticTo -> {
-                    var prevX = curX; var prevY = curY
-                    for (i in 1..curveSamples) {
-                        val p = quadPoint(
-                            i / curveSamples.toFloat(), curX, curY,
-                            command.x1, command.y1, command.x2, command.y2,
-                        )
-                        segments += floatArrayOf(prevX, prevY, p[0], p[1])
-                        prevX = p[0]; prevY = p[1]
-                    }
-                    curX = command.x2; curY = command.y2
-                }
-                is PathCommand.CubicTo -> {
-                    var prevX = curX; var prevY = curY
-                    for (i in 1..curveSamples) {
-                        val p = cubicPoint(
-                            i / curveSamples.toFloat(), curX, curY,
-                            command.x1, command.y1, command.x2, command.y2, command.x3, command.y3,
-                        )
-                        segments += floatArrayOf(prevX, prevY, p[0], p[1])
-                        prevX = p[0]; prevY = p[1]
-                    }
-                    curX = command.x3; curY = command.y3
-                }
-                PathCommand.Close -> {
-                    segments += floatArrayOf(curX, curY, subpathStartX, subpathStartY)
-                    curX = subpathStartX; curY = subpathStartY
-                }
-            }
-        }
-        return segments
-    }
-
-    private fun pointAndTangentAlongPath(commands: List<PathCommand>, fraction: Float): FloatArray? {
-        val segments = flattenPathSegments(commands)
-        val lengths = segments.map { sqrt((it[2] - it[0]) * (it[2] - it[0]) + (it[3] - it[1]) * (it[3] - it[1])) }
-        val totalLength = lengths.sum()
-        if (totalLength <= 0f) return null
-        val targetDist = fraction.coerceIn(0f, 1f) * totalLength
-        var accumulated = 0f
-        for (i in segments.indices) {
-            val segLen = lengths[i]
-            if (accumulated + segLen >= targetDist || i == segments.lastIndex) {
-                val localT = if (segLen > 0f) ((targetDist - accumulated) / segLen).coerceIn(0f, 1f) else 0f
-                val seg = segments[i]
-                return floatArrayOf(
-                    seg[0] + (seg[2] - seg[0]) * localT,
-                    seg[1] + (seg[3] - seg[1]) * localT,
-                    seg[2] - seg[0],
-                    seg[3] - seg[1],
-                )
-            }
-            accumulated += segLen
-        }
-        return null
-    }
-
     // Op.DrawTweenPath's real start/stop trim (matching Android's own well-documented
     // PathMeasure.getSegment()): keeps only the [start, stop) fraction of the path's own total
     // arc length, rebuilt as a polyline (MoveTo + LineTo per flattened vertex, the same
-    // curve-flattening [flattenPathSegments] already performs elsewhere) — start == 0f && stop ==
+    // curve-flattening [PathGeometry.flatten] already performs elsewhere) — start == 0f && stop ==
     // 1f (no real trim) returns the original commands unchanged, so untrimmed callers keep their
     // own exact Quadratic/CubicTo curves instead of an unnecessarily-flattened approximation.
     private fun trimPath(commands: List<PathCommand>, start: Float, stop: Float): List<PathCommand> {
         if (start <= 0f && stop >= 1f) return commands
-        val segments = flattenPathSegments(commands)
+        val segments = PathGeometry.flatten(commands)
         val lengths = segments.map { sqrt((it[2] - it[0]) * (it[2] - it[0]) + (it[3] - it[1]) * (it[3] - it[1])) }
         val totalLength = lengths.sum()
         if (totalLength <= 0f) return commands

@@ -78,6 +78,14 @@ sealed interface Operation {
     /** [TextSubtext] plus an operation: 1 lowercase, 2 uppercase, 3 trim, 4 capitalize words, 5 capitalize first. */
     data class TextTransform(val textId: Int, val srcId: Int, val start: Float, val len: Float, val operation: Int) : Operation
     data class TextLength(val lengthId: Int, val textId: Int) : Operation
+
+    /**
+     * `TextMeasure`: measures the text at [textId] with the current paint and stores one
+     * component of the result under [id]. [type] is `MEASURE_WIDTH`(0), `HEIGHT`(1),
+     * `LEFT`(2), `RIGHT`(3), `TOP`(4) or `BOTTOM`(5), optionally OR'd with
+     * `MEASURE_MONOSPACE_FLAG`(256) or `MEASURE_MAX_HEIGHT_FLAG`(512).
+     */
+    data class TextMeasure(val id: Int, val textId: Int, val type: Int) : Operation
     data class TextLookup(val textId: Int, val dataSetId: Int, val index: Float) : Operation
     data class TextLookupInt(val textId: Int, val dataSetId: Int, val indexRefId: Int) : Operation
     data class TextMerge(val textId: Int, val srcId1: Int, val srcId2: Int) : Operation
@@ -236,6 +244,14 @@ sealed interface Operation {
     data class LayoutImage(val componentId: Int, val animationId: Int, val bitmapId: Int, val scaleType: Int, val alpha: Float) : Operation
     data class LayoutCustom(val componentId: Int, val animationId: Int, val nameTextId: Int, val properties: List<CustomProperty>) : Operation
     data class CustomProperty(val type: Int, val dataType: Int, val value: Int)
+    /**
+     * `ConditionalOperations`: the block that follows runs only when [varA] and [varB] compare
+     * as [type] says — `TYPE_EQ`(0), `NEQ`(1), `LT`(2), `LTE`(3), `GT`(4), `GTE`(5), or
+     * `CHANGED`(6), which fires when either operand differs from the previous evaluation.
+     * Closed by a `ContainerEnd`.
+     */
+    data class ConditionalOperations(val type: Byte, val varA: Float, val varB: Float) : Operation
+
     data class LoopStart(val indexVariableId: Int, val from: Float, val step: Float, val until: Float) : Operation
     data object ContainerEnd : Operation
     data class AnimationSpec(
