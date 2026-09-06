@@ -374,6 +374,18 @@ object RealRemoteComposeParser {
      */
     private const val OP_SKIP = 241
 
+    /**
+     * `Operations.REM` — `RemoteComposeWriter.rem(text)` writes `[length:i32][UTF8 bytes...]`
+     * (source-confirmed via javap on the real `Rem.read()`/`write()` — `WireBuffer.writeUTF8()`/
+     * `readUTF8(maxLength)` delegate to the shared `writeBuffer`/`readBuffer` self-length-prefixed
+     * blob helper, the same length-then-bytes shape [OP_DATA_TEXT] already uses, just without a
+     * leading pool id since a `REM` is never referenced elsewhere). Real `Rem` has no
+     * `paint()`/`apply()` at all (not even a `PaintOperation`) — a plain author-facing source
+     * comment, honestly byte-consumed only, the same no-visual-effect category
+     * [OP_DEBUG_MESSAGE] already established.
+     */
+    private const val OP_REM = 185
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2485,6 +2497,11 @@ object RealRemoteComposeParser {
                         else -> false // SKIP_IF_PROFILE_INCLUDES/EXCLUDES — no profile concept here
                     }
                     if (needsToSkip) reader.seek(reader.position + skipLength)
+                }
+
+                OP_REM -> {
+                    val length = reader.readS32()
+                    reader.readUtf8(length) // a source comment — no visual effect to reproduce
                 }
 
                 OP_LOOP_START -> {

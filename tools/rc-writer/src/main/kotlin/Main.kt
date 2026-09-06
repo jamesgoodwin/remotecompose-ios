@@ -1363,6 +1363,15 @@ private fun buildCoverageSample() {
     writer.drawRect(35f, 185f, 63f, 199f)
     writer.endSkip(skip2)
 
+    // REM real byte-alignment proof: real Rem has no paint()/apply() at all (a pure source
+    // comment, VariableSupport not even implemented), so there's nothing to render — the only
+    // real thing to verify is that this parser consumes exactly its own real
+    // [length][UTF8 bytes] and stays correctly aligned for whatever follows, proven by a normal
+    // drawRect landing at its own exact documented position right after it.
+    writer.rem("this is a comment, not a real UI opcode")
+    writer.getRcPaint().setColor(0xFF00695C.toInt()).commit()
+    writer.drawRect(66f, 185f, 94f, 199f)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

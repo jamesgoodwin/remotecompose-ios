@@ -355,7 +355,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * so `MAX_VALUE < MAX_VALUE` is false) wrapping a green rect that *does* render normally right
  * after, confirmed via the parsed opcode dump (no red rect anywhere; the green one lands at its
  * own exact documented position), proving the reader stays correctly aligned whether or not the
- * preceding block was actually skipped. Shared by every platform demo entry point (iOS, Android) so they
+ * preceding block was actually skipped, and a real `REM` (`writer.rem("...")` — previously a
+ * completely unhandled opcode) followed immediately by a plain `drawRect` — real `Rem` has no
+ * rendering effect of any kind (a pure source comment), so the only real thing to prove is
+ * correct byte alignment, confirmed by that `drawRect` landing at its own exact documented
+ * position rather than shifted by a misaligned read. Shared by every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
  */
@@ -472,6 +476,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AAAABf+AAAsAAAAAAAAAAEGgAABBoAAAoAAAAFMAAAAF/4AACwAAAAAAAAAAAAAAAEGgAACgAAAAUwAAAAH/gAAPnwAAAFRBIAAAQSAAAKAAAABUAAAA" +
             "Bf+AAAsAAAAAAAAAAEHwAABBIAAAoAAAAFQAAAAF/4AACwAAAAAAAAAAQfAAAEHwAACgAAAAVAAAAAX/gAALAAAAAAAAAABBIAAAQfAAAKAAAABUAAAA" +
             "Af+AAA+vAAAAVQAAAFMAAABUASgAAAACAAAABP8ufTJ8AAAAVdbWrSgAAAACAAAABP/vbAAqQsgAAEM5AABC6AAAQ0cAANbxAAAAAgAAAAAAAAAeKAAA" +
-            "AAIAAAAE/9UAACpAAAAAQzkAAEHwAABDRwAA8QAAAAF/////AAAAHigAAAACAAAABP84jjwqQgwAAEM5AABCfAAAQ0cAAA==",
+            "AAIAAAAE/9UAACpAAAAAQzkAAEHwAABDRwAA8QAAAAF/////AAAAHigAAAACAAAABP84jjwqQgwAAEM5AABCfAAAQ0cAALkAAAAndGhpcyBpcyBhIGNv" +
+            "bW1lbnQsIG5vdCBhIHJlYWwgVUkgb3Bjb2RlKAAAAAIAAAAE/wBpXCpChAAAQzkAAEK8AABDRwAA",
     )
 }
