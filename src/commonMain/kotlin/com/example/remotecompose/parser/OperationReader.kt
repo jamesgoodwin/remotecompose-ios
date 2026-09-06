@@ -180,6 +180,40 @@ internal object OperationReader {
             )
         }
         Operations.DATA_MAP_LOOKUP -> Op.DataMapLookup(r.readS32(), r.readS32(), r.readS32())
+        Operations.PARTICLES_CREATE -> {
+            val id = r.readS32()
+            val particleCount = r.readS32()
+            if (particleCount >= 8000) throw RemoteComposeParseException("Particle system $id declares $particleCount particles")
+            val varCount = r.readS32()
+            if (varCount > 2000) throw RemoteComposeParseException("Particle system $id declares $varCount variables")
+            val varIds = ArrayList<Int>(varCount)
+            val equations = ArrayList<FloatArray>(varCount)
+            repeat(varCount) {
+                varIds += r.readS32()
+                equations += readEquation(r, 32)
+            }
+            Op.ParticlesCreate(id, varIds, equations, particleCount)
+        }
+        Operations.PARTICLES_LOOP -> {
+            val id = r.readS32()
+            val restart = readEquation(r, 32)
+            val count = r.readS32()
+            if (count > 2000) throw RemoteComposeParseException("Particle loop $id has $count equations")
+            Op.ParticlesLoop(id, restart, List(count) { readEquation(r, 32) })
+        }
+        Operations.PARTICLES_COMPARE -> {
+            val id = r.readS32()
+            val flags = r.readU16()
+            val min = r.readFloat32()
+            val max = r.readFloat32()
+            val expression = readEquation(r, 46)
+            val count1 = r.readS32()
+            if (count1 > 2000) throw RemoteComposeParseException("Particle comparison $id has $count1 equations")
+            val equations1 = List(count1) { readEquation(r, 46) }
+            val count2 = r.readS32()
+            if (count2 > 2000) throw RemoteComposeParseException("Particle comparison $id has $count2 equations")
+            Op.ParticlesCompare(id, flags, min, max, expression, equations1, List(count2) { readEquation(r, 46) })
+        }
         Operations.DATA_BITMAP_FONT -> {
             val id = r.readS32()
             val packed = r.readS32()
@@ -362,6 +396,13 @@ internal object OperationReader {
         else -> throw RemoteComposeParseException(
             "Opcode $opId at byte ${r.position - 1} is not handled by this reader",
         )
+    }
+
+    /** One length-prefixed float expression, as the particle operations write theirs. */
+    private fun readEquation(r: BufferReader, maxLength: Int): FloatArray {
+        val length = r.readS32()
+        if (length > maxLength) throw RemoteComposeParseException("Expression of $length entries exceeds $maxLength")
+        return FloatArray(length) { r.readFloat32() }
     }
 
     /**

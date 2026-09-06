@@ -22,6 +22,7 @@ import com.example.remotecompose.runtime.ActionTrigger
 import com.example.remotecompose.runtime.DocumentAction
 import com.example.remotecompose.runtime.FloatExpressionEvaluator
 import com.example.remotecompose.runtime.HitRegion
+import com.example.remotecompose.runtime.ParticleSystem
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.BitmapFont
 import com.example.remotecompose.text.EstimatedTextMetrics
@@ -118,6 +119,14 @@ object RemoteComposeParser {
         /** A wire float that may be a NaN-tagged id, resolved through the context (see [RemoteContext.resolveFloat]). */
         fun resolveFloat(raw: Float): Float = context.resolveFloat(raw)
 
+        // Every operation that carries an expression resolves its pool variables the same way
+        // FloatExpression.updateVariables does, leaving operators — the caller variable slots
+        // among them — for the evaluator.
+        fun resolveExpression(expression: FloatArray) = FloatArray(expression.size) { k ->
+            val v = expression[k]
+            if (FloatExpressionEvaluator.isVariable(v)) resolveFloat(v) else v
+        }
+
         // Shared by Op.TextSubtext/Op.TextTransform (real TextSubtext/TextTransform.apply()'s
         // own identical [start, start+len) / [start, end) — when len == -1f — String.substring()
         // logic, source-confirmed via javap on both). null (real byte-consumed-only fallback) when
@@ -163,6 +172,8 @@ object RemoteComposeParser {
         }
         // Guards FloatFunctionDefine's "Recursion not allowed".
         val executing = HashSet<Int>()
+        // A particle loop's restart creates the particle again, from its system's own equations.
+        val particleCreators = operations.filterIsInstance<Op.ParticlesCreate>().associate { it.id to it.equations }
         // ConditionalOperations TYPE_CHANGED compares against the previous frame's operands.
         val conditionalPrevious = context.conditionalPrevious
 
@@ -991,13 +1002,6 @@ object RemoteComposeParser {
 
                     is Op.PathExpression -> {
                         // PathExpression.apply(): sample the two expressions into the path pool.
-                        // Its variables resolve exactly as a FloatExpression's, except the caller
-                        // variable slot the sampler fills in, which is an operator and so passes
-                        // through untouched.
-                        fun resolveExpression(expression: FloatArray) = FloatArray(expression.size) { k ->
-                            val v = expression[k]
-                            if (FloatExpressionEvaluator.isVariable(v)) resolveFloat(v) else v
-                        }
                         val count = resolveFloat(op.count)
                         val min = resolveFloat(op.min)
                         val max = resolveFloat(op.max)
@@ -1015,6 +1019,76 @@ object RemoteComposeParser {
                             // NaN; storing that would draw nothing but hide the reason.
                             if (PathGenerator.isFinite(commands)) pathPool[op.id] = commands else pathPool.remove(op.id)
                         }
+                    }
+
+                    is Op.ParticlesCreate -> {
+                        // ParticlesCreate.paint(): every particle is created from its equations,
+                        // which see its own index. The real operation does this each frame too,
+                        // so a system only moves through time in its equations or its loop.
+                        val system = ParticleSystem(op.varIds, op.particleCount)
+                        val equations = op.equations.map { resolveExpression(it) }
+                        for (p in 0 until system.count) system.initialize(p, equations)
+                        context.particles[op.id] = system
+                    }
+
+                    is Op.ParticlesLoop -> {
+                        // ParticlesLoop.paint(): advance each particle, then run the block once
+                        // with that particle's variables in the pool.
+                        val end = scopeEnds[i] ?: operations.size
+                        val system = context.particles[op.id]
+                        val create = particleCreators[op.id]
+                        if (system != null) {
+                            for (p in 0 until system.count) {
+                                system.load(context, p)
+                                // Resolved against the particle as it stands, so the equations
+                                // advance it together rather than in sequence.
+                                val equations = op.equations.map { resolveExpression(it) }
+                                val restart = resolveExpression(op.restart)
+                                for (v in system.values[p].indices) {
+                                    val equation = equations.getOrNull(v) ?: continue
+                                    val value = FloatExpressionEvaluator.eval(equation)
+                                    system.values[p][v] = value
+                                    context.loadFloat(system.varIds[v], value)
+                                }
+                                if (restart.isNotEmpty() && FloatExpressionEvaluator.eval(restart) > 0f && create != null) {
+                                    system.initialize(p, create.map { resolveExpression(it) })
+                                    system.load(context, p)
+                                }
+                                walk(i + 1, end)
+                            }
+                            context.needsRepaint = true
+                        }
+                        i = end // the loop's own CONTAINER_END
+                    }
+
+                    is Op.ParticlesCompare -> {
+                        // ParticlesCompare.condition1Body(): the block runs for the particles in
+                        // range whose expression comes out above zero, after equations1 has
+                        // advanced them. The two-body form is decoded but not run.
+                        val end = scopeEnds[i] ?: operations.size
+                        val system = context.particles[op.id]
+                        if (system != null && op.equations2.isEmpty()) {
+                            val min = resolveFloat(op.min)
+                            val max = resolveFloat(op.max)
+                            val from = if (min.isNaN() || min <= 0f) 0 else min.toInt()
+                            val to = if (max.isNaN() || max >= system.count) system.count else max.toInt()
+                            var matched = false
+                            for (p in from until to) {
+                                system.load(context, p)
+                                if (FloatExpressionEvaluator.eval(resolveExpression(op.expression)) <= 0f) continue
+                                matched = true
+                                val equations = op.equations1.map { resolveExpression(it) }
+                                for (v in system.values[p].indices) {
+                                    val equation = equations.getOrNull(v) ?: continue
+                                    val value = FloatExpressionEvaluator.eval(equation)
+                                    system.values[p][v] = value
+                                    context.loadFloat(system.varIds[v], value)
+                                }
+                                walk(i + 1, end)
+                            }
+                            if (matched) context.needsRepaint = true
+                        }
+                        i = end // the block's own CONTAINER_END
                     }
 
                     is Op.FloatFunctionDefine -> i = scopeEnds[i] ?: operations.size
@@ -1156,7 +1230,8 @@ object RemoteComposeParser {
                 is Op.LayoutText, is Op.LayoutImage, is Op.LayoutCanvas, is Op.LayoutCustom, is Op.LayoutState,
                 is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations, is Op.LoopStart, is Op.ConditionalOperations,
                 is Op.ModifierClick, is Op.ModifierMultiClick, is Op.ModifierTouchDown, is Op.ModifierTouchUp,
-                is Op.ModifierTouchCancel, is Op.FloatFunctionDefine -> open.addLast(i)
+                is Op.ModifierTouchCancel, is Op.FloatFunctionDefine, is Op.ParticlesLoop,
+                is Op.ParticlesCompare -> open.addLast(i)
                 is Op.ContainerEnd -> open.removeLastOrNull()?.let { ends[it] = i }
                 else -> Unit
             }

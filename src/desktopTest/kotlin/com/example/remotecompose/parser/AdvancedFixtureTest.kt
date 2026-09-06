@@ -109,6 +109,27 @@ class AdvancedFixtureTest {
     }
 
     @Test
+    fun everyParticleRunsTheLoopBodyWithItsOwnValues() {
+        // 12 particles: x = 16 + 15i, y = 152 + 9 * (i % 3) then 6 lower from the loop's
+        // equation, radius = 2 + i % 4.
+        val circles = document.opcodes.filterIsInstance<Opcode.DrawCircle>()
+        assertEquals(12, circles.size)
+        circles.forEachIndexed { i, circle ->
+            assertEquals(16f + 15f * i, circle.centerX, 0.001f)
+            assertEquals(152f + 9f * (i % 3) + 6f, circle.centerY, 0.001f)
+            assertEquals(2f + (i % 4), circle.radius, 0.001f)
+        }
+    }
+
+    @Test
+    fun theComparisonBodyRunsOnlyForTheParticlesThatMatch() {
+        // x - 100 is above zero for the six particles from x = 106 on.
+        val markers = rects.filter { it.top > 140f }
+        assertEquals(6, markers.size)
+        assertEquals(listOf(104f, 119f, 134f, 149f, 164f, 179f), markers.map { it.left })
+    }
+
+    @Test
     fun aLinearJoinKeepsItsControlPointsOnTheSegments() {
         // The same samples as the spline, joined straight: each cubic's controls are its ends.
         val zigzag = paths[2].commands.filterIsInstance<PathCommand.CubicTo>()

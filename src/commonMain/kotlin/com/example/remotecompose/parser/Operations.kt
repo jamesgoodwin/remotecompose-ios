@@ -72,6 +72,8 @@ internal object Operations {
     const val PATH_TWEEN = 158
     const val PATH_CREATE = 159
     const val PATH_ADD = 160
+    const val PARTICLES_CREATE = 161
+    const val PARTICLES_LOOP = 163
     const val FLOAT_FUNCTION_CALL = 166
     const val DATA_BITMAP_FONT = 167
     const val FLOAT_FUNCTION_DEFINE = 168
@@ -88,6 +90,7 @@ internal object Operations {
     const val REM = 185
     const val ID_LOOKUP = 192
     const val PATH_EXPRESSION = 193
+    const val PARTICLES_COMPARE = 194
     const val TEXT_TRANSFORM = 199
     const val LAYOUT_ROOT = 200
     const val LAYOUT_CONTENT = 201

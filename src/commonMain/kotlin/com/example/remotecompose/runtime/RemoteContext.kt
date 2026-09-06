@@ -30,6 +30,9 @@ class RemoteContext {
     val bitmaps = mutableMapOf<Int, ByteArray>()
     val bitmapFonts = mutableMapOf<Int, BitmapFont>()
 
+    /** Particle variables, keyed by the id of the `ParticlesCreate` that made them. */
+    val particles = mutableMapOf<Int, ParticleSystem>()
+
     /**
      * Previous operands of each `ConditionalOperations`, keyed by its index in the operation
      * list, so `TYPE_CHANGED` can compare against the last evaluation.

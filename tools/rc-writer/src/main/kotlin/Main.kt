@@ -181,6 +181,54 @@ private fun buildAdvancedSample() {
     wave.cubicTo(60f, 78f, 140f, 122f, 186f, 96f)
     writer.drawBitmapFontTextRunOnPath(fontText, font, wave, 0, -1, -7f, 1f)
 
+    // 8. A particle system: twelve particles, each with an x, a y and a radius created from its
+    //    own index, advanced once per frame by the loop's equations, and drawn by the loop body.
+    val particleVars = floatArrayOf(0f, 0f, 0f) // filled with the ids the equations read
+    val system = writer.createParticles(
+        particleVars,
+        arrayOf(
+            // x = 16 + 15 * index
+            floatArrayOf(Rc.FloatExpression.VAR1, 15f, Rc.FloatExpression.MUL, 16f, Rc.FloatExpression.ADD),
+            // y = 152 + 9 * (index % 3)
+            floatArrayOf(
+                Rc.FloatExpression.VAR1, 3f, Rc.FloatExpression.MOD, 9f, Rc.FloatExpression.MUL,
+                152f, Rc.FloatExpression.ADD,
+            ),
+            // radius = 2 + index % 4
+            floatArrayOf(Rc.FloatExpression.VAR1, 4f, Rc.FloatExpression.MOD, 2f, Rc.FloatExpression.ADD),
+        ),
+        12,
+    )
+    val (px, py, pr) = listOf(particleVars[0], particleVars[1], particleVars[2])
+    writer.getRcPaint().setColor(0xFF00897B.toInt()).setStyle(0).commit()
+    writer.particlesLoop(
+        system,
+        floatArrayOf(), // never restarted
+        arrayOf(
+            floatArrayOf(px), // x unchanged
+            floatArrayOf(py, 6f, Rc.FloatExpression.ADD), // y drops 6
+            floatArrayOf(pr), // radius unchanged
+        ),
+    ) {
+        writer.drawCircle(px, py, pr)
+    }
+
+    // 9. The particles past the middle of the canvas get a marker, through the comparison's
+    //    single-equation form: x - 100 is above zero only for those.
+    writer.getRcPaint().setColor(0xFFFDD835.toInt()).commit()
+    writer.particlesComparison(
+        system, 0.toShort(), 0f, 12f,
+        floatArrayOf(px, 100f, Rc.FloatExpression.SUB),
+        arrayOf(floatArrayOf(px), floatArrayOf(py), floatArrayOf(pr)),
+    ) {
+        writer.drawRect(
+            writer.floatExpression(px, 2f, Rc.FloatExpression.SUB),
+            writer.floatExpression(py, 12f, Rc.FloatExpression.SUB),
+            writer.floatExpression(px, 2f, Rc.FloatExpression.ADD),
+            writer.floatExpression(py, 8f, Rc.FloatExpression.SUB),
+        )
+    }
+
     val bytes = writer.encodeToByteArray()
     File("advanced.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to advanced.rc")

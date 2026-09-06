@@ -256,6 +256,35 @@ sealed interface Operation {
     data class LoopStart(val indexVariableId: Int, val from: Float, val step: Float, val until: Float) : Operation
 
     /**
+     * `ParticlesCreate`: [particleCount] particles, each with one value per entry of [varIds].
+     * A particle's starting values come from [equations], which see the particle's index in the
+     * first caller variable slot.
+     */
+    data class ParticlesCreate(
+        val id: Int, val varIds: List<Int>, val equations: List<FloatArray>, val particleCount: Int,
+    ) : Operation
+
+    /**
+     * `ParticlesLoop`: runs the block that follows once per particle of the system [id], having
+     * first advanced that particle by [equations] — one per variable. A particle whose [restart]
+     * expression comes out above zero is created again from scratch. Closed by a `ContainerEnd`.
+     */
+    data class ParticlesLoop(
+        val id: Int, val restart: FloatArray, val equations: List<FloatArray>,
+    ) : Operation
+
+    /**
+     * `ParticlesCompare`: the same, for the particles between [min] and [max] whose [expression]
+     * comes out above zero; those particles are advanced by [equations1]. When [equations2] is
+     * also present the real operation switches to its two-body form, comparing particles pairwise.
+     * Closed by a `ContainerEnd`.
+     */
+    data class ParticlesCompare(
+        val id: Int, val flags: Int, val min: Float, val max: Float, val expression: FloatArray,
+        val equations1: List<FloatArray>, val equations2: List<FloatArray>,
+    ) : Operation
+
+    /**
      * `BitmapFontData`: a font whose glyphs are bitmaps. [version] 1 and later carry the
      * [kerning] table, keyed by the two glyph strings either side of a join.
      */
