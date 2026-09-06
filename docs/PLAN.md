@@ -135,10 +135,11 @@ green on Desktop tests and visually checked on one device.
    `RemoteComposeParser` name and `RemoteComposeCanvas` uses it. `Header` holds the real
    version/size/capability fields; `RemoteDocument` is header + string map + bitmap pool +
    opcodes.
-3. **Split `parse()`.** Move each opcode's decode into its own `Operation` class with a
-   `read(buffer)` companion, exactly like the real library. No behaviour change; this is the
-   refactor that makes step 5 possible. Golden-file test: parsing `sample.rc` yields the same
-   operation list before and after.
+3. **Split `parse()` (done).** `OperationReader` decodes bytes into one `Operation` data class
+   per record (`Operation.kt`, ids in `Operations.kt`) with no evaluation; `RemoteComposeParser.build`
+   evaluates that list. Golden-file tests pin the opcode output for all three fixtures and were
+   identical before and after. The 1,300 lines of per-opcode KDoc became one-line notes on the
+   data classes.
 4. **Text baseline and measurement.** `y` is baseline. Use `TextMeasurer` for real bounds so
    `DrawTextAnchored` pan and the layout engine stop estimating.
 5. **`RemoteContext` and per-frame evaluation.** Operations stop writing into parse-time pools
