@@ -441,6 +441,18 @@ object RealRemoteComposeParser {
      */
     private const val OP_TEXT_LOOKUP_INT = 153
 
+    /**
+     * `Operations.TEXT_MERGE` — `RemoteComposeWriter.textMerge(srcId1, srcId2): Int` writes
+     * `[textId:declareId][srcId1:readId][srcId2:readId]` (source-confirmed via javap on the real
+     * `TextMerge.read()`/`write()`) — `textId` (like every other "new pool slot" opcode this
+     * session) is a *newly* allocated text-pool slot the real writer method returns. Real
+     * `apply()` (source-confirmed via javap) does `getText(srcId1) + getText(srcId2)` (plain
+     * string concatenation, no separator) and `loadText(textId, merged)`s the result — implemented
+     * here as a direct [textPool] concatenation, the same pool [OP_TEXT_LOOKUP]/[OP_TEXT_LENGTH]
+     * already read and write.
+     */
+    private const val OP_TEXT_MERGE = 136
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2592,6 +2604,15 @@ object RealRemoteComposeParser {
                             textPool[srcId]?.let { textPool[textId] = it }
                         }
                     }
+                }
+
+                OP_TEXT_MERGE -> {
+                    val textId = reader.readS32()
+                    val srcId1 = reader.readS32()
+                    val srcId2 = reader.readS32()
+                    val left = textPool[srcId1] ?: ""
+                    val right = textPool[srcId2] ?: ""
+                    textPool[textId] = left + right
                 }
 
                 OP_LOOP_START -> {

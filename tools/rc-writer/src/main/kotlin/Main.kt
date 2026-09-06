@@ -1415,6 +1415,17 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF00695C.toInt()).commit()
     writer.drawTextAnchored(lookedUpIntTextId, 130f, 190f, -1f, -1f, 0)
 
+    // OP_TEXT_MERGE (opcode 136) — previously completely unhandled. Real TextMerge.apply()
+    // (source-confirmed via javap) does a plain getText(srcId1) + getText(srcId2) concatenation
+    // (no separator) and loadText()s the result into a newly allocated text-pool slot the real
+    // writer.textMerge(srcId1, srcId2): Int itself returns — "Merged" + "Text" should compute
+    // "MergedText" exactly, not "Merged"/"Text" individually or an unresolved reference.
+    val mergeLeftId = writer.addText("Merged")
+    val mergeRightId = writer.addText("Text")
+    val mergedTextId = writer.textMerge(mergeLeftId, mergeRightId)
+    writer.getRcPaint().setColor(0xFFD84315.toInt()).commit()
+    writer.drawTextAnchored(mergedTextId, 5f, 8f, -1f, -1f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

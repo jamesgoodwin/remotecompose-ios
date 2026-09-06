@@ -379,7 +379,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * opcode) proof reusing that same `ID_LIST`: `TextLookupInt.apply()` resolves its index
  * unconditionally via `RemoteContext.getInteger(mIndex)` (unlike `TextLookup`'s NaN-conditional
  * float index), so looking up index `2` computes "Gamma" (confirmed via the parsed document's own
- * string pool), not "Alpha"/"Beta"/an unresolved reference. Shared by every platform demo entry
+ * string pool), not "Alpha"/"Beta"/an unresolved reference, and a real `TEXT_MERGE`
+ * (`writer.textMerge(srcId1, srcId2): Int` — previously a completely unhandled opcode) proof:
+ * real `TextMerge.apply()` (source-confirmed via javap) does a plain, separator-less
+ * `getText(srcId1) + getText(srcId2)` concatenation into a newly allocated text-pool slot the
+ * real writer method itself returns — merging registered "Merged" and "Text" strings computes
+ * "MergedText" exactly (confirmed via the parsed document's own string pool), not "Merged"/"Text"
+ * individually or an unresolved reference. Shared by every platform demo entry
  * point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -501,6 +507,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "bW1lbnQsIG5vdCBhIHJlYWwgVUkgb3Bjb2RlKAAAAAIAAAAE/wBpXCpChAAAQzkAAEK8AABDRwAAZgAAAFYAAAAFSGVsbG+cAAAAVwAAAFbK////Lv//" +
             "//8AAAAAAAAAAN1CwAAAQzkAABAAAAAA/4AAV0MAAAAAQSAAAGzJ////LSgAAAACAAAABP9tTEEqAAAAAAAAAABB8AAAQSAAANbWZgAAAFgAAAAFQWxw" +
             "aGFmAAAAWQAAAARCZXRhZgAAAFoAAAAFR2FtbWGSACAAKgAAAAMAAABYAAAAWQAAAFqXAAAAWwAgACo/gAAAKAAAAAIAAAAE/0UnoIUAAABbQwIAAEMq" +
-            "AAC/gAAAv4AAAAAAAACMAAAAXAAAAAKZAAAAXQAgACoAAABcKAAAAAIAAAAE/wBpXIUAAABdQwIAAEM+AAC/gAAAv4AAAAAAAAA=",
+            "AAC/gAAAv4AAAAAAAACMAAAAXAAAAAKZAAAAXQAgACoAAABcKAAAAAIAAAAE/wBpXIUAAABdQwIAAEM+AAC/gAAAv4AAAAAAAABmAAAAXgAAAAZNZXJn" +
+            "ZWRmAAAAXwAAAARUZXh0iAAAAGAAAABeAAAAXygAAAACAAAABP/YQxWFAAAAYECgAABBAAAAv4AAAL+AAAAAAAAA",
     )
 }
