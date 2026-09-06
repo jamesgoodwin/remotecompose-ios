@@ -175,7 +175,7 @@ green on Desktop tests and visually checked on one device.
    from the press, clamped to min/max); velocity easing, wrap and notch stops are decoded but
    not applied. Both composables send gestures to the document first.
 8. **Remaining draw opcodes by real effect (partly done).** Done: `DRAW_TEXT_ON_PATH` and
-   `DRAW_TEXT_ON_CIRCLE` now placeeach glyph individually along the curve, rotated to the tangent,
+   `DRAW_TEXT_ON_CIRCLE` now place each glyph individually along the curve, rotated to the tangent,
    replacing the straight-line approximations (`text/GlyphPlacement`, `geometry/PathGeometry`,
    which also took over the path maths `MATRIX_FROM_PATH` and the tween trim were using);
    `TEXT_MEASURE` stores a real measurement; `CONDITIONAL_OPERATIONS` gates its block on all
