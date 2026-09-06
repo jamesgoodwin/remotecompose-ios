@@ -403,7 +403,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * int-pool slot into `TEXT_LOOKUP_INT`'s own index: a literal-index `ID_LIST` `[0, 1, 2]`,
  * `ID_LOOKUP` fetches "2" at index 2, and `TEXT_LOOKUP_INT` uses that computed (not merely
  * registered) value to resolve the Alpha/Beta/Gamma collection's index 2, "Gamma" (confirmed via
- * the parsed document's own string pool). Shared by every platform demo entry
+ * the parsed document's own string pool), and a real `INTEGER_EXPRESSION`
+ * (`writer.integerExpression(vararg Long): Long` — previously a completely unhandled opcode)
+ * proof: a genuine RPN stack machine (source-confirmed via javap on the real
+ * `IntegerExpressionEvaluator`) computes `17 MOD 3` (not a naive pass-through of either operand),
+ * and that computed `2` feeds `TEXT_LOOKUP_INT`'s own index the same way the `ID_LOOKUP` proof
+ * above does, again resolving the Alpha/Beta/Gamma collection's index 2, "Gamma". Shared by every
+ * platform demo entry
  * point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -530,6 +536,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "yv///yz/////AAAAAAAAAABrAAAAAgAAAGEAAAAAAAAAAEAAAABAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAADJ////KygAAAACAAAABP83R08qQw8AAEAA" +
             "AABDHgAAQUAAANbWhgAAAGIA/wAEPqqqqz+AAAA/gAAAyv///yr/////AAAAAAAAAABrAAAAAgAAAGIAAAAAAAAAAEAAAABAgAAAAAAAAAAAAAAAAAAA" +
             "AAAAAAAAAADJ////KSgAAAACAAAABP83R08qQyMAAEAAAABDMgAAQUAAANbWkgAgACsAAAADAAAAAAAAAAEAAAACwAAAAGMAIAArQAAAAJkAAABkACAA" +
-            "KgAAAGMoAAAAAgAAAAT/ahuahQAAAGRAoAAAQjQAAL+AAAC/gAAAAAAAAA==",
+            "KgAAAGMoAAAAAgAAAAT/ahuahQAAAGRAoAAAQjQAAL+AAAC/gAAAAAAAAJAAAABlAAAABAAAAAMAAAARAAAAAwABAAWZAAAAZgAgACoAAABlKAAAAAIA" +
+            "AAAE/wCDj4UAAABmQKAAAEKCAAC/gAAAv4AAAAAAAAA=",
     )
 }

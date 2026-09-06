@@ -1,4 +1,5 @@
 import androidx.compose.remote.creation.JvmRcPlatformServices
+import androidx.compose.remote.creation.Rc
 import androidx.compose.remote.creation.RemoteComposeWriter
 import androidx.compose.remote.creation.RemotePath
 import androidx.compose.remote.creation.actions.HostAction
@@ -1462,6 +1463,17 @@ private fun buildCoverageSample() {
     val idLookupTextId = writer.textLookup(lookupListNan, idLookupIntRefId)
     writer.getRcPaint().setColor(0xFF6A1B9A.toInt()).commit()
     writer.drawTextAnchored(idLookupTextId, 5f, 45f, -1f, -1f, 0)
+
+    // OP_INTEGER_EXPRESSION (opcode 144) — previously completely unhandled. Real
+    // IntegerExpressionEvaluator is a genuine RPN stack machine over ~24 operators; this exercises
+    // a real MOD: "17 MOD 3" should compute 2 (not 17, 3, or an unresolved reference), then that
+    // computed (not merely registered) intPool value feeds TEXT_LOOKUP_INT's own index the same
+    // way ID_LOOKUP's chained test above does, resolving the Alpha/Beta/Gamma ID_LIST's index 2,
+    // "Gamma".
+    val exprResultId = writer.integerExpression(17L, 3L, Rc.IntegerExpression.L_MOD).toInt()
+    val exprTextId = writer.textLookup(lookupListNan, exprResultId)
+    writer.getRcPaint().setColor(0xFF00838F.toInt()).commit()
+    writer.drawTextAnchored(exprTextId, 5f, 65f, -1f, -1f, 0)
 
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)

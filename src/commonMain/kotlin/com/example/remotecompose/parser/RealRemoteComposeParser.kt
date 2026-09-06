@@ -9,9 +9,12 @@ import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -496,6 +499,27 @@ object RealRemoteComposeParser {
      * pattern [OP_DATA_INT] itself already relies on.
      */
     private const val OP_ID_LOOKUP = 192
+
+    /**
+     * `Operations.INTEGER_EXPRESSION` — `RemoteComposeWriter.integerExpression(vararg Long): Long`
+     * writes `[id:declareId][mask:i32][count:i32][count × i32]` (source-confirmed via javap on the
+     * real `IntegerExpression.read()`/`write()`) — a real RPN integer calculator over
+     * `IntegerExpressionEvaluator`'s ~24 operators (source-confirmed via javap on
+     * `IntegerExpressionEvaluator.opEval()`), each array slot either a literal int, an [intPool]
+     * id reference (`mask` bit set *and* value `< 65536`, real `isId()`'s own exact condition — a
+     * writer-level "long NaN-tag" value `>= 4294967296`), or an operator code (`mask` bit set *and*
+     * value `>= 65536`, `Rc.IntegerExpression.L_*` constants like `L_ADD = 4295032833`, i.e.
+     * `4294967296 + 65537`). Real `apply()`'s evaluator is a simple stack machine: literal/
+     * resolved-id slots push, operator slots pop N operands (2 for the binary ops, 1 for the
+     * unary ops, 3 for `CLAMP`/`IFELSE`/`MAD`) and push 1 result — implemented here faithfully
+     * for every operator except `VAR1`/`VAR2`/`VAR3` (`I_VAR1`/`I_VAR2`/an implied third), which
+     * only have real meaning inside a loop/foreach evaluation context (fed via `eval()`'s own
+     * `vars` parameter) this parser doesn't implement — left unresolved, the same honest fallback
+     * every other unresolvable case here already gets. Real `apply()` stores the final stack top
+     * into [intPool] via `loadInteger()` — reusing the exact same pool [OP_ID_LOOKUP]/
+     * [OP_TEXT_LOOKUP_INT] already read and write.
+     */
+    private const val OP_INTEGER_EXPRESSION = 144
 
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
@@ -2704,6 +2728,46 @@ object RealRemoteComposeParser {
                     }
                 }
 
+                OP_INTEGER_EXPRESSION -> {
+                    val id = reader.readS32()
+                    val mask = reader.readS32()
+                    val count = reader.readS32()
+                    val values = IntArray(count) { reader.readS32() }
+                    val resolved = IntArray(count)
+                    val isOperator = BooleanArray(count)
+                    var allResolved = true
+                    for (i in 0 until count) {
+                        val bitSet = (mask ushr i) and 1 != 0
+                        val v = values[i]
+                        if (bitSet && v < 65536) {
+                            val iv = intPool[v]
+                            if (iv != null) resolved[i] = iv else allResolved = false
+                        } else {
+                            resolved[i] = v
+                            isOperator[i] = bitSet && v >= 65536
+                        }
+                    }
+                    if (allResolved) {
+                        val stack = IntArray(count)
+                        var sp = -1
+                        var valid = true
+                        for (i in 0 until count) {
+                            if (isOperator[i]) {
+                                val newSp = evalIntegerOp(stack, sp, resolved[i])
+                                if (newSp == null) {
+                                    valid = false
+                                    break
+                                }
+                                sp = newSp
+                            } else {
+                                sp++
+                                stack[sp] = resolved[i]
+                            }
+                        }
+                        if (valid && sp >= 0) intPool[id] = stack[sp]
+                    }
+                }
+
                 OP_LOOP_START -> {
                     reader.readS32() // indexVariableId — no expression evaluator to feed it
                     val from = resolveFloat(reader.readFloat32())
@@ -3809,6 +3873,70 @@ object RealRemoteComposeParser {
             4 -> -0x1000000 or (t shl 16) or (p shl 8) or v
             5 -> -0x1000000 or (v shl 16) or (p shl 8) or q
             else -> 0
+        }
+    }
+
+    // OP_INTEGER_EXPRESSION's real RPN stack-machine step (source-confirmed via javap on the real
+    // IntegerExpressionEvaluator.opEval()): binary ops pop stack[sp-1]/stack[sp], push 1 result at
+    // sp-1 (returns sp-1); unary ops rewrite stack[sp] in place (returns sp unchanged);
+    // CLAMP/IFELSE/MAD pop 3 (stack[sp-2..sp]), push 1 result at sp-2 (returns sp-2). Returns null
+    // for an out-of-bounds pop (malformed expression) or VAR1/VAR2/VAR3 (only meaningful inside a
+    // loop/foreach evaluation context this parser doesn't implement).
+    private fun evalIntegerOp(stack: IntArray, sp: Int, op: Int): Int? {
+        fun binary(f: (Int, Int) -> Int): Int? {
+            if (sp < 1) return null
+            stack[sp - 1] = f(stack[sp - 1], stack[sp])
+            return sp - 1
+        }
+
+        fun unary(f: (Int) -> Int): Int? {
+            if (sp < 0) return null
+            stack[sp] = f(stack[sp])
+            return sp
+        }
+        return when (op) {
+            65537 -> binary { a, b -> a + b } // I_ADD
+            65538 -> binary { a, b -> a - b } // I_SUB
+            65539 -> binary { a, b -> a * b } // I_MUL
+            65540 -> binary { a, b -> if (b == 0) 0 else a / b } // I_DIV
+            65541 -> binary { a, b -> if (b == 0) 0 else a % b } // I_MOD
+            65542 -> binary { a, b -> a shl b } // I_SHL
+            65543 -> binary { a, b -> a shr b } // I_SHR
+            65544 -> binary { a, b -> a ushr b } // I_USHR
+            65545 -> binary { a, b -> a or b } // I_OR
+            65546 -> binary { a, b -> a and b } // I_AND
+            65547 -> binary { a, b -> a xor b } // I_XOR
+            65548 -> binary { a, b -> (a xor (b shr 31)) - (b shr 31) } // I_COPY_SIGN
+            65549 -> binary { a, b -> min(a, b) } // I_MIN
+            65550 -> binary { a, b -> max(a, b) } // I_MAX
+            65551 -> unary { a -> -a } // I_NEG
+            65552 -> unary { a -> abs(a) } // I_ABS
+            65553 -> unary { a -> a + 1 } // I_INCR
+            65554 -> unary { a -> a - 1 } // I_DECR
+            65555 -> unary { a -> a.inv() } // I_NOT
+            65556 -> unary { a -> (a shr 31) or (-a ushr 31) } // I_SIGN
+            65557 -> { // I_CLAMP: min(max(value, lo), hi)
+                if (sp < 2) null else {
+                    stack[sp - 2] = min(max(stack[sp - 2], stack[sp - 1]), stack[sp])
+                    sp - 2
+                }
+            }
+
+            65558 -> { // I_IFELSE: condition > 0 ? thenVal : elseVal
+                if (sp < 2) null else {
+                    stack[sp - 2] = if (stack[sp - 2] > 0) stack[sp - 1] else stack[sp]
+                    sp - 2
+                }
+            }
+
+            65559 -> { // I_MAD: a*b + c (a=top, b=second, c=third)
+                if (sp < 2) null else {
+                    stack[sp - 2] = stack[sp] * stack[sp - 1] + stack[sp - 2]
+                    sp - 2
+                }
+            }
+
+            else -> null // I_VAR1/I_VAR2/I_VAR3 (only meaningful inside a loop context) or unknown
         }
     }
 
