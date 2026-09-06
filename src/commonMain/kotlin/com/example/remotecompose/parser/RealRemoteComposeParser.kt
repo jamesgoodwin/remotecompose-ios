@@ -479,6 +479,24 @@ object RealRemoteComposeParser {
      */
     private const val OP_COLOR_EXPRESSIONS = 134
 
+    /**
+     * `Operations.ID_LOOKUP` — `RemoteComposeWriter.idLookup(dataSet, index): Int` writes
+     * `[intId:readId][dataSetId:readId][index:f32(NaN-taggable)]` (source-confirmed via javap on
+     * the real `IdLookup.read()`/`write()`/`apply()`) — despite its field being misleadingly named
+     * `mTextId`, real `apply()` does `getCollectionsAccess().getId(dataSetId, index)` (the id at
+     * `index` within the [OP_ID_LIST] collection `dataSetId` references, the exact same
+     * `idListPool[dataSetId]?.getOrNull(index)` [OP_TEXT_LOOKUP] already performs) then
+     * `loadInteger(intId, thatId)` — a plain *integer* pool store via [intPool], not [textPool].
+     * Real only when `index` is literal (not a `NaN`-tagged live variable reference this parser
+     * can't evaluate). This parser has no consumer that treats an arbitrary retrieved id as
+     * anything meaningful on its own, so its real effect is only observable by chaining into
+     * [OP_TEXT_LOOKUP_INT]'s own [intPool]-sourced `index` — retrieving a literal index value from
+     * an `ID_LIST` via `ID_LOOKUP`, then feeding that same `intPool` slot into `TEXT_LOOKUP_INT` as
+     * its index, the same "real effect only provable by feeding it into an existing real consumer"
+     * pattern [OP_DATA_INT] itself already relies on.
+     */
+    private const val OP_ID_LOOKUP = 192
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2675,6 +2693,15 @@ object RealRemoteComposeParser {
                         else -> null // ARGB_MODE(5)/IDARGB_MODE(6) — left unresolved
                     }
                     if (computed != null) colorPool[id] = Color(computed)
+                }
+
+                OP_ID_LOOKUP -> {
+                    val intId = reader.readS32()
+                    val dataSetId = reader.readS32()
+                    val index = resolveFloat(reader.readFloat32())
+                    if (!index.isNaN()) {
+                        idListPool[dataSetId]?.getOrNull(index.toInt())?.let { intPool[intId] = it }
+                    }
                 }
 
                 OP_LOOP_START -> {

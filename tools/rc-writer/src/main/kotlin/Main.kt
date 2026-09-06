@@ -1446,6 +1446,23 @@ private fun buildCoverageSample() {
     writer.drawRect(163f, 2f, 178f, 12f)
     writer.endBox()
 
+    // OP_ID_LOOKUP (opcode 192) — previously completely unhandled. Real IdLookup.apply()
+    // (source-confirmed via javap) does getCollectionsAccess().getId(dataSetId, index) (the id at
+    // a literal index within an ID_LIST) then loadInteger(intId, thatId) — a plain intPool store,
+    // despite the real class's misleadingly named mTextId field. This parser has no other real
+    // consumer that treats an arbitrary retrieved id as meaningful on its own, so its real effect
+    // is only observable by chaining into TEXT_LOOKUP_INT's own intPool-sourced index: an ID_LIST
+    // of literal index values [0, 1, 2], ID_LOOKUP fetches the literal value "2" at index 2 into a
+    // fresh intPool slot, then TEXT_LOOKUP_INT uses that same slot as its own index — resolving
+    // the Alpha/Beta/Gamma ID_LIST's index 2, "Gamma", exactly as the direct TEXT_LOOKUP_INT test
+    // above already proved, but this time via a real value computed at parse time rather than a
+    // literal registered int.
+    val indexValuesListNan = writer.addList(intArrayOf(0, 1, 2))
+    val idLookupIntRefId = writer.idLookup(indexValuesListNan, 2f)
+    val idLookupTextId = writer.textLookup(lookupListNan, idLookupIntRefId)
+    writer.getRcPaint().setColor(0xFF6A1B9A.toInt()).commit()
+    writer.drawTextAnchored(idLookupTextId, 5f, 45f, -1f, -1f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

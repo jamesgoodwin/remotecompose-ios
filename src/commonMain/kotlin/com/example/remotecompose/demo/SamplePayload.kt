@@ -394,7 +394,16 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `(186, 0, 186)` rather than the naive `(128, 0, 128)` (confirmed via the parsed opcode dump's
  * own border-stroke color) — and another box's border color comes from a real `HSV_MODE`
  * (`hue=1/3`, full saturation/value), real `Utils.hsvToRgb()`'s standard hexagon conversion
- * computing pure green `(0, 255, 0)` exactly. Shared by every platform demo entry
+ * computing pure green `(0, 255, 0)` exactly, and a real `ID_LOOKUP`
+ * (`writer.idLookup(dataSet, index): Int` — previously a completely unhandled opcode) proof:
+ * real `IdLookup.apply()` (source-confirmed via javap) retrieves the id at a literal index within
+ * an `ID_LIST` and stores it into a plain int-pool slot (despite its real class's misleadingly
+ * named `mTextId` field) — since this parser has no other consumer that treats an arbitrary
+ * retrieved id as meaningful on its own, its real effect is only observable by chaining that same
+ * int-pool slot into `TEXT_LOOKUP_INT`'s own index: a literal-index `ID_LIST` `[0, 1, 2]`,
+ * `ID_LOOKUP` fetches "2" at index 2, and `TEXT_LOOKUP_INT` uses that computed (not merely
+ * registered) value to resolve the Alpha/Beta/Gamma collection's index 2, "Gamma" (confirmed via
+ * the parsed document's own string pool). Shared by every platform demo entry
  * point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -520,6 +529,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "ZWRmAAAAXwAAAARUZXh0iAAAAGAAAABeAAAAXygAAAACAAAABP/YQxWFAAAAYECgAABBAAAAv4AAAL+AAAAAAAAAhgAAAGEAAAAA//8AAP8AAP8/AAAA" +
             "yv///yz/////AAAAAAAAAABrAAAAAgAAAGEAAAAAAAAAAEAAAABAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAADJ////KygAAAACAAAABP83R08qQw8AAEAA" +
             "AABDHgAAQUAAANbWhgAAAGIA/wAEPqqqqz+AAAA/gAAAyv///yr/////AAAAAAAAAABrAAAAAgAAAGIAAAAAAAAAAEAAAABAgAAAAAAAAAAAAAAAAAAA" +
-            "AAAAAAAAAADJ////KSgAAAACAAAABP83R08qQyMAAEAAAABDMgAAQUAAANbW",
+            "AAAAAAAAAADJ////KSgAAAACAAAABP83R08qQyMAAEAAAABDMgAAQUAAANbWkgAgACsAAAADAAAAAAAAAAEAAAACwAAAAGMAIAArQAAAAJkAAABkACAA" +
+            "KgAAAGMoAAAAAgAAAAT/ahuahQAAAGRAoAAAQjQAAL+AAAC/gAAAAAAAAA==",
     )
 }
