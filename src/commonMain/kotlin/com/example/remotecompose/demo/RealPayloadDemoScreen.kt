@@ -1,6 +1,7 @@
 package com.example.remotecompose.demo
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.example.remotecompose.engine.ComposeTextMetrics
@@ -33,7 +35,7 @@ import androidx.compose.runtime.getValue
  * that's purely a demo-host presentation choice and has no bearing on the parser/renderer.
  */
 @Composable
-fun RealPayloadDemoScreen(bytes: ByteArray) {
+fun RealPayloadDemoScreen(bytes: ByteArray, onUnhandledTap: () -> Unit = {}) {
     val textMeasurer = rememberTextMeasurer()
     val loaded = remember(bytes, textMeasurer) {
         RemoteComposeParser.load(bytes, ComposeTextMetrics(textMeasurer))
@@ -62,7 +64,22 @@ fun RealPayloadDemoScreen(bytes: ByteArray) {
         modifier = Modifier.fillMaxSize().background(Color(0xFF37474F)),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(modifier = Modifier.size(canvasWidth, canvasHeight)) {
+        Canvas(
+            modifier = Modifier
+                .size(canvasWidth, canvasHeight)
+                .pointerInput(loaded) {
+                    // The canvas is 1:1 with document pixels here, so a tap position is already
+                    // in document space. A tap the document does not claim switches the page.
+                    detectTapGestures(
+                        onPress = { offset ->
+                            loaded.touchDown(offset.x, offset.y)
+                            val released = tryAwaitRelease()
+                            if (released) loaded.touchUp(offset.x, offset.y) else loaded.touchCancel(offset.x, offset.y)
+                        },
+                        onTap = { offset -> if (!loaded.click(offset.x, offset.y)) onUnhandledTap() },
+                    )
+                },
+        ) {
             drawRect(color = Color.White, size = size)
             OpcodeExecutor.render(this, document.opcodes, renderContext)
         }

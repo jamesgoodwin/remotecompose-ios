@@ -58,7 +58,63 @@ fun main(args: Array<String>) {
         buildAnimSample()
         return
     }
+    if (args.getOrNull(0) == "actions") {
+        buildActionsSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * Click actions: three buttons whose `onClick` action lists change document values, and one
+ * that calls back into the host. The panel below them reads those values, so a tap visibly
+ * changes what the next frame draws.
+ */
+private fun buildActionsSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(200, 200, "actions", platform)
+
+    // Values the buttons write to. addFloatConstant/addInteger return the id to target.
+    // addFloatConstant returns the NaN-tagged reference a modifier can take directly; the
+    // plain id an action targets comes back through Utils.idFromNan.
+    val boxWidth = writer.addFloatConstant(40f)
+    val boxWidthId = androidx.compose.remote.core.operations.Utils.idFromNan(boxWidth)
+    val labelId = writer.addText("tap a button")
+    val counterId = writer.addInteger(0)
+
+    fun button(label: String, color: Int, vararg actions: androidx.compose.remote.creation.actions.Action) {
+        writer.startBox(RecordingModifier().width(52f).height(28f).background(color).onClick(*actions), 2, 2)
+        val id = writer.addText(label)
+        writer.startTextComponent(RecordingModifier(), id, 0xFFFFFFFF.toInt(), 11f, 0, 400f, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+        writer.endBox()
+    }
+
+    writer.startColumn(RecordingModifier().fillMaxSize().padding(12f).spacedBy(10f), 2, 4)
+
+    writer.startRow(RecordingModifier().spacedBy(8f), 1, 2)
+    button("Wide", 0xFF1E88E5.toInt(), ValueFloatChange(boxWidthId, 150f), ValueStringChange(labelId, "wide"))
+    button("Narrow", 0xFF43A047.toInt(), ValueFloatChange(boxWidthId, 40f), ValueStringChange(labelId, "narrow"))
+    writer.endRow()
+
+    writer.startRow(RecordingModifier().spacedBy(8f), 1, 2)
+    button("Count", 0xFFFB8C00.toInt(), ValueIntegerChange(counterId.toInt(), 7))
+    button("Host", 0xFF8E24AA.toInt(), HostAction(42))
+    writer.endRow()
+
+    // The panel: its width is the float the buttons write, so a tap resizes it.
+    writer.startBox(RecordingModifier().width(boxWidth).height(30f).background(0xFF37474F.toInt()), 1, 4)
+    writer.endBox()
+
+    // The label: its text is the string the buttons write.
+    writer.startTextComponent(RecordingModifier(), labelId, 0xFF1A237E.toInt(), 14f, 0, 400f, "", 0.toShort(), 1.toShort(), 1, 1)
+    writer.endTextComponent()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("actions.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to actions.rc")
 }
 
 /**

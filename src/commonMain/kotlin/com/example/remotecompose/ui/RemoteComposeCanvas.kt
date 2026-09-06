@@ -3,6 +3,7 @@ package com.example.remotecompose.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -38,15 +39,15 @@ import com.example.remotecompose.parser.RemoteComposeParser
  * without distorting the content; [modifier] otherwise fully controls how much space that is
  * (this composable does not impose its own size).
  *
- * Tap gestures are hit-tested in document space against the `OP_ACTION_CLICK` regions collected
- * by the most recent draw pass, and surfaced to [onAction] as [RemoteAction.Click]. Overlapping
- * regions resolve to the last one recorded — i.e. the one drawn on top.
+ * Gestures are hit-tested in document space against the laid-out components' action lists. An
+ * action that writes a document value shows up in the next frame by itself; a `HOST_ACTION`
+ * reaches the caller through [onAction]. Overlapping components resolve to the topmost one.
  *
  * @param bytes The raw `.rc` payload as produced by `androidx.compose.remote`'s
  *   `RemoteComposeWriter`. Re-parsed only when this exact [ByteArray] instance changes
  *   (`remember(bytes)`), matching Kotlin's reference-based `ByteArray` equality — pass a new array
  *   instance when the underlying content changes, not the same array mutated in place.
- * @param onAction Invoked when a tap lands inside an interactive region. Defaults to a no-op.
+ * @param onAction Invoked when the document runs a `HOST_ACTION`. Defaults to a no-op.
  * @param fallback Optional composable shown instead of the canvas when [bytes] fails to parse
  *   (a truncated record, or an opcode this parser does not handle). When `null` and parsing
  *   fails, nothing is emitted.
@@ -73,27 +74,39 @@ fun RemoteComposeCanvas(
     renderContext.document = document
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 
+    // HOST_ACTION reaches the caller; every other action writes a document value and shows up in
+    // the next frame on its own.
+    DisposableEffect(loaded, onAction) {
+        loaded.onHostAction = { actionId, metadata ->
+            onAction(RemoteAction.Click(actionId = actionId, targetUrl = metadata.ifEmpty { null }, payload = emptyMap()))
+        }
+        onDispose { loaded.onHostAction = null }
+    }
+
     Canvas(
         modifier = modifier
             .onSizeChanged { canvasSize = it }
-            .pointerInput(document, canvasSize) {
-                detectTapGestures { tapOffset ->
-                    val fit = fitDocumentToCanvas(
+            .pointerInput(loaded, canvasSize) {
+                val fit = {
+                    fitDocumentToCanvas(
                         canvasWidth = canvasSize.width.toFloat(),
                         canvasHeight = canvasSize.height.toFloat(),
-                        header = document.header,
-                    )
-                    val docPoint = fit.toDocumentSpace(tapOffset)
-                    val hit = renderContext.interactiveRegions.lastOrNull { it.bounds.contains(docPoint) }
-                        ?: return@detectTapGestures
-                    onAction(
-                        RemoteAction.Click(
-                            actionId = hit.actionId,
-                            targetUrl = hit.targetUrl,
-                            payload = emptyMap(),
-                        )
+                        header = loaded.header,
                     )
                 }
+                detectTapGestures(
+                    onPress = { offset ->
+                        val point = fit().toDocumentSpace(offset)
+                        loaded.touchDown(point.x, point.y)
+                        val released = tryAwaitRelease()
+                        val end = fit().toDocumentSpace(offset)
+                        if (released) loaded.touchUp(end.x, end.y) else loaded.touchCancel(end.x, end.y)
+                    },
+                    onTap = { offset ->
+                        val point = fit().toDocumentSpace(offset)
+                        loaded.click(point.x, point.y)
+                    },
+                )
             },
     ) {
         val fit = fitDocumentToCanvas(canvasWidth = size.width, canvasHeight = size.height, header = document.header)
@@ -105,10 +118,6 @@ fun RemoteComposeCanvas(
     }
 }
 
-/**
- * The uniform scale + centering offset that fits a [Header.width] x [Header.height] document into
- * a `canvasWidth` x `canvasHeight` viewport without distortion (equivalent to `ContentScale.Fit`).
- */
 /**
  * Drives a loaded document's frames: evaluates it once immediately, then, for as long as the
  * document reports [RemoteComposeDocument.needsRepaint], re-evaluates it on every display frame
@@ -126,6 +135,10 @@ fun rememberDocumentFrames(loaded: RemoteComposeDocument): State<RemoteDocument>
     return frame
 }
 
+/**
+ * The uniform scale + centering offset that fits a [Header.width] x [Header.height] document into
+ * a `canvasWidth` x `canvasHeight` viewport without distortion (equivalent to `ContentScale.Fit`).
+ */
 private data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float) {
     /** Maps a point in on-screen canvas coordinates back into the document's own coordinate space. */
     fun toDocumentSpace(canvasPoint: Offset): Offset =

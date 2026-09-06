@@ -16,6 +16,9 @@ import com.example.remotecompose.layout.LayoutTreeBuilder
 import com.example.remotecompose.layout.Modifier
 import com.example.remotecompose.layout.Visibility
 import com.example.remotecompose.parser.Operation as Op
+import com.example.remotecompose.runtime.ActionTrigger
+import com.example.remotecompose.runtime.DocumentAction
+import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.EstimatedTextMetrics
 import com.example.remotecompose.text.TextAnchoring
@@ -79,12 +82,17 @@ object RemoteComposeParser {
     fun parse(bytes: ByteArray, textMetrics: TextMetricsProvider = EstimatedTextMetrics): RemoteDocument =
         load(bytes, textMetrics).frame(0L)
 
+    /** Hit regions of the tree built by the most recent [build]; read by [RemoteComposeDocument]. */
+    internal var hitRegions: List<HitRegion> = emptyList()
+        private set
+
     /**
      * Evaluates [operations] against [context] and flattens the result into draw opcodes; see the
      * class KDoc. Constants are applied only the first time (`context.inflated`), so a later
      * change to a pool value persists across frames; everything else is re-applied every frame.
      */
     internal fun build(operations: List<Op>, context: RemoteContext, textMetrics: TextMetricsProvider): List<Opcode> {
+        hitRegions = emptyList()
         // Cumulative paint, exactly as the real player's PaintContext keeps it: each PAINT_VALUES
         // bundle is a delta applied on top of the previous state, and every draw opcode captures
         // a snapshot of it. Saved on scope push and restored on CONTAINER_END, mirroring
@@ -145,16 +153,25 @@ object RemoteComposeParser {
                     // need the per-frame context of docs/PLAN.md step 5.
 
                     is Op.Skip, is Op.Rem, is Op.RootContentDescription, is Op.DebugMessage,
-
                     is Op.AnimationSpec, is Op.HapticFeedback, is Op.Theme, is Op.RootContentBehavior,
+                    is Op.ModifierAlignBy, is Op.ModifierMarquee, is Op.ModifierScroll,
+                    is Op.ModifierRipple, is Op.ModifierDrawContent -> Unit
 
-                    is Op.HostAction, is Op.ModifierAlignBy, is Op.ModifierMarquee, is Op.ModifierScroll,
+                    // Action-list entries: collected onto the enclosing component's trigger, and
+                    // run on gesture rather than while evaluating (each operation's runAction).
+                    is Op.HostAction -> tree.addAction(DocumentAction.Host(op.actionId))
+                    is Op.ValueFloatChange -> tree.addAction(DocumentAction.SetFloat(op.valueId, op.value))
+                    is Op.ValueIntegerChange -> tree.addAction(DocumentAction.SetInteger(op.valueId, op.value))
+                    is Op.ValueStringChange -> tree.addAction(DocumentAction.SetText(op.valueId, op.stringId))
+                    is Op.ValueFloatExpressionChange ->
+                        tree.addAction(DocumentAction.SetFloatFromExpression(op.valueId, op.value))
+                    is Op.ValueIntegerExpressionChange ->
+                        tree.addAction(DocumentAction.SetIntegerFromExpression(op.valueId.toInt(), op.value.toInt()))
 
-                    is Op.ModifierRipple, is Op.ModifierDrawContent, is Op.TouchExpression,
-
-                    is Op.ValueIntegerChange, is Op.ValueStringChange, is Op.ValueFloatChange,
-
-                    is Op.ValueIntegerExpressionChange, is Op.ValueFloatExpressionChange -> Unit
+                    // TouchExpression: a float driven by the pointer while it is down. Evaluated
+                    // like any float expression, with the drag delta applied on top (mode 0 of
+                    // TouchExpression.apply); the pointer position arrives as ID_TOUCH_POS_X/_Y.
+                    is Op.TouchExpression -> context.applyTouchExpression(op)
 
                     is Op.Header -> Unit // captured by load()
 
@@ -812,8 +829,10 @@ object RemoteComposeParser {
 
                     is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations -> tree.openContent(paint)
 
-                    is Op.ModifierClick, is Op.ModifierMultiClick,
-                    is Op.ModifierTouchDown, is Op.ModifierTouchUp, is Op.ModifierTouchCancel -> tree.openActionList(paint)
+                    is Op.ModifierClick, is Op.ModifierMultiClick -> tree.openActionList(ActionTrigger.CLICK, paint)
+                    is Op.ModifierTouchDown -> tree.openActionList(ActionTrigger.TOUCH_DOWN, paint)
+                    is Op.ModifierTouchUp -> tree.openActionList(ActionTrigger.TOUCH_UP, paint)
+                    is Op.ModifierTouchCancel -> tree.openActionList(ActionTrigger.TOUCH_CANCEL, paint)
 
                     is Op.ContainerEnd -> tree.close(paint)?.let { opcodes.addAll(it) }
 
@@ -916,6 +935,7 @@ object RemoteComposeParser {
         }
         walk(0, operations.size)
         opcodes += tree.flush(paint)
+        hitRegions = tree.hitRegions
         opcodes += trailing
         context.inflated = true
         return opcodes

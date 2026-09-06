@@ -3,6 +3,7 @@ package com.example.remotecompose.runtime
 import androidx.compose.ui.graphics.Color
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.parser.Operation
+import com.example.remotecompose.parser.Operation.TouchExpression
 
 /**
  * The document's live state, mirroring `androidx.compose.remote.core.RemoteContext`: every pool
@@ -69,6 +70,114 @@ class RemoteContext {
         floats[id] = value
     }
 
+    /** Pointer position in window coordinates, served as `ID_TOUCH_POS_X`/`_Y`. */
+    var touchX: Float = 0f
+        internal set
+    var touchY: Float = 0f
+        internal set
+
+    /**
+     * Receives `HostActionOperation` dispatches: the action id and its metadata text, which the
+     * host application interprets (a link, a navigation target, an app-defined command).
+     */
+    var onHostAction: ((Int, String) -> Unit)? = null
+
+    /**
+     * `RemoteContext.overrideFloat`/`overrideInteger`/`overrideText`: an action's write to a
+     * value id. Constants only apply on the first evaluation pass, so an override survives every
+     * later frame until another action changes it.
+     */
+    fun overrideFloat(id: Int, value: Float) {
+        floats[id] = value
+        needsRepaint = true
+    }
+
+    fun overrideInteger(id: Int, value: Int) {
+        ints[id] = value
+        needsRepaint = true
+    }
+
+    fun overrideText(targetId: Int, sourceId: Int) {
+        texts[sourceId]?.let { texts[targetId] = it }
+        needsRepaint = true
+    }
+
+    fun runHostAction(actionId: Int, metadata: String) {
+        onHostAction?.invoke(actionId, metadata)
+    }
+
+    /** Per-`TouchExpression` state: the value and expression result when the pointer went down. */
+    internal class TouchState {
+        var down: Boolean = false
+        var valueAtDown: Float = 0f
+        var expressionAtDown: Float = 0f
+    }
+
+    internal val touchStates = mutableMapOf<Int, TouchState>()
+
+    /**
+     * `TouchExpression.apply` in its default mode: while the pointer is down the expression is
+     * evaluated against the current pointer position and the delta since the press is added to
+     * the value the variable had then; the result is clamped to `[min, max]` and stored under the
+     * expression's id. With no pointer down the default value is used.
+     *
+     * The real operation also carries velocity easing, wrap-around and notch stops
+     * (`VelocityEasing`, `STOP_*`); those are decoded but not applied here.
+     */
+    fun applyTouchExpression(op: Operation.TouchExpression) {
+        val state = touchStates.getOrPut(op.id) { TouchState() }
+        val min = resolveFloat(op.min)
+        val max = resolveFloat(op.max)
+        if (!state.down) {
+            val default = resolveFloat(op.defValue)
+            if (!default.isNaN()) loadFloat(op.id, clampTo(default, min, max))
+            return
+        }
+        val current = evaluateTouchExpression(op)
+        if (current.isNaN()) return
+        loadFloat(op.id, clampTo(state.valueAtDown + current - state.expressionAtDown, min, max))
+        needsRepaint = true
+    }
+
+    private fun clampTo(value: Float, min: Float, max: Float): Float {
+        var v = value
+        if (!min.isNaN()) v = maxOf(v, min)
+        if (!max.isNaN()) v = minOf(v, max)
+        return v
+    }
+
+    internal fun evaluateTouchExpression(op: Operation.TouchExpression): Float {
+        val resolved = FloatArray(op.srcExp.size) { i ->
+            val v = op.srcExp[i]
+            if (FloatExpressionEvaluator.isVariable(v)) resolveFloat(v) else v
+        }
+        return FloatExpressionEvaluator.eval(resolved)
+    }
+
+    /** Records the pointer press for every touch expression, as `TouchExpression.touchDown` does. */
+    internal fun touchDown(x: Float, y: Float, expressions: List<Operation.TouchExpression>) {
+        touchX = x
+        touchY = y
+        for (op in expressions) {
+            val state = touchStates.getOrPut(op.id) { TouchState() }
+            state.down = true
+            state.valueAtDown = getFloat(op.id).takeUnless { it.isNaN() } ?: resolveFloat(op.defValue).takeUnless { it.isNaN() } ?: 0f
+            state.expressionAtDown = evaluateTouchExpression(op)
+        }
+        needsRepaint = true
+    }
+
+    internal fun touchDrag(x: Float, y: Float) {
+        touchX = x
+        touchY = y
+        needsRepaint = true
+    }
+
+    internal fun touchUp() {
+        for (state in touchStates.values) state.down = false
+        needsRepaint = true
+    }
+
     /** A float by id: a system variable for ids 1..35, else the pool value, else NaN. */
     fun getFloat(id: Int): Float = when (id) {
         ID_CONTINUOUS_SEC, ID_ANIMATION_TIME -> { needsRepaint = true; animationTime }
@@ -79,6 +188,8 @@ class RemoteContext {
         ID_EPOCH_SECOND -> { needsRepaint = true; (frameTimeMillis / 1000L).toFloat() }
         ID_WINDOW_WIDTH -> windowWidth
         ID_WINDOW_HEIGHT -> windowHeight
+        ID_TOUCH_POS_X -> touchX
+        ID_TOUCH_POS_Y -> touchY
         ID_DENSITY -> density
         ID_API_LEVEL -> API_LEVEL.toFloat()
         ID_FONT_SIZE -> fontSize
@@ -130,6 +241,8 @@ class RemoteContext {
         const val ID_TIME_IN_HR = 4
         const val ID_WINDOW_WIDTH = 5
         const val ID_WINDOW_HEIGHT = 6
+        const val ID_TOUCH_POS_X = 13
+        const val ID_TOUCH_POS_Y = 14
         const val ID_DENSITY = 27
         const val ID_API_LEVEL = 28
         const val ID_ANIMATION_TIME = 30

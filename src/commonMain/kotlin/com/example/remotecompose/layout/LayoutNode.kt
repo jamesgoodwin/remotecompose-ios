@@ -3,6 +3,8 @@ package com.example.remotecompose.layout
 import androidx.compose.ui.graphics.Color
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PaintStyle
+import com.example.remotecompose.runtime.ActionTrigger
+import com.example.remotecompose.runtime.DocumentAction
 
 /**
  * `DimensionModifierOperation.Type` in ordinal order (the wire int of `MODIFIER_WIDTH` /
@@ -124,6 +126,9 @@ class LayoutNode(val kind: Kind) {
 
     /** Explicit visibility from a `MODIFIER_VISIBILITY`; `Visibility.VISIBLE` otherwise. */
     var visibility: Int = Visibility.VISIBLE
+
+    /** Action lists from `MODIFIER_CLICK` and the `MODIFIER_TOUCH_*` modifiers. */
+    val actions = mutableMapOf<ActionTrigger, MutableList<DocumentAction>>()
 
     var zIndex: Float = 0f
     var paddingLeft: Float = 0f

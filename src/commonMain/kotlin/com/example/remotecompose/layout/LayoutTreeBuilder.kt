@@ -2,6 +2,9 @@ package com.example.remotecompose.layout
 
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.parser.PaintState
+import com.example.remotecompose.runtime.ActionTrigger
+import com.example.remotecompose.runtime.DocumentAction
+import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.RemoteContext
 
 /**
@@ -20,12 +23,22 @@ import com.example.remotecompose.runtime.RemoteContext
  */
 internal class LayoutTreeBuilder(private val context: RemoteContext, private val engine: LayoutEngine) {
 
-    private class Frame(val node: LayoutNode?, val ownsNode: Boolean, val savedPaint: PaintState)
+    private class Frame(
+        val node: LayoutNode?,
+        val ownsNode: Boolean,
+        val savedPaint: PaintState,
+        /** Non-null inside an action list: where [addAction] puts what it collects. */
+        val actionSink: MutableList<DocumentAction>? = null,
+    )
 
     private val stack = mutableListOf<Frame>()
 
     /** The component that modifiers and draws currently attach to, or null outside any component. */
     val current: LayoutNode? get() = stack.lastOrNull()?.node
+
+    /** Hit regions of the most recently rendered tree, in window coordinates. */
+    var hitRegions: List<HitRegion> = emptyList()
+        private set
 
     val isOpen: Boolean get() = stack.isNotEmpty()
 
@@ -38,8 +51,20 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
         stack += Frame(current, ownsNode = false, savedPaint = paint.copy())
     }
 
-    fun openActionList(paint: PaintState) {
-        stack += Frame(null, ownsNode = false, savedPaint = paint.copy())
+    /**
+     * Opens an action list for [trigger] on the enclosing component. Its contents are collected
+     * as [DocumentAction]s rather than painted, as `ListActionsOperation` does.
+     */
+    fun openActionList(trigger: ActionTrigger, paint: PaintState) {
+        val sink = current?.actions?.getOrPut(trigger) { mutableListOf() }
+        stack += Frame(null, ownsNode = false, savedPaint = paint.copy(), actionSink = sink)
+    }
+
+    /** Adds [action] to the innermost open action list; false when no action list is open. */
+    fun addAction(action: DocumentAction): Boolean {
+        val sink = stack.lastOrNull()?.actionSink ?: return false
+        sink += action
+        return true
     }
 
     /**
@@ -90,6 +115,7 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
             root.x = 0f; root.y = 0f
         }
         engine.paint(root, out)
+        hitRegions = engine.collectHitRegions(root)
         return out
     }
 }

@@ -5,6 +5,7 @@ import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PaintStyle
 import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
+import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.TextMetricsProvider
 import kotlin.math.max
@@ -647,6 +648,22 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
             out += Opcode.DrawBitmap(node.bitmapId, 0f, 0f, w, h)
         }
         if (wrapAlpha) out += Opcode.MatrixRestore
+    }
+
+    /**
+     * Hit rectangles for every component carrying an action list, in window coordinates and in
+     * paint order, so a later (visually higher) component wins a hit test. A child's origin is
+     * its parent's origin plus that parent's padding, matching how [paint] translates.
+     */
+    fun collectHitRegions(node: LayoutNode, originX: Float = 0f, originY: Float = 0f, out: MutableList<HitRegion> = mutableListOf()): List<HitRegion> {
+        if (node.isGone) return out
+        val x = originX + node.x
+        val y = originY + node.y
+        if (node.actions.isNotEmpty()) {
+            out += HitRegion(x, y, x + node.width, y + node.height, node.actions.mapValues { it.value.toList() })
+        }
+        for (child in node.children) collectHitRegions(child, x + node.paddingLeft, y + node.paddingTop, out)
+        return out
     }
 
     companion object {

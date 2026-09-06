@@ -165,8 +165,15 @@ green on Desktop tests and visually checked on one device.
    and a padding modifier adds to a declared width. The showcase fixture was rewritten as a
    real Compose-style document (sized boxes, text components) and its "Dashboard" clipping is
    gone. Not ported: FitBox scaling (treated as Box), intrinsic min/max dimensions, scroll.
-7. **Touch and actions.** `TOUCH_EXPRESSION`, `MODIFIER_CLICK`/`TOUCH_*`, `VALUE_*_CHANGE`,
-   `HOST_ACTION` dispatch through the context. Interactive regions come from laid-out components.
+7. **Touch and actions (done).** `MODIFIER_CLICK`/`MULTI_CLICK`/`TOUCH_*` collect their action
+   lists onto the component (`DocumentAction`), and `LayoutEngine.collectHitRegions` turns the
+   laid-out tree into hit rectangles. `RemoteComposeDocument.click`/`touchDown`/`touchDrag`/
+   `touchUp` run them: `VALUE_*_CHANGE` write pool values through `overrideFloat`/`Integer`/
+   `Text` (so the next frame shows the change), the expression variants evaluate a
+   `FloatExpression` by id, and `HOST_ACTION` reaches the host through `onHostAction`.
+   `TOUCH_EXPRESSION` follows the pointer in its default mode (`ID_TOUCH_POS_X`/`_Y`, drag delta
+   from the press, clamped to min/max); velocity easing, wrap and notch stops are decoded but
+   not applied. Both composables send gestures to the document first.
 8. **Remaining draw opcodes by real effect.** Bitmap fonts, shaders, text on path/circle (real
    glyph placement), matrix expressions, path expressions. Each with fixture and test.
 9. **Cross-platform pixel test harness.** Automate what the loop did by hand: render a fixture on
