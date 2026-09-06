@@ -1,5 +1,6 @@
 import androidx.compose.remote.creation.JvmRcPlatformServices
 import androidx.compose.remote.creation.Rc
+import androidx.compose.remote.creation.RcPaint
 import androidx.compose.remote.creation.RemoteComposeWriter
 import androidx.compose.remote.creation.RemotePath
 import androidx.compose.remote.creation.actions.HostAction
@@ -49,7 +50,98 @@ fun main(args: Array<String>) {
         buildTextTransformTest()
         return
     }
+    if (args.getOrNull(0) == "paint") {
+        buildPaintSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * Exercises every `PaintBundle` attribute the renderer decodes, through the official `RcPaint`
+ * API, so `paint.rc` doubles as the fixture for `PaintFixtureTest` and as a visual cross-check
+ * document. Each draw is placed on a 200x200 grid so a bad decode is visible, and several steps
+ * deliberately rely on paint state being cumulative across `commit()` calls.
+ */
+private fun buildPaintSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(200, 200, "paint", platform)
+
+    // 1. Stroke style, width, round cap and join. Red.
+    writer.getRcPaint()
+        .setColor(0xFFE53935.toInt())
+        .setStyle(1)
+        .setStrokeWidth(6f)
+        .setStrokeCap(1)
+        .setStrokeJoin(1)
+        .commit()
+    writer.drawRect(12f, 12f, 60f, 60f)
+
+    // 2. Only the style changes back to fill; color and stroke settings must carry over.
+    writer.getRcPaint().setStyle(0).commit()
+    writer.drawCircle(90f, 36f, 20f)
+
+    // 3. Alpha replaces the color's alpha channel: 50% blue over the red circle.
+    writer.getRcPaint().setColor(0xFF1E88E5.toInt()).setAlpha(0.5f).commit()
+    writer.drawRect(80f, 26f, 140f, 46f)
+
+    // 4. Stroke width and square cap on a line; a fresh opaque color resets alpha.
+    writer.getRcPaint().setColor(0xFF000000.toInt()).setStrokeWidth(4f).setStrokeCap(2).commit()
+    writer.drawLine(150f, 20f, 190f, 60f)
+
+    // 5. Text size 24 then 10 with a bold italic monospace typeface.
+    writer.getRcPaint().setTextSize(24f).commit()
+    writer.drawTextAnchored("Big", 12f, 66f, -1f, -1f, 0)
+    writer.getRcPaint().setTextSize(10f).setTypeface(RcPaint.FONT_TYPE_MONOSPACE, 700, true).commit()
+    writer.drawTextAnchored("bold mono", 70f, 76f, -1f, -1f, 0)
+
+    // 6. Linear gradient with explicit stops, clamp tile mode.
+    writer.getRcPaint()
+        .setLinearGradient(
+            12f, 110f, 92f, 110f,
+            intArrayOf(0xFFFF0000.toInt(), 0xFF0000FF.toInt()),
+            floatArrayOf(0f, 1f),
+            0,
+        )
+        .commit()
+    writer.drawRect(12f, 100f, 92f, 130f)
+
+    // 7. Radial gradient without stops.
+    writer.getRcPaint()
+        .setRadialGradient(140f, 115f, 25f, intArrayOf(0xFFFFFFFF.toInt(), 0xFF43A047.toInt()), null, 0)
+        .commit()
+    writer.drawCircle(140f, 115f, 25f)
+
+    // 8. Sweep gradient.
+    writer.getRcPaint()
+        .setSweepGradient(
+            52f, 165f,
+            intArrayOf(0xFFFF0000.toInt(), 0xFF00FF00.toInt(), 0xFF0000FF.toInt(), 0xFFFF0000.toInt()),
+            null,
+        )
+        .commit()
+    writer.drawRect(12f, 140f, 92f, 190f)
+
+    // 9. Clearing the shader and filling from a color-pool id.
+    val magentaId = writer.addColor(0xFFD500F9.toInt())
+    writer.getRcPaint().setShader(0).setColorId(magentaId).commit()
+    writer.drawRect(110f, 140f, 190f, 158f)
+
+    // 10. Fill-and-stroke with a bevel join.
+    writer.getRcPaint().setStyle(2).setStrokeWidth(6f).setStrokeJoin(2).commit()
+    writer.drawRect(120f, 170f, 180f, 188f)
+
+    // 11. Paint set inside a component must not leak out of it: green inside the box, magenta
+    //     fill-and-stroke restored after endBox.
+    writer.startBox(RecordingModifier(), 0, 0)
+    writer.getRcPaint().setColor(0xFF43A047.toInt()).setStyle(0).commit()
+    writer.drawRect(160f, 66f, 190f, 80f)
+    writer.endBox()
+    writer.drawCircle(150f, 86f, 6f)
+
+    val bytes = writer.encodeToByteArray()
+    File("paint.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to paint.rc")
 }
 
 /**

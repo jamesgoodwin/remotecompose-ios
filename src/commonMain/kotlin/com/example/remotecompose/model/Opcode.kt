@@ -107,10 +107,9 @@ sealed interface Opcode {
      * Draws text at ([x], [y]).
      *
      * @property stringIndex Index into the document's [com.example.remotecompose.parser.StringPool].
-     * @property fontSize Font size in SP.
-     * @property colorArgb Text color, packed ARGB (kept packed rather than a resolved `Color` so
-     *   this data class stays a plain value type; the execution engine unpacks it when building
-     *   a `TextStyle`).
+     * @property paint The cumulative paint in effect when the text was issued: color, text size
+     *   in document pixels, weight/italic/family, and any gradient shader. Same source of truth
+     *   as every shape opcode's paint.
      * @property substringStart When non-null (only `Operations.DRAW_TEXT_RUN` carries these —
      *   plain `Operations.DRAW_TEXT_ANCHORED` always draws the whole pool entry), only the
      *   `[substringStart, substringEnd)` slice of the resolved string is drawn, resolved at
@@ -141,8 +140,7 @@ sealed interface Opcode {
         val stringIndex: Int,
         val x: Float,
         val y: Float,
-        val fontSize: Float,
-        val colorArgb: Int,
+        val paint: PaintStyle,
         val substringStart: Int? = null,
         val substringEnd: Int? = null,
         val panX: Float = -1f,

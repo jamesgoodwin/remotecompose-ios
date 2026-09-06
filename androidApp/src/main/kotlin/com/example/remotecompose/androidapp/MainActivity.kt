@@ -26,8 +26,11 @@ class MainActivity : ComponentActivity() {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+        // `adb shell am start -n <package>/.MainActivity --ei page N` launches straight onto a
+        // payload page for scripted screenshots; see DemoScreen.
+        val initialPage = intent.getIntExtra("page", 0)
         setContent {
-            DemoScreen()
+            DemoScreen(initialPage = initialPage)
         }
     }
 }

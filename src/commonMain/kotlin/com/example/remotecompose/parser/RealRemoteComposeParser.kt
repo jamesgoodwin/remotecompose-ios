@@ -98,12 +98,9 @@ object RealRemoteComposeParser {
     private const val OP_TEXT_TRANSFORM = 199
 
     /**
-     * A paint-property bundle (observed opcode id 40; the real symbolic `Operations` name wasn't
-     * confirmed against source, only its wire shape). Framed as
-     * `[wordCount:i32][wordCount × i32]`, i.e. self-describing by word count rather than a fixed
-     * shape — the one real opcode here that *is* generically skippable. Observed as
-     * `(tag=4, argbColor)` for a single `setColor(...).commit()` call; this parser only extracts
-     * the last word as a color, which holds for that single-property case.
+     * `Operations.PAINT_VALUES` — a `PaintBundle` delta, `[wordCount:i32][wordCount × i32]`,
+     * applied cumulatively onto the current paint by [PaintBundleDecoder] (which documents the
+     * per-attribute word layout).
      */
     private const val OP_PAINT_BUNDLE = 40
 
@@ -1402,8 +1399,9 @@ object RealRemoteComposeParser {
     private const val OP_CLIP_RECT = 39
 
     /**
-     * `drawTextAnchored` carries no font-size parameter — real font sizing comes from a text style
-     * this minimal parser doesn't yet decode — so text is drawn at a fixed, reasonable default.
+     * Fallback font size for a `LAYOUT_TEXT` component whose own size field is an unresolved
+     * variable reference. Canvas text (`drawTextAnchored` and friends) takes its size from the
+     * cumulative paint instead — see [PaintState].
      */
     private const val DEFAULT_TEXT_SIZE_SP = 16f
 
@@ -1418,7 +1416,11 @@ object RealRemoteComposeParser {
 
         var width = 0
         var height = 0
-        var currentColor = Color.Black
+        // Cumulative paint, exactly as the real player's PaintContext keeps it: each PAINT_VALUES
+        // bundle is a delta applied on top of the previous state, and every draw opcode captures
+        // a snapshot of it. Saved on scope push and restored on CONTAINER_END, mirroring
+        // Component.paint()'s savePaint()/restorePaint() around each component's own painting.
+        val paint = PaintState()
         val textPool = mutableMapOf<Int, String>()
         val pathPool = mutableMapOf<Int, List<PathCommand>>()
         val idListPool = mutableMapOf<Int, List<Int>>()
@@ -1493,7 +1495,7 @@ object RealRemoteComposeParser {
         // the Column's. This naturally recurses: a nested Column's own CONTAINER_END arranges its
         // own children (rewriting their coordinates in place) before its enclosing Box (and in turn
         // that Box's enclosing Column) ever inspects its bounding box.
-        class ScopeFrame(val startIndex: Int, val parent: ScopeFrame?) {
+        class ScopeFrame(val startIndex: Int, val parent: ScopeFrame?, val savedPaint: PaintState) {
             val cleanupOpcodes = mutableListOf<Opcode>()
             var backgroundColor: Color? = null
             // Set by OP_MODIFIER_BACKGROUND's real (javap-confirmed) trailing shapeType int:
@@ -1682,7 +1684,7 @@ object RealRemoteComposeParser {
         }
         val scopeStack = mutableListOf<ScopeFrame>()
         fun pushScope() {
-            scopeStack.add(ScopeFrame(opcodes.size, scopeStack.lastOrNull()))
+            scopeStack.add(ScopeFrame(opcodes.size, scopeStack.lastOrNull(), paint.copy()))
         }
         fun attachToTopScope(op: Opcode) {
             scopeStack.lastOrNull()?.cleanupOpcodes?.add(op)
@@ -1811,8 +1813,8 @@ object RealRemoteComposeParser {
                         // participate in real Column/Row arrangement without being ignored
                         // entirely, not a claim of pixel-accurate text bounds.
                         val text = textPool[op.stringIndex] ?: ""
-                        val estimatedWidth = text.length * op.fontSize * 0.55f
-                        val estimatedHeight = op.fontSize * 1.2f
+                        val estimatedWidth = text.length * op.paint.textSize * 0.55f
+                        val estimatedHeight = op.paint.textSize * 1.2f
                         expand(
                             op.x + offsetX, op.y + offsetY,
                             op.x + estimatedWidth + offsetX, op.y + estimatedHeight + offsetY,
@@ -2237,9 +2239,14 @@ object RealRemoteComposeParser {
 
                 OP_PAINT_BUNDLE -> {
                     val wordCount = reader.readS32()
-                    var lastWord = 0
-                    repeat(wordCount) { lastWord = reader.readS32() }
-                    if (wordCount >= 2) currentColor = Color(lastWord)
+                    val words = IntArray(wordCount) { reader.readS32() }
+                    PaintBundleDecoder.apply(
+                        words = words,
+                        state = paint,
+                        resolveFloat = ::resolveFloat,
+                        colorById = { colorPool[it] },
+                        textById = { textPool[it] },
+                    )
                 }
 
                 OP_DRAW_RECT -> {
@@ -2249,7 +2256,7 @@ object RealRemoteComposeParser {
                     val bottom = reader.readFloat32()
                     opcodes += Opcode.DrawRect(
                         left, top, right, bottom,
-                        PaintStyle(currentColor, PaintStyleKind.FILL),
+                        paint.snapshot(),
                     )
                 }
 
@@ -2259,7 +2266,7 @@ object RealRemoteComposeParser {
                     val radius = reader.readFloat32()
                     opcodes += Opcode.DrawCircle(
                         centerX, centerY, radius,
-                        PaintStyle(currentColor, PaintStyleKind.FILL),
+                        paint.snapshot(),
                     )
                 }
 
@@ -2272,7 +2279,7 @@ object RealRemoteComposeParser {
                     val radiusY = reader.readFloat32()
                     opcodes += Opcode.DrawRoundRect(
                         left, top, right, bottom, radiusX, radiusY,
-                        PaintStyle(currentColor, PaintStyleKind.FILL),
+                        paint.snapshot(),
                     )
                 }
 
@@ -2289,8 +2296,7 @@ object RealRemoteComposeParser {
                         stringIndex = textId,
                         x = x,
                         y = y,
-                        fontSize = DEFAULT_TEXT_SIZE_SP,
-                        colorArgb = currentColor.toArgb(),
+                        paint = paint.snapshot(),
                         substringStart = start,
                         substringEnd = end,
                     )
@@ -2307,8 +2313,7 @@ object RealRemoteComposeParser {
                         stringIndex = textId,
                         x = x,
                         y = y,
-                        fontSize = DEFAULT_TEXT_SIZE_SP,
-                        colorArgb = currentColor.toArgb(),
+                        paint = paint.snapshot(),
                         panX = panX,
                         panY = panY,
                     )
@@ -2328,8 +2333,7 @@ object RealRemoteComposeParser {
                         stringIndex = textId,
                         x = centerX + radius * cos(startAngleRadians),
                         y = centerY + radius * sin(startAngleRadians),
-                        fontSize = DEFAULT_TEXT_SIZE_SP,
-                        colorArgb = currentColor.toArgb(),
+                        paint = paint.snapshot(),
                     )
                 }
 
@@ -2344,8 +2348,7 @@ object RealRemoteComposeParser {
                             stringIndex = textId,
                             x = anchor.x + hOffset,
                             y = anchor.y + vOffset,
-                            fontSize = DEFAULT_TEXT_SIZE_SP,
-                            colorArgb = currentColor.toArgb(),
+                            paint = paint.snapshot(),
                         )
                     }
                 }
@@ -2357,7 +2360,7 @@ object RealRemoteComposeParser {
                     val y2 = reader.readFloat32()
                     opcodes += Opcode.DrawLine(
                         x1, y1, x2, y2,
-                        PaintStyle(currentColor, PaintStyleKind.STROKE),
+                        paint.snapshot().copy(style = PaintStyleKind.STROKE),
                     )
                 }
 
@@ -2368,7 +2371,7 @@ object RealRemoteComposeParser {
                     val bottom = reader.readFloat32()
                     opcodes += Opcode.DrawOval(
                         left, top, right, bottom,
-                        PaintStyle(currentColor, PaintStyleKind.FILL),
+                        paint.snapshot(),
                     )
                 }
 
@@ -2382,7 +2385,7 @@ object RealRemoteComposeParser {
                     opcodes += Opcode.DrawArc(
                         left, top, right, bottom, startAngle, sweepAngle,
                         useCenter = opId == OP_DRAW_SECTOR,
-                        paint = PaintStyle(currentColor, PaintStyleKind.FILL),
+                        paint = paint.snapshot(),
                     )
                 }
 
@@ -2444,7 +2447,7 @@ object RealRemoteComposeParser {
                     if (lerped != null) {
                         val trimmed = trimPath(lerped, start, stop)
                         if (trimmed.isNotEmpty()) {
-                            opcodes += Opcode.DrawPath(trimmed, PaintStyle(currentColor, PaintStyleKind.FILL))
+                            opcodes += Opcode.DrawPath(trimmed, paint.snapshot())
                         }
                     }
                 }
@@ -2473,7 +2476,7 @@ object RealRemoteComposeParser {
                     val commands = pathPool[pathId] ?: throw RemoteComposeParseException(
                         "DrawPath references path id $pathId which no prior DataPath defined",
                     )
-                    opcodes += Opcode.DrawPath(commands, PaintStyle(currentColor, PaintStyleKind.FILL))
+                    opcodes += Opcode.DrawPath(commands, paint.snapshot())
                 }
 
                 OP_CLIP_PATH -> {
@@ -2995,6 +2998,7 @@ object RealRemoteComposeParser {
                     // finished [startIndex, opcodes.size) range as one of *its* children.
                     val frame = scopeStack.removeLastOrNull()
                     if (frame != null) {
+                        paint.restoreFrom(frame.savedPaint)
                         val bg = frame.backgroundColor
                         if (bg != null) {
                             contentBounds(opcodes.subList(frame.startIndex, opcodes.size))?.let { bounds ->
@@ -3116,8 +3120,11 @@ object RealRemoteComposeParser {
                                 stringIndex = frame.textId,
                                 x = alignOffsetX,
                                 y = 0f,
-                                fontSize = frame.textFontSize,
-                                colorArgb = frame.textColorArgb,
+                                paint = PaintStyle(
+                                    Color(frame.textColorArgb),
+                                    PaintStyleKind.FILL,
+                                    textSize = frame.textFontSize,
+                                ),
                             )
                         }
                         // MODIFIER_GRAPHICS_LAYER's SHAPE/SHAPE_RADIUS: a real clip, nested

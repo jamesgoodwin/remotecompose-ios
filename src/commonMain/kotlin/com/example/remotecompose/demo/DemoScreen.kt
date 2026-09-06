@@ -30,17 +30,28 @@ import androidx.compose.ui.unit.sp
  * through the exact same [RealPayloadDemoScreen] path — this composable adds nothing to that,
  * it's purely a demo-host switcher.
  */
+/**
+ * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint). Lets the
+ *   device hosts be launched straight onto a given page for scripted screenshots: Android reads
+ *   an `--ei page N` intent extra, iOS reads an `RC_PAGE` environment variable.
+ */
 @Composable
-fun DemoScreen() {
-    var showcase by remember { mutableStateOf(false) }
+fun DemoScreen(initialPage: Int = 0) {
+    var page by remember { mutableStateOf(initialPage.coerceIn(0, 2)) }
+    val pages = listOf(
+        "Coverage" to SAMPLE_RC_BYTES,
+        "Showcase" to SHOWCASE_RC_BYTES,
+        "Paint" to PAINT_RC_BYTES,
+    )
+    val (label, bytes) = pages[page]
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) { detectTapGestures { showcase = !showcase } },
+            .pointerInput(Unit) { detectTapGestures { page = (page + 1) % pages.size } },
     ) {
-        RealPayloadDemoScreen(if (showcase) SHOWCASE_RC_BYTES else SAMPLE_RC_BYTES)
+        RealPayloadDemoScreen(bytes)
         BasicText(
-            text = if (showcase) "Showcase — tap to switch" else "Coverage — tap to switch",
+            text = "$label — tap to switch",
             style = TextStyle(color = Color.White, fontSize = 13.sp, textAlign = TextAlign.Center),
             modifier = Modifier
                 .align(Alignment.BottomCenter)

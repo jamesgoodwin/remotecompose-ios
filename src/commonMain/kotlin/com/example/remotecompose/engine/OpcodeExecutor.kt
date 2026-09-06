@@ -4,23 +4,35 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.DrawStyle
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.sp
+import com.example.remotecompose.model.FontFamilyKind
+import com.example.remotecompose.model.GradientSpec
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PaintStyle
 import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
+import com.example.remotecompose.model.StrokeCapKind
+import com.example.remotecompose.model.StrokeJoinKind
 import kotlin.math.roundToInt
 
 /**
@@ -32,6 +44,11 @@ import kotlin.math.roundToInt
  * helpers — because `OP_MATRIX_SAVE` / `OP_MATRIX_RESTORE` are independent, non-nested-lambda
  * opcodes in the stream; see [RenderContext]'s KDoc for why no separate matrix stack is kept on
  * the Kotlin side.
+ *
+ * Every draw opcode carries the [PaintStyle] snapshot that was current when it was issued; this
+ * executor maps that onto a Compose [Brush] (solid color or gradient), a [DrawStyle] (fill and/or
+ * stroke with cap/join/miter) and a [BlendMode], and for text a [TextStyle] whose size is the
+ * paint's document-pixel text size converted through this `DrawScope`'s own density.
  *
  * Every opcode is dispatched inside its own `try/catch`, so one malformed or out-of-range opcode
  * (e.g. a bitmap index with no matching pool entry, or a degenerate/negative rect) degrades only
@@ -109,69 +126,75 @@ object OpcodeExecutor {
 
                     is Opcode.ClipPath -> transform.clipPath(buildPath(opcode.commands))
 
-                    is Opcode.DrawRect -> withPaintStyles(opcode.paint) { style ->
+                    is Opcode.DrawRect -> withPaintStyles(opcode.paint) { brush, style, blend ->
                         drawScope.drawRect(
-                            color = opcode.paint.color,
+                            brush = brush,
                             topLeft = Offset(opcode.left, opcode.top),
                             size = rectSize(opcode.left, opcode.top, opcode.right, opcode.bottom),
                             style = style,
+                            blendMode = blend,
                         )
                     }
 
-                    is Opcode.DrawRoundRect -> withPaintStyles(opcode.paint) { style ->
+                    is Opcode.DrawRoundRect -> withPaintStyles(opcode.paint) { brush, style, blend ->
                         drawScope.drawRoundRect(
-                            color = opcode.paint.color,
+                            brush = brush,
                             topLeft = Offset(opcode.left, opcode.top),
                             size = rectSize(opcode.left, opcode.top, opcode.right, opcode.bottom),
                             cornerRadius = CornerRadius(opcode.radiusX, opcode.radiusY),
                             style = style,
+                            blendMode = blend,
                         )
                     }
 
-                    is Opcode.DrawCircle -> withPaintStyles(opcode.paint) { style ->
+                    is Opcode.DrawCircle -> withPaintStyles(opcode.paint) { brush, style, blend ->
                         drawScope.drawCircle(
-                            color = opcode.paint.color,
+                            brush = brush,
                             radius = opcode.radius.coerceAtLeast(0f),
                             center = Offset(opcode.centerX, opcode.centerY),
                             style = style,
+                            blendMode = blend,
                         )
                     }
 
                     is Opcode.DrawPath -> {
                         val path = buildPath(opcode.commands)
-                        withPaintStyles(opcode.paint) { style ->
-                            drawScope.drawPath(path = path, color = opcode.paint.color, style = style)
+                        withPaintStyles(opcode.paint) { brush, style, blend ->
+                            drawScope.drawPath(path = path, brush = brush, style = style, blendMode = blend)
                         }
                     }
 
                     is Opcode.DrawLine -> drawScope.drawLine(
-                        color = opcode.paint.color,
+                        brush = brushOf(opcode.paint),
                         start = Offset(opcode.x1, opcode.y1),
                         end = Offset(opcode.x2, opcode.y2),
-                        // drawLine has no Fill/Stroke DrawStyle choice — it's always stroked — so
-                        // a zero strokeWidth (the default for shapes whose real paint bundle
-                        // hasn't been decoded to carry one) would render invisibly; floor it.
+                        // Android draws a line with the paint's stroke width regardless of style;
+                        // a zero width is a hairline, which Compose has no notion of, so floor it.
                         strokeWidth = opcode.paint.strokeWidth.coerceAtLeast(1f),
+                        cap = strokeCapOf(opcode.paint.strokeCap),
+                        blendMode = blendModeOf(opcode.paint),
                     )
 
-                    is Opcode.DrawOval -> withPaintStyles(opcode.paint) { style ->
+                    is Opcode.DrawOval -> withPaintStyles(opcode.paint) { brush, style, blend ->
                         drawScope.drawOval(
-                            color = opcode.paint.color,
+                            brush = brush,
                             topLeft = Offset(opcode.left, opcode.top),
                             size = rectSize(opcode.left, opcode.top, opcode.right, opcode.bottom),
                             style = style,
+                            blendMode = blend,
                         )
                     }
 
-                    is Opcode.DrawArc -> withPaintStyles(opcode.paint) { style ->
+                    is Opcode.DrawArc -> withPaintStyles(opcode.paint) { brush, style, blend ->
                         drawScope.drawArc(
-                            color = opcode.paint.color,
+                            brush = brush,
                             startAngle = opcode.startAngleDegrees,
                             sweepAngle = opcode.sweepAngleDegrees,
                             useCenter = opcode.useCenter,
                             topLeft = Offset(opcode.left, opcode.top),
                             size = rectSize(opcode.left, opcode.top, opcode.right, opcode.bottom),
                             style = style,
+                            blendMode = blend,
                         )
                     }
 
@@ -186,7 +209,7 @@ object OpcodeExecutor {
                         } else {
                             fullText
                         }
-                        val style = TextStyle(fontSize = opcode.fontSize.sp, color = Color(opcode.colorArgb))
+                        val style = textStyleOf(drawScope, opcode.paint)
                         // panX/panY == -1f (every other DrawText-producing opcode's own implicit
                         // top-left-anchor behavior) needs no measurement at all — the common case.
                         val drawX: Float
@@ -212,6 +235,7 @@ object OpcodeExecutor {
                             text = text,
                             topLeft = Offset(drawX, drawY),
                             style = style,
+                            blendMode = blendModeOf(opcode.paint),
                         )
                     }
 
@@ -284,14 +308,138 @@ object OpcodeExecutor {
      * Compose `DrawScope` draw call takes a single [DrawStyle] per invocation, unlike Android's
      * combined `Paint.Style.FILL_AND_STROKE`.
      */
-    private inline fun withPaintStyles(paint: PaintStyle, block: (DrawStyle) -> Unit) {
+    private inline fun withPaintStyles(paint: PaintStyle, block: (Brush, DrawStyle, BlendMode) -> Unit) {
+        val brush = brushOf(paint)
+        val blend = blendModeOf(paint)
         when (paint.style) {
-            PaintStyleKind.FILL -> block(Fill)
-            PaintStyleKind.STROKE -> block(Stroke(width = paint.strokeWidth))
+            PaintStyleKind.FILL -> block(brush, Fill, blend)
+            PaintStyleKind.STROKE -> block(brush, strokeOf(paint), blend)
             PaintStyleKind.FILL_AND_STROKE -> {
-                block(Fill)
-                block(Stroke(width = paint.strokeWidth))
+                block(brush, Fill, blend)
+                block(brush, strokeOf(paint), blend)
             }
+        }
+    }
+
+    private fun strokeOf(paint: PaintStyle): Stroke = Stroke(
+        width = paint.strokeWidth,
+        miter = paint.strokeMiter,
+        cap = strokeCapOf(paint.strokeCap),
+        join = when (paint.strokeJoin) {
+            StrokeJoinKind.MITER -> StrokeJoin.Miter
+            StrokeJoinKind.ROUND -> StrokeJoin.Round
+            StrokeJoinKind.BEVEL -> StrokeJoin.Bevel
+        },
+    )
+
+    private fun strokeCapOf(cap: StrokeCapKind): StrokeCap = when (cap) {
+        StrokeCapKind.BUTT -> StrokeCap.Butt
+        StrokeCapKind.ROUND -> StrokeCap.Round
+        StrokeCapKind.SQUARE -> StrokeCap.Square
+    }
+
+    /** A solid brush from the paint color, or the paint's gradient shader when one is set. */
+    private fun brushOf(paint: PaintStyle): Brush {
+        val gradient = paint.gradient ?: return SolidColor(paint.color)
+        val stops = gradient.stops
+        val colorStops = stops?.takeIf { it.size == gradient.colors.size }
+            ?.mapIndexed { i, stop -> stop to gradient.colors[i] }
+            ?.toTypedArray()
+        return when (gradient) {
+            is GradientSpec.Linear -> {
+                val start = Offset(gradient.startX, gradient.startY)
+                val end = Offset(gradient.endX, gradient.endY)
+                val tile = tileModeOf(gradient.tileMode)
+                if (colorStops != null) Brush.linearGradient(*colorStops, start = start, end = end, tileMode = tile)
+                else Brush.linearGradient(gradient.colors, start = start, end = end, tileMode = tile)
+            }
+            is GradientSpec.Radial -> {
+                val center = Offset(gradient.centerX, gradient.centerY)
+                val tile = tileModeOf(gradient.tileMode)
+                if (colorStops != null) Brush.radialGradient(*colorStops, center = center, radius = gradient.radius, tileMode = tile)
+                else Brush.radialGradient(gradient.colors, center = center, radius = gradient.radius, tileMode = tile)
+            }
+            is GradientSpec.Sweep -> {
+                val center = Offset(gradient.centerX, gradient.centerY)
+                if (colorStops != null) Brush.sweepGradient(*colorStops, center = center)
+                else Brush.sweepGradient(gradient.colors, center = center)
+            }
+        }
+    }
+
+    /** `android.graphics.Shader.TileMode` ordinal to Compose. */
+    private fun tileModeOf(mode: Int): TileMode = when (mode) {
+        1 -> TileMode.Repeated
+        2 -> TileMode.Mirror
+        else -> TileMode.Clamp
+    }
+
+    /** `PaintBundle.BLEND_MODE_*` ordinal to Compose; anything unmapped is source-over. */
+    private fun blendModeOf(paint: PaintStyle): BlendMode = when (paint.blendMode) {
+        0 -> BlendMode.Clear
+        1 -> BlendMode.Src
+        2 -> BlendMode.Dst
+        3 -> BlendMode.SrcOver
+        4 -> BlendMode.DstOver
+        5 -> BlendMode.SrcIn
+        6 -> BlendMode.DstIn
+        7 -> BlendMode.SrcOut
+        8 -> BlendMode.DstOut
+        9 -> BlendMode.SrcAtop
+        10 -> BlendMode.DstAtop
+        11 -> BlendMode.Xor
+        12 -> BlendMode.Plus
+        13 -> BlendMode.Modulate
+        14 -> BlendMode.Screen
+        15 -> BlendMode.Overlay
+        16 -> BlendMode.Darken
+        17 -> BlendMode.Lighten
+        18 -> BlendMode.ColorDodge
+        19 -> BlendMode.ColorBurn
+        20 -> BlendMode.Hardlight
+        21 -> BlendMode.Softlight
+        22 -> BlendMode.Difference
+        23 -> BlendMode.Exclusion
+        24 -> BlendMode.Multiply
+        25 -> BlendMode.Hue
+        26 -> BlendMode.Saturation
+        27 -> BlendMode.Color
+        28 -> BlendMode.Luminosity
+        else -> DrawScope.DefaultBlendMode
+    }
+
+    /**
+     * Builds the [TextStyle] for a text opcode. The paint's text size is in document pixels, so
+     * it is converted to sp through [drawScope]'s own density and font scale; the result is
+     * exactly `textSize` physical pixels tall on every platform, matching the shapes around it.
+     */
+    private fun textStyleOf(drawScope: DrawScope, paint: PaintStyle): TextStyle {
+        val fontSize = with(drawScope) { paint.textSize.toSp() }
+        val weight = FontWeight(paint.fontWeight.coerceIn(1, 1000))
+        val fontStyle = if (paint.fontItalic) FontStyle.Italic else FontStyle.Normal
+        val family = when (paint.fontFamily) {
+            FontFamilyKind.DEFAULT -> FontFamily.Default
+            FontFamilyKind.SANS_SERIF -> FontFamily.SansSerif
+            FontFamilyKind.SERIF -> FontFamily.Serif
+            FontFamilyKind.MONOSPACE -> FontFamily.Monospace
+        }
+        val gradient = paint.gradient
+        return if (gradient != null) {
+            TextStyle(
+                brush = brushOf(paint),
+                fontSize = fontSize,
+                fontWeight = weight,
+                fontStyle = fontStyle,
+                fontFamily = family,
+            )
+        } else {
+            TextStyle(
+                color = paint.color,
+                fontSize = fontSize,
+                fontWeight = weight,
+                fontStyle = fontStyle,
+                fontFamily = family,
+            )
         }
     }
 

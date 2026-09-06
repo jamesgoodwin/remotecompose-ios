@@ -1,5 +1,6 @@
 package com.example.remotecompose.parser
 
+import androidx.compose.ui.graphics.Color
 import com.example.remotecompose.model.Header
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PaintStyle
@@ -142,13 +143,19 @@ object RemoteComposeParser {
             Opcode.DrawPath(commands, readPaint(reader))
         }
 
-        RcOpcode.DRAW_TEXT -> Opcode.DrawText(
-            stringIndex = reader.readVarUIntAsInt(),
-            x = reader.readFloat32(),
-            y = reader.readFloat32(),
-            fontSize = reader.readFloat32(),
-            colorArgb = reader.readS32(),
-        )
+        RcOpcode.DRAW_TEXT -> {
+            val stringIndex = reader.readVarUIntAsInt()
+            val x = reader.readFloat32()
+            val y = reader.readFloat32()
+            val fontSize = reader.readFloat32()
+            val colorArgb = reader.readS32()
+            Opcode.DrawText(
+                stringIndex = stringIndex,
+                x = x,
+                y = y,
+                paint = PaintStyle(Color(colorArgb), PaintStyleKind.FILL, textSize = fontSize),
+            )
+        }
 
         RcOpcode.DRAW_BITMAP -> Opcode.DrawBitmap(
             bitmapIndex = reader.readVarUIntAsInt(),
