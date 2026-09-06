@@ -1426,6 +1426,26 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFFD84315.toInt()).commit()
     writer.drawTextAnchored(mergedTextId, 5f, 8f, -1f, -1f, 0)
 
+    // OP_COLOR_EXPRESSIONS (opcode 134) — previously completely unhandled. Same real colorPool
+    // consumer path as the dynamicBorder test above (MODIFIER_BORDER's colorRefFlag == 2), but the
+    // color id now comes from a real computed color expression instead of a literal DATA_COLOR:
+    // mode 0 (COLOR_COLOR_INTERPOLATE) interpolates pure red -> pure blue at tween=0.5 — real
+    // Utils.interpolateColor() does a gamma-2.2-corrected lerp (not naive linear RGB), so the
+    // real midpoint is a brighter, more saturated purple than a naive 50/50 average would give —
+    // and mode 4 (HSV_MODE) converts hue=1/3 (green), full saturation/value into RGB, which should
+    // compute pure green (0xFF00FF00) exactly.
+    val interpolatedColorId = writer.addColorExpression(0xFFFF0000.toInt(), 0xFF0000FF.toInt(), 0.5f)
+    writer.startBox(RecordingModifier().dynamicBorder(2f, 4f, interpolatedColorId, 0), 0, 0)
+    writer.getRcPaint().setColor(0xFF37474F.toInt()).commit()
+    writer.drawRect(143f, 2f, 158f, 12f)
+    writer.endBox()
+
+    val hsvColorId = writer.addColorExpression(1f / 3f, 1f, 1f)
+    writer.startBox(RecordingModifier().dynamicBorder(2f, 4f, hsvColorId, 0), 0, 0)
+    writer.getRcPaint().setColor(0xFF37474F.toInt()).commit()
+    writer.drawRect(163f, 2f, 178f, 12f)
+    writer.endBox()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

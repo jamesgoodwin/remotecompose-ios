@@ -12,6 +12,7 @@ import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -452,6 +453,31 @@ object RealRemoteComposeParser {
      * already read and write.
      */
     private const val OP_TEXT_MERGE = 136
+
+    /**
+     * `Operations.COLOR_EXPRESSIONS` — `RemoteComposeWriter.addColorExpression(...): Short`, 7
+     * overloads sharing one wire shape (source-confirmed via javap on the real
+     * `ColorExpression.read()`/`write()`/`apply()`): `[id:declareId][modeAlpha:i32][word1:i32]
+     * [word2:i32][word3:i32]`, where `mode = modeAlpha and 0xFF` and `alpha = (modeAlpha ushr 16)
+     * and 0xFF`. Real only for the two modes this parser can fully resolve: mode `0`
+     * (`COLOR_COLOR_INTERPOLATE`, `addColorExpression(Int, Int, Float)`) — `word1`/`word2` are
+     * literal ARGB ints, `word3` a NaN-taggable tween, real `Utils.interpolateColor()` doing a
+     * gamma-2.2-corrected per-channel lerp (not naive linear RGB) — and mode `4` (`HSV_MODE`,
+     * `addColorExpression(Float, Float, Float)`) — `word1`/`word2`/`word3` are float-bit-encoded
+     * hue/sat/value (hue as a `0f..1f` wheel fraction, not degrees), real `Utils.hsvToRgb()`
+     * doing the standard hexagon conversion, alpha always `255` since this writer overload has no
+     * alpha parameter. Modes `1`-`3` (`ID_COLOR`/`COLOR_ID`/`ID_ID_INTERPOLATE`, where `word1`
+     * and/or `word2` are [colorPool] id references instead of literal ARGB — real `apply()`
+     * resolves them via `RemoteContext.getColor(id)`) are implemented too, since they reuse the
+     * exact same [colorPool] this parser already maintains. Modes `5`/`6` (`ARGB_MODE`/
+     * `IDARGB_MODE`, direct float-channel colors with a NaN-taggable alpha) are left unresolved —
+     * same honest fallback every other unresolvable case in this parser already gets. Result
+     * stored in [colorPool], the same pool [OP_MODIFIER_BORDER]'s `colorRefFlag == 2` path (via
+     * `RecordingModifier.dynamicBorder(width, radius, colorId: Short, shapeType)`) already
+     * consumes — giving this a real, visually verifiable effect: a border rendered in the
+     * computed color.
+     */
+    private const val OP_COLOR_EXPRESSIONS = 134
 
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
@@ -2615,6 +2641,42 @@ object RealRemoteComposeParser {
                     textPool[textId] = left + right
                 }
 
+                OP_COLOR_EXPRESSIONS -> {
+                    val id = reader.readS32()
+                    val modeAlpha = reader.readS32()
+                    val mode = modeAlpha and 0xFF
+                    val alpha = (modeAlpha ushr 16) and 0xFF
+                    val word1 = reader.readS32()
+                    val word2 = reader.readS32()
+                    val word3 = reader.readS32()
+                    val computed: Int? = when (mode) {
+                        0, 1, 2, 3 -> {
+                            val c1 = if (mode and 1 != 0) colorPool[word1]?.toArgb() else word1
+                            val c2 = if (mode and 2 != 0) colorPool[word2]?.toArgb() else word2
+                            val tween = resolveFloat(Float.fromBits(word3))
+                            if (c1 != null && c2 != null && !tween.isNaN()) {
+                                interpolateColorArgb(c1, c2, tween)
+                            } else {
+                                null
+                            }
+                        }
+
+                        4 -> {
+                            val hue = resolveFloat(Float.fromBits(word1))
+                            val sat = resolveFloat(Float.fromBits(word2))
+                            val value = resolveFloat(Float.fromBits(word3))
+                            if (!hue.isNaN() && !sat.isNaN() && !value.isNaN()) {
+                                (alpha shl 24) or (hsvToRgbArgb(hue, sat, value) and 0xFFFFFF)
+                            } else {
+                                null
+                            }
+                        }
+
+                        else -> null // ARGB_MODE(5)/IDARGB_MODE(6) — left unresolved
+                    }
+                    if (computed != null) colorPool[id] = Color(computed)
+                }
+
                 OP_LOOP_START -> {
                     reader.readS32() // indexVariableId — no expression evaluator to feed it
                     val from = resolveFloat(reader.readFloat32())
@@ -3673,6 +3735,53 @@ object RealRemoteComposeParser {
                 ca is PathCommand.Close && cb is PathCommand.Close -> PathCommand.Close
                 else -> return null
             }
+        }
+    }
+
+    // OP_COLOR_EXPRESSIONS's real gamma-2.2-corrected color interpolation (source-confirmed via
+    // javap on the real Utils.interpolateColor()) — NOT a naive linear RGB lerp: each channel is
+    // decoded to linear light (channel/255)^2.2, lerped there, then re-encoded ^(1/2.2) before
+    // clamping back to a byte. `tween` of exactly 0f/NaN or 1f short-circuits to the input color
+    // unchanged (matching the real method's own guard).
+    private fun interpolateColorArgb(color1: Int, color2: Int, tween: Float): Int {
+        if (tween.isNaN() || tween == 0f) return color1
+        if (tween == 1f) return color2
+        fun channel(c: Int, shift: Int): Float = ((c ushr shift) and 0xFF) / 255f
+        fun gamma(v: Float): Float = v.toDouble().pow(2.2).toFloat()
+        val a1 = channel(color1, 24); val r1 = gamma(channel(color1, 16))
+        val g1 = gamma(channel(color1, 8)); val b1 = gamma(channel(color1, 0))
+        val a2 = channel(color2, 24); val r2 = gamma(channel(color2, 16))
+        val g2 = gamma(channel(color2, 8)); val b2 = gamma(channel(color2, 0))
+        val aOut = (a1 + tween * (a2 - a1))
+        val rOut = (r1 + tween * (r2 - r1)).toDouble().pow(1.0 / 2.2).toFloat()
+        val gOut = (g1 + tween * (g2 - g1)).toDouble().pow(1.0 / 2.2).toFloat()
+        val bOut = (b1 + tween * (b2 - b1)).toDouble().pow(1.0 / 2.2).toFloat()
+        fun toByte(v: Float): Int = (v * 255f).toInt().coerceIn(0, 255)
+        return (toByte(aOut) shl 24) or (toByte(rOut) shl 16) or (toByte(gOut) shl 8) or toByte(bOut)
+    }
+
+    // OP_COLOR_EXPRESSIONS's real HSV-to-RGB conversion (source-confirmed via javap on the real
+    // Utils.hsvToRgb()) — `hue` a 0f..1f wheel fraction (not degrees). Returns a fully opaque
+    // (0xFF alpha) ARGB int; the caller overwrites the alpha byte with the real op's own alpha
+    // field. Matches the real method's own edge case: `hue` of exactly 1f (segment index 6, one
+    // past the last hexagon wedge) returns plain transparent-black `0`, not a wrapped-around
+    // segment 0.
+    private fun hsvToRgbArgb(hue: Float, sat: Float, value: Float): Int {
+        val hh = hue * 6f
+        val i = hh.toInt()
+        val f = hh - i
+        val p = (0.5f + 255f * value * (1f - sat)).toInt()
+        val q = (0.5f + 255f * value * (1f - f * sat)).toInt()
+        val t = (0.5f + 255f * value * (1f - (1f - f) * sat)).toInt()
+        val v = (0.5f + 255f * value).toInt()
+        return when (i) {
+            0 -> -0x1000000 or (v shl 16) or (t shl 8) or p
+            1 -> -0x1000000 or (q shl 16) or (v shl 8) or p
+            2 -> -0x1000000 or (p shl 16) or (v shl 8) or t
+            3 -> -0x1000000 or (p shl 16) or (q shl 8) or v
+            4 -> -0x1000000 or (t shl 16) or (p shl 8) or v
+            5 -> -0x1000000 or (v shl 16) or (p shl 8) or q
+            else -> 0
         }
     }
 

@@ -385,7 +385,16 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `getText(srcId1) + getText(srcId2)` concatenation into a newly allocated text-pool slot the
  * real writer method itself returns — merging registered "Merged" and "Text" strings computes
  * "MergedText" exactly (confirmed via the parsed document's own string pool), not "Merged"/"Text"
- * individually or an unresolved reference. Shared by every platform demo entry
+ * individually or an unresolved reference, and a real `COLOR_EXPRESSIONS`
+ * (`writer.addColorExpression(...): Short` — previously a completely unhandled opcode) proof
+ * reusing the same [colorPool]-consuming `dynamicBorder` path already proven for a literal
+ * `DATA_COLOR`: one box's border color comes from a real `COLOR_COLOR_INTERPOLATE` (pure red
+ * interpolated with pure blue at `tween=0.5`) — real `Utils.interpolateColor()` does a
+ * gamma-2.2-corrected per-channel lerp, not a naive linear RGB average, computing a brighter
+ * `(186, 0, 186)` rather than the naive `(128, 0, 128)` (confirmed via the parsed opcode dump's
+ * own border-stroke color) — and another box's border color comes from a real `HSV_MODE`
+ * (`hue=1/3`, full saturation/value), real `Utils.hsvToRgb()`'s standard hexagon conversion
+ * computing pure green `(0, 255, 0)` exactly. Shared by every platform demo entry
  * point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -508,6 +517,9 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "//8AAAAAAAAAAN1CwAAAQzkAABAAAAAA/4AAV0MAAAAAQSAAAGzJ////LSgAAAACAAAABP9tTEEqAAAAAAAAAABB8AAAQSAAANbWZgAAAFgAAAAFQWxw" +
             "aGFmAAAAWQAAAARCZXRhZgAAAFoAAAAFR2FtbWGSACAAKgAAAAMAAABYAAAAWQAAAFqXAAAAWwAgACo/gAAAKAAAAAIAAAAE/0UnoIUAAABbQwIAAEMq" +
             "AAC/gAAAv4AAAAAAAACMAAAAXAAAAAKZAAAAXQAgACoAAABcKAAAAAIAAAAE/wBpXIUAAABdQwIAAEM+AAC/gAAAv4AAAAAAAABmAAAAXgAAAAZNZXJn" +
-            "ZWRmAAAAXwAAAARUZXh0iAAAAGAAAABeAAAAXygAAAACAAAABP/YQxWFAAAAYECgAABBAAAAv4AAAL+AAAAAAAAA",
+            "ZWRmAAAAXwAAAARUZXh0iAAAAGAAAABeAAAAXygAAAACAAAABP/YQxWFAAAAYECgAABBAAAAv4AAAL+AAAAAAAAAhgAAAGEAAAAA//8AAP8AAP8/AAAA" +
+            "yv///yz/////AAAAAAAAAABrAAAAAgAAAGEAAAAAAAAAAEAAAABAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAADJ////KygAAAACAAAABP83R08qQw8AAEAA" +
+            "AABDHgAAQUAAANbWhgAAAGIA/wAEPqqqqz+AAAA/gAAAyv///yr/////AAAAAAAAAABrAAAAAgAAAGIAAAAAAAAAAEAAAABAgAAAAAAAAAAAAAAAAAAA" +
+            "AAAAAAAAAADJ////KSgAAAACAAAABP83R08qQyMAAEAAAABDMgAAQUAAANbW",
     )
 }
