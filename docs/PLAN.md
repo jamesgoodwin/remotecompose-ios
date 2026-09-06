@@ -155,10 +155,16 @@ green on Desktop tests and visually checked on one device.
    `withFrameMillis` while the document reports `needsRepaint`. Calendar variables
    (`TIME_IN_SEC` etc.) are UTC; wrap/directional-snap, bounce, elastic and spline easing are
    decoded but not applied.
-6. **Component tree with a real measure pass.** Port `BoxLayout`, `RowLayout`, `ColumnLayout`,
-   `TextLayout`, `ImageLayout` measure/layout logic from bytecode. Replace `contentBounds()`
-   inference and the `ScopeFrame` state machine. Modifiers become `ModifierOperation`s on a
-   component rather than flags on a frame.
+6. **Component tree with a real measure pass (done).** `layout/` holds `LayoutNode` (a
+   component with ordered modifiers, canvas draws and children), `LayoutEngine` (a transcription
+   of `EnforceConstraintsMeasurePolicy.measure`, the Column/Row/Box/Flow/Collapsible/State/
+   Text/Image managers and `internalPaintingComponent`) and `LayoutTreeBuilder` (replaces the
+   `ScopeFrame` state machine). `contentBounds()` inference, `arrangeChildren` and every
+   `pendingXxx` variable are gone; `LOOP_START` re-walks its body with the loop variable set.
+   Two library facts worth knowing: a component with only canvas draws has no intrinsic size,
+   and a padding modifier adds to a declared width. The showcase fixture was rewritten as a
+   real Compose-style document (sized boxes, text components) and its "Dashboard" clipping is
+   gone. Not ported: FitBox scaling (treated as Box), intrinsic min/max dimensions, scroll.
 7. **Touch and actions.** `TOUCH_EXPRESSION`, `MODIFIER_CLICK`/`TOUCH_*`, `VALUE_*_CHANGE`,
    `HOST_ACTION` dispatch through the context. Interactive regions come from laid-out components.
 8. **Remaining draw opcodes by real effect.** Bitmap fonts, shaders, text on path/circle (real

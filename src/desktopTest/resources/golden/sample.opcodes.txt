@@ -13,149 +13,395 @@ DrawBitmap(bitmapIndex=45, left=70.0, top=65.0, right=110.0, bottom=105.0, srcLe
 DrawBitmap(bitmapIndex=47, left=150.0, top=2.0, right=190.0, bottom=42.0, srcLeft=0.0, srcTop=0.0, srcRight=1.0, srcBottom=1.0)
 ActionClick(actionId=7, targetUrlStringIndex=49, left=20.0, top=20.0, right=180.0, bottom=180.0)
 DrawPath(commands=[MoveTo(x=2.0, y=150.0), QuadraticTo(x1=18.0, y1=150.0, x2=18.0, y2=170.0), CubicTo(x1=18.0, y1=185.0, x2=10.0, y2=195.0, x3=2.0, y3=195.0), Close], paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=85.0, top=150.0, right=105.0, bottom=165.0, paint=PaintStyle(color=Color(0.99215686, 0.84705883, 0.20784314, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 DrawCircle(centerX=95.0, centerY=175.0, radius=8.0, paint=PaintStyle(color=Color(0.42745098, 0.29803923, 0.25490198, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=115.0, top=150.0, right=130.0, bottom=165.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 DrawCircle(centerX=140.0, centerY=157.0, radius=7.0, paint=PaintStyle(color=Color(0.9411765, 0.38431373, 0.57254905, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=150.0, top=148.0, right=165.0, bottom=163.0, paint=PaintStyle(color=Color(0.61960787, 0.6156863, 0.14117648, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=170.0, top=148.0, right=190.0, bottom=163.0, paint=PaintStyle(color=Color(0.3647059, 0.2509804, 0.21568628, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=190.0, top=2.0, right=199.0, bottom=11.0, paint=PaintStyle(color=Color(0.9254902, 0.2509804, 0.47843137, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=45.0, top=2.0, right=64.0, bottom=20.0, paint=PaintStyle(color=Color(0.21568628, 0.2784314, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=150.0, top=148.0, right=165.0, bottom=163.0, paint=PaintStyle(color=Color(0.61960787, 0.6156863, 0.14117648, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=170.0, top=148.0, right=190.0, bottom=163.0, paint=PaintStyle(color=Color(0.3647059, 0.2509804, 0.21568628, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=190.0, top=2.0, right=199.0, bottom=11.0, paint=PaintStyle(color=Color(0.9254902, 0.2509804, 0.47843137, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=2.0, dy=6.0)
+DrawRect(left=0.0, top=0.0, right=0.0, bottom=0.0, paint=PaintStyle(color=Color(0.21568628, 0.2784314, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+Translate(dx=-2.0, dy=-6.0)
 Translate(dx=2.0, dy=6.0)
 DrawRect(left=45.0, top=2.0, right=60.0, bottom=12.0, paint=PaintStyle(color=Color(0.48235294, 0.12156863, 0.63529414, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 MatrixSave
-ClipRect(left=0.0, top=0.0, right=0.0, bottom=0.0)
-DrawRect(left=65.0, top=2.0, right=80.0, bottom=12.0, paint=PaintStyle(color=Color(0.21960784, 0.5568628, 0.23529412, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-MatrixRestore
-MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=5.0, dy=5.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=85.0, top=2.0, right=100.0, bottom=12.0, paint=PaintStyle(color=Color(1.0, 0.34117648, 0.13333334, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
-DrawRect(left=105.0, top=2.0, right=120.0, bottom=12.0, paint=PaintStyle(color=Color(0.0, 0.5882353, 0.53333336, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRoundRect(left=105.0, top=2.0, right=120.0, bottom=12.0, radiusX=4.0, radiusY=4.0, paint=PaintStyle(color=Color(0.0, 0.0, 0.0, 1.0, sRGB IEC61966-2.1), style=STROKE, strokeWidth=2.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=178.0, top=65.0, right=193.0, bottom=80.0, paint=PaintStyle(color=Color(0.2, 0.4117647, 0.11764706, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=123.0, top=2.0, right=138.0, bottom=12.0, paint=PaintStyle(color=Color(0.21568628, 0.2784314, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRoundRect(left=123.0, top=2.0, right=138.0, bottom=12.0, radiusX=4.0, radiusY=4.0, paint=PaintStyle(color=Color(0.8352941, 0.0, 0.9764706, 1.0, sRGB IEC61966-2.1), style=STROKE, strokeWidth=2.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=125.0, top=2.0, right=140.0, bottom=12.0, paint=PaintStyle(color=Color(0.36862746, 0.20784314, 0.69411767, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=145.0, top=2.0, right=160.0, bottom=12.0, paint=PaintStyle(color=Color(0.7529412, 0.7921569, 0.2, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixSave
-ClipRect(left=181.0, top=15.0, right=196.0, bottom=25.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=0.0, top=0.0, right=0.0, bottom=0.0, paint=PaintStyle(color=Color(0.0, 0.0, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=105.0, top=2.0, right=120.0, bottom=12.0, paint=PaintStyle(color=Color(0.0, 0.5882353, 0.53333336, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+ClipRect(left=0.0, top=0.0, right=0.0, bottom=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=0.0, top=0.0, right=0.0, bottom=0.0, paint=PaintStyle(color=Color(0.8352941, 0.0, 0.9764706, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=123.0, top=2.0, right=138.0, bottom=12.0, paint=PaintStyle(color=Color(0.21568628, 0.2784314, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+ClipRect(left=0.0, top=0.0, right=0.0, bottom=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=125.0, top=2.0, right=140.0, bottom=12.0, paint=PaintStyle(color=Color(0.36862746, 0.20784314, 0.69411767, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+ClipPath(commands=[MoveTo(x=0.0, y=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), Close])
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=145.0, top=2.0, right=160.0, bottom=12.0, paint=PaintStyle(color=Color(0.7529412, 0.7921569, 0.2, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+ClipRect(left=0.0, top=0.0, right=15.0, bottom=10.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=181.0, top=15.0, right=211.0, bottom=35.0, paint=PaintStyle(color=Color(1.0, 0.56078434, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 MatrixSave
-ClipPath(commands=[MoveTo(x=149.0, y=170.0), LineTo(x=156.0, y=170.0), QuadraticTo(x1=160.0, y1=170.0, x2=160.0, y2=174.0), LineTo(x=160.0, y=176.0), QuadraticTo(x1=160.0, y1=180.0, x2=156.0, y2=180.0), LineTo(x=149.0, y=180.0), QuadraticTo(x1=145.0, y1=180.0, x2=145.0, y2=176.0), LineTo(x=145.0, y=174.0), QuadraticTo(x1=145.0, y1=170.0, x2=149.0, y2=170.0), Close])
+Translate(dx=0.0, dy=0.0)
+ClipPath(commands=[MoveTo(x=4.0, y=0.0), LineTo(x=11.0, y=0.0), QuadraticTo(x1=15.0, y1=0.0, x2=15.0, y2=4.0), LineTo(x=15.0, y=6.0), QuadraticTo(x1=15.0, y1=10.0, x2=11.0, y2=10.0), LineTo(x=4.0, y=10.0), QuadraticTo(x1=0.0, y1=10.0, x2=0.0, y2=6.0), LineTo(x=0.0, y=4.0), QuadraticTo(x1=0.0, y1=0.0, x2=4.0, y2=0.0), Close])
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=145.0, top=170.0, right=175.0, bottom=190.0, paint=PaintStyle(color=Color(0.9137255, 0.11764706, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
-DrawRect(left=165.0, top=2.0, right=180.0, bottom=12.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=2.0, top=15.0, right=17.0, bottom=25.0, paint=PaintStyle(color=Color(0.5529412, 0.43137255, 0.3882353, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=20.0, top=15.0, right=35.0, bottom=25.0, paint=PaintStyle(color=Color(0.14901961, 0.6509804, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=38.0, top=15.0, right=53.0, bottom=25.0, paint=PaintStyle(color=Color(0.9372549, 0.3254902, 0.3137255, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=56.0, top=15.0, right=71.0, bottom=25.0, paint=PaintStyle(color=Color(0.4745098, 0.5254902, 0.79607844, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=74.0, top=15.0, right=89.0, bottom=25.0, paint=PaintStyle(color=Color(1.0, 0.7019608, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixSave
-ClipRect(left=95.0, top=90.0, right=110.0, bottom=100.0)
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=165.0, top=2.0, right=180.0, bottom=12.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=2.0, top=15.0, right=17.0, bottom=25.0, paint=PaintStyle(color=Color(0.5529412, 0.43137255, 0.3882353, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=20.0, top=15.0, right=35.0, bottom=25.0, paint=PaintStyle(color=Color(0.14901961, 0.6509804, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=38.0, top=15.0, right=53.0, bottom=25.0, paint=PaintStyle(color=Color(0.9372549, 0.3254902, 0.3137255, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=56.0, top=15.0, right=71.0, bottom=25.0, paint=PaintStyle(color=Color(0.4745098, 0.5254902, 0.79607844, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=74.0, top=15.0, right=89.0, bottom=25.0, paint=PaintStyle(color=Color(1.0, 0.7019608, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=95.0, top=90.0, right=125.0, bottom=100.0, paint=PaintStyle(color=Color(0.50980395, 0.46666667, 0.09019608, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=92.0, top=15.0, right=107.0, bottom=25.0, paint=PaintStyle(color=Color(0.32941177, 0.43137255, 0.47843137, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=110.0, top=15.0, right=125.0, bottom=25.0, paint=PaintStyle(color=Color(0.5568628, 0.14117648, 0.6666667, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=128.0, top=15.0, right=143.0, bottom=25.0, paint=PaintStyle(color=Color(0.24313726, 0.15294118, 0.13725491, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=150.0, top=65.0, right=175.0, bottom=80.0, paint=PaintStyle(color=Color(0.09803922, 0.4627451, 0.8235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=150.0, top=65.0, right=175.0, bottom=80.0, paint=PaintStyle(color=Color(0.827451, 0.18431373, 0.18431373, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=146.0, top=15.0, right=161.0, bottom=25.0, paint=PaintStyle(color=Color(0.09803922, 0.4627451, 0.8235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=164.0, top=15.0, right=179.0, bottom=25.0, paint=PaintStyle(color=Color(0.6784314, 0.078431375, 0.34117648, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=2.0, top=28.0, right=17.0, bottom=38.0, paint=PaintStyle(color=Color(0.50980395, 0.46666667, 0.09019608, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-SaveLayerAlpha(alpha=0.5)
-DrawRect(left=20.0, top=28.0, right=35.0, bottom=38.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 MatrixSave
-Scale(sx=2.0, sy=2.0, pivotX=49.0, pivotY=65.0)
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=110.0, top=15.0, right=125.0, bottom=25.0, paint=PaintStyle(color=Color(0.5568628, 0.14117648, 0.6666667, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=128.0, top=15.0, right=143.0, bottom=25.0, paint=PaintStyle(color=Color(0.24313726, 0.15294118, 0.13725491, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=150.0, top=65.0, right=175.0, bottom=80.0, paint=PaintStyle(color=Color(0.09803922, 0.4627451, 0.8235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=150.0, top=65.0, right=175.0, bottom=80.0, paint=PaintStyle(color=Color(0.827451, 0.18431373, 0.18431373, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=146.0, top=15.0, right=161.0, bottom=25.0, paint=PaintStyle(color=Color(0.09803922, 0.4627451, 0.8235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=164.0, top=15.0, right=179.0, bottom=25.0, paint=PaintStyle(color=Color(0.6784314, 0.078431375, 0.34117648, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=2.0, top=28.0, right=17.0, bottom=38.0, paint=PaintStyle(color=Color(0.50980395, 0.46666667, 0.09019608, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+SaveLayerAlpha(alpha=0.5)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=20.0, top=28.0, right=35.0, bottom=38.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Scale(sx=2.0, sy=2.0, pivotX=0.0, pivotY=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=45.0, top=61.0, right=53.0, bottom=69.0, paint=PaintStyle(color=Color(0.99215686, 0.84705883, 0.20784314, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 MatrixSave
-Rotate(degrees=45.0, pivotX=68.0, pivotY=65.0)
+Translate(dx=0.0, dy=0.0)
+Rotate(degrees=45.0, pivotX=0.0, pivotY=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=60.0, top=61.0, right=76.0, bottom=69.0, paint=PaintStyle(color=Color(0.11764706, 0.53333336, 0.8980392, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 MatrixSave
-Rotate(degrees=45.0, pivotX=85.0, pivotY=61.0)
+Translate(dx=0.0, dy=0.0)
+Rotate(degrees=45.0, pivotX=0.0, pivotY=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=85.0, top=61.0, right=93.0, bottom=69.0, paint=PaintStyle(color=Color(0.0, 0.6745098, 0.75686276, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 MatrixSave
-ClipPath(commands=[MoveTo(x=10.0, y=170.0), LineTo(x=10.0, y=170.0), QuadraticTo(x1=18.0, y1=170.0, x2=18.0, y2=178.0), LineTo(x=18.0, y=178.0), QuadraticTo(x1=18.0, y1=186.0, x2=10.0, y2=186.0), LineTo(x=10.0, y=186.0), QuadraticTo(x1=2.0, y1=186.0, x2=2.0, y2=178.0), LineTo(x=2.0, y=178.0), QuadraticTo(x1=2.0, y1=170.0, x2=10.0, y2=170.0), Close])
+Translate(dx=0.0, dy=0.0)
+ClipPath(commands=[MoveTo(x=0.0, y=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), Close])
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=2.0, top=170.0, right=18.0, bottom=186.0, paint=PaintStyle(color=Color(0.3647059, 0.2509804, 0.21568628, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
-DrawRect(left=38.0, top=28.0, right=53.0, bottom=38.0, paint=PaintStyle(color=Color(0.27058825, 0.15294118, 0.627451, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixSave
-ClipRect(left=116.0, top=112.0, right=131.0, bottom=122.0)
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=38.0, top=28.0, right=53.0, bottom=38.0, paint=PaintStyle(color=Color(0.27058825, 0.15294118, 0.627451, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=116.0, top=112.0, right=146.0, bottom=122.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
-DrawRect(left=56.0, top=28.0, right=71.0, bottom=38.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=74.0, top=28.0, right=89.0, bottom=38.0, paint=PaintStyle(color=Color(0.84705883, 0.2627451, 0.08235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=92.0, top=28.0, right=107.0, bottom=38.0, paint=PaintStyle(color=Color(0.15686275, 0.20784314, 0.5764706, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=110.0, top=28.0, right=125.0, bottom=38.0, paint=PaintStyle(color=Color(0.2, 0.4117647, 0.11764706, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=128.0, top=28.0, right=143.0, bottom=38.0, paint=PaintStyle(color=Color(0.42745098, 0.29803923, 0.25490198, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=146.0, top=28.0, right=161.0, bottom=38.0, paint=PaintStyle(color=Color(0.21568628, 0.2784314, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=164.0, top=28.0, right=179.0, bottom=38.0, paint=PaintStyle(color=Color(0.53333336, 0.05490196, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=72.0, top=52.0, right=87.0, bottom=62.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=87.0, top=52.0, right=102.0, bottom=62.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixSave
-ClipRect(left=0.0, top=0.0, right=0.0, bottom=0.0)
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=56.0, top=28.0, right=71.0, bottom=38.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=74.0, top=28.0, right=89.0, bottom=38.0, paint=PaintStyle(color=Color(0.84705883, 0.2627451, 0.08235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=92.0, top=28.0, right=107.0, bottom=38.0, paint=PaintStyle(color=Color(0.15686275, 0.20784314, 0.5764706, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=110.0, top=28.0, right=125.0, bottom=38.0, paint=PaintStyle(color=Color(0.2, 0.4117647, 0.11764706, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=128.0, top=28.0, right=143.0, bottom=38.0, paint=PaintStyle(color=Color(0.42745098, 0.29803923, 0.25490198, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=146.0, top=28.0, right=161.0, bottom=38.0, paint=PaintStyle(color=Color(0.21568628, 0.2784314, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=164.0, top=28.0, right=179.0, bottom=38.0, paint=PaintStyle(color=Color(0.53333336, 0.05490196, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=72.0, top=52.0, right=87.0, bottom=62.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=72.0, top=52.0, right=87.0, bottom=62.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=72.0, top=52.0, right=87.0, bottom=62.0, paint=PaintStyle(color=Color(0.9372549, 0.42352942, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=2.0, top=41.0, right=17.0, bottom=51.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=65.0, top=90.0, right=73.0, bottom=98.0, paint=PaintStyle(color=Color(0.84705883, 0.2627451, 0.08235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=76.0, top=90.0, right=84.0, bottom=98.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=65.0, top=101.0, right=73.0, bottom=109.0, paint=PaintStyle(color=Color(0.18039216, 0.49019608, 0.19607843, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=76.0, top=101.0, right=84.0, bottom=109.0, paint=PaintStyle(color=Color(0.08235294, 0.39607844, 0.7529412, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=3.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=65.0, top=90.0, right=73.0, bottom=98.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=3.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=65.0, top=90.0, right=73.0, bottom=98.0, paint=PaintStyle(color=Color(0.18039216, 0.49019608, 0.19607843, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=3.0, dy=3.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=65.0, top=90.0, right=73.0, bottom=98.0, paint=PaintStyle(color=Color(0.08235294, 0.39607844, 0.7529412, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=170.0, top=170.0, right=176.0, bottom=176.0, paint=PaintStyle(color=Color(0.9372549, 0.42352942, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=179.0, top=170.0, right=185.0, bottom=176.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-MatrixSave
-ClipRect(left=0.0, top=0.0, right=0.0, bottom=0.0)
-DrawRect(left=170.0, top=170.0, right=176.0, bottom=176.0, paint=PaintStyle(color=Color(0.6784314, 0.078431375, 0.34117648, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 MatrixSave
-ClipRect(left=0.0, top=0.0, right=0.0, bottom=0.0)
-DrawRect(left=170.0, top=170.0, right=176.0, bottom=176.0, paint=PaintStyle(color=Color(0.15686275, 0.20784314, 0.5764706, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+Translate(dx=3.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=170.0, top=170.0, right=176.0, bottom=176.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=20.0, top=41.0, right=35.0, bottom=51.0, paint=PaintStyle(color=Color(0.9019608, 0.2901961, 0.09803922, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=38.0, top=41.0, right=53.0, bottom=51.0, paint=PaintStyle(color=Color(0.101960786, 0.13725491, 0.49411765, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=56.0, top=41.0, right=71.0, bottom=51.0, paint=PaintStyle(color=Color(0.6784314, 0.078431375, 0.34117648, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=110.0, top=80.0, right=125.0, bottom=90.0, paint=PaintStyle(color=Color(0.9137255, 0.11764706, 0.3882353, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-MatrixSave
-ClipRect(left=0.0, top=0.0, right=0.0, bottom=0.0)
-DrawRect(left=110.0, top=80.0, right=125.0, bottom=90.0, paint=PaintStyle(color=Color(0.24705882, 0.31764707, 0.70980394, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
 MatrixRestore
 MatrixSave
-ClipRect(left=0.0, top=0.0, right=0.0, bottom=0.0)
-DrawRect(left=110.0, top=80.0, right=125.0, bottom=90.0, paint=PaintStyle(color=Color(0.8039216, 0.8627451, 0.22352941, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-MatrixRestore
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=110.0, top=90.0, right=120.0, bottom=98.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
 MatrixSave
-Scale(sx=6.25, sy=1.0, pivotX=120.0, pivotY=90.0)
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=120.0, top=90.0, right=128.0, bottom=98.0, paint=PaintStyle(color=Color(0.6784314, 0.078431375, 0.34117648, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=74.0, top=41.0, right=89.0, bottom=51.0, paint=PaintStyle(color=Color(0.33333334, 0.54509807, 0.18431373, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=92.0, top=41.0, right=107.0, bottom=51.0, paint=PaintStyle(color=Color(0.30588236, 0.20392157, 0.18039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 SaveLayerAlpha(alpha=0.8)
 DrawBitmap(bitmapIndex=56, left=0.0, top=0.0, right=16.0, bottom=16.0, srcLeft=null, srcTop=null, srcRight=null, srcBottom=null)
 MatrixRestore
-MatrixSave
-Translate(dx=110.0, dy=56.0)
-DrawBitmap(bitmapIndex=57, left=0.0, top=4.0, right=16.0, bottom=12.0, srcLeft=null, srcTop=null, srcRight=null, srcBottom=null)
 MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=110.0, dy=56.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawBitmap(bitmapIndex=57, left=0.0, top=4.0, right=16.0, bottom=12.0, srcLeft=null, srcTop=null, srcRight=null, srcBottom=null)
+MatrixRestore
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=130.0, dy=56.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 MatrixSave
 ClipRect(left=0.0, top=0.0, right=16.0, bottom=16.0)
 DrawBitmap(bitmapIndex=57, left=-8.0, top=0.0, right=24.0, bottom=16.0, srcLeft=null, srcTop=null, srcRight=null, srcBottom=null)
 MatrixRestore
 MatrixRestore
+MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=6.0, dy=0.0)
+Translate(dx=-6.0, dy=-0.0)
 Translate(dx=6.0, dy=0.0)
 DrawRect(left=40.0, top=90.0, right=55.0, bottom=100.0, paint=PaintStyle(color=Color(0.0, 0.5372549, 0.48235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=110.0, top=41.0, right=125.0, bottom=51.0, paint=PaintStyle(color=Color(0.3647059, 0.2509804, 0.21568628, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
 MatrixSave
 Translate(dx=130.0, dy=41.0)
 DrawRect(left=0.0, top=0.0, right=15.0, bottom=10.0, paint=PaintStyle(color=Color(0.0, 0.6745098, 0.75686276, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
@@ -176,54 +422,136 @@ MatrixSave
 Skew(skewX=0.5, skewY=0.0)
 DrawRect(left=2.0, top=130.0, right=17.0, bottom=145.0, paint=PaintStyle(color=Color(0.84705883, 0.2627451, 0.08235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=22.0, top=130.0, right=32.0, bottom=140.0, paint=PaintStyle(color=Color(0.7607843, 0.09411765, 0.35686275, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=22.0, top=143.0, right=32.0, bottom=153.0, paint=PaintStyle(color=Color(0.48235294, 0.12156863, 0.63529414, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=22.0, top=156.0, right=32.0, bottom=166.0, paint=PaintStyle(color=Color(0.1882353, 0.24705882, 0.62352943, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=3.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=22.0, top=130.0, right=32.0, bottom=140.0, paint=PaintStyle(color=Color(0.48235294, 0.12156863, 0.63529414, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=6.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=22.0, top=130.0, right=32.0, bottom=140.0, paint=PaintStyle(color=Color(0.1882353, 0.24705882, 0.62352943, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixRestore
 DrawText(stringIndex=62, x=36.0, y=136.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=6, substringEnd=11, panX=null, panY=null, baselineRelative=false)
 DrawText(stringIndex=64, x=105.0, y=191.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=null, panY=null, baselineRelative=false)
-DrawRect(left=2.0, top=61.0, right=41.0, bottom=84.0, paint=PaintStyle(color=Color(1.0, 0.43529412, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=0.0, top=0.0, right=0.0, bottom=0.0, paint=PaintStyle(color=Color(1.0, 0.43529412, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=2.0, top=61.0, right=12.0, bottom=71.0, paint=PaintStyle(color=Color(0.08235294, 0.39607844, 0.7529412, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 DrawCircle(centerX=35.0, centerY=78.0, radius=6.0, paint=PaintStyle(color=Color(0.18039216, 0.49019608, 0.19607843, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=2.0, top=90.0, right=12.0, bottom=100.0, paint=PaintStyle(color=Color(0.827451, 0.18431373, 0.18431373, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=2.0, top=103.0, right=12.0, bottom=113.0, paint=PaintStyle(color=Color(0.09803922, 0.4627451, 0.8235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=2.0, top=116.0, right=12.0, bottom=126.0, paint=PaintStyle(color=Color(0.21960784, 0.5568628, 0.23529412, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=22.0, top=154.0, right=30.0, bottom=162.0, paint=PaintStyle(color=Color(0.7764706, 0.15686275, 0.15686275, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=58.0, top=150.0, right=66.0, bottom=166.0, paint=PaintStyle(color=Color(0.9764706, 0.65882355, 0.14509805, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=94.0, top=154.0, right=102.0, bottom=162.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=3.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=2.0, top=90.0, right=12.0, bottom=100.0, paint=PaintStyle(color=Color(0.09803922, 0.4627451, 0.8235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=6.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=2.0, top=90.0, right=12.0, bottom=100.0, paint=PaintStyle(color=Color(0.21960784, 0.5568628, 0.23529412, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=22.0, top=150.0, right=30.0, bottom=158.0, paint=PaintStyle(color=Color(0.7764706, 0.15686275, 0.15686275, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=40.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=22.0, top=150.0, right=30.0, bottom=166.0, paint=PaintStyle(color=Color(0.9764706, 0.65882355, 0.14509805, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=80.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=22.0, top=150.0, right=30.0, bottom=158.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixRestore
 MatrixSave
 ClipPath(commands=[MoveTo(x=105.0, y=168.0), LineTo(x=125.0, y=150.0), LineTo(x=125.0, y=168.0), Close])
 DrawRect(left=105.0, top=150.0, right=130.0, bottom=170.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 DrawText(stringIndex=66, x=100.0, y=175.0, paint=PaintStyle(color=Color(0.12941177, 0.12941177, 0.12941177, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=null, panY=null, baselineRelative=false)
-DrawOval(left=150.0, top=110.0, right=190.0, bottom=130.0, paint=PaintStyle(color=Color(0.6, 0.2, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+DrawCircle(centerX=0.0, centerY=0.0, radius=0.0, paint=PaintStyle(color=Color(0.6, 0.2, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=150.0, top=110.0, right=151.0, bottom=111.0, paint=PaintStyle(color=Color(1.0, 1.0, 1.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 DrawRect(left=189.0, top=129.0, right=190.0, bottom=130.0, paint=PaintStyle(color=Color(1.0, 1.0, 1.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=12.0, dy=61.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 MatrixSave
 ClipRect(left=0.0, top=0.0, right=16.0, bottom=16.0)
 DrawBitmap(bitmapIndex=57, left=4.0, top=6.0, right=12.0, bottom=10.0, srcLeft=null, srcTop=null, srcRight=null, srcBottom=null)
 MatrixRestore
 MatrixRestore
-MatrixSave
-Translate(dx=2.0, dy=90.0)
-DrawBitmap(bitmapIndex=57, left=0.0, top=3.0, right=4.0, bottom=5.0, srcLeft=null, srcTop=null, srcRight=null, srcBottom=null)
 MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=2.0, dy=90.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawBitmap(bitmapIndex=57, left=0.0, top=3.0, right=4.0, bottom=5.0, srcLeft=null, srcTop=null, srcRight=null, srcBottom=null)
+MatrixRestore
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=2.0, dy=150.0)
+Translate(dx=0.0, dy=0.0)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=0.0, top=0.0, right=20.0, bottom=20.0, paint=PaintStyle(color=Color(0.3647059, 0.2509804, 0.21568628, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=6.0, top=6.0, right=14.0, bottom=14.0, paint=PaintStyle(color=Color(1.0, 0.7019608, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=0.0, top=0.0, right=8.0, bottom=8.0, paint=PaintStyle(color=Color(1.0, 0.7019608, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
 MatrixRestore
 DrawText(stringIndex=67, x=100.0, y=160.0, paint=PaintStyle(color=Color(0.08235294, 0.39607844, 0.7529412, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=0.0, baselineRelative=false)
 DrawText(stringIndex=67, x=100.0, y=180.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=1.0, panY=0.0, baselineRelative=false)
 DrawText(stringIndex=68, x=140.0, y=100.0, paint=PaintStyle(color=Color(0.18039216, 0.49019608, 0.19607843, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=-1.0, baselineRelative=false)
 DrawText(stringIndex=68, x=170.0, y=100.0, paint=PaintStyle(color=Color(0.7764706, 0.15686275, 0.15686275, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=1.0, baselineRelative=false)
 MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=20.0, dy=150.0)
+Translate(dx=0.0, dy=0.0)
 DrawText(stringIndex=43, x=0.0, y=0.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=16.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=null, panY=1.0, baselineRelative=false)
 MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=100.0, dy=150.0)
+Translate(dx=0.0, dy=0.0)
 DrawText(stringIndex=43, x=21.2, y=0.0, paint=PaintStyle(color=Color(0.6784314, 0.078431375, 0.34117648, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=16.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=null, panY=1.0, baselineRelative=false)
 MatrixRestore
 MatrixSave
@@ -231,10 +559,12 @@ ClipRect(left=2.0, top=2.0, right=22.0, bottom=22.0)
 DrawBitmap(bitmapIndex=57, left=2.0, top=9.0, right=22.0, bottom=14.0, srcLeft=0.0, srcTop=0.0, srcRight=8.0, srcBottom=2.0)
 MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=2.0, dy=170.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=0.0, top=0.0, right=6.0, bottom=6.0, paint=PaintStyle(color=Color(0.42745098, 0.29803923, 0.25490198, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=6.0, top=0.0, right=12.0, bottom=6.0, paint=PaintStyle(color=Color(0.42745098, 0.29803923, 0.25490198, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRect(left=12.0, top=0.0, right=18.0, bottom=6.0, paint=PaintStyle(color=Color(0.42745098, 0.29803923, 0.25490198, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+DrawRect(left=0.0, top=0.0, right=6.0, bottom=6.0, paint=PaintStyle(color=Color(0.42745098, 0.29803923, 0.25490198, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+DrawRect(left=0.0, top=0.0, right=6.0, bottom=6.0, paint=PaintStyle(color=Color(0.42745098, 0.29803923, 0.25490198, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 DrawText(stringIndex=71, x=155.0, y=196.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=1.0, baselineRelative=false)
 DrawText(stringIndex=62, x=60.0, y=196.0, paint=PaintStyle(color=Color(0.3647059, 0.2509804, 0.21568628, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=1.0, baselineRelative=false)
@@ -246,14 +576,18 @@ DrawPath(commands=[MoveTo(x=140.0, y=32.0), LineTo(x=158.0, y=32.0), LineTo(x=14
 DrawPath(commands=[MoveTo(x=140.0, y=17.0), LineTo(x=158.0, y=17.0), LineTo(x=149.0, y=35.0), Close], paint=PaintStyle(color=Color(1.0, 0.75686276, 0.02745098, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 DrawRect(left=160.0, top=150.0, right=176.0, bottom=166.0, paint=PaintStyle(color=Color(0.101960786, 0.13725491, 0.49411765, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=60.0, dy=70.0)
+Translate(dx=0.0, dy=0.0)
 MatrixSave
 Translate(dx=20.0, dy=0.0)
 DrawRect(left=0.0, top=0.0, right=6.0, bottom=6.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=60.0, dy=90.0)
+Translate(dx=0.0, dy=0.0)
 MatrixSave
 Translate(dx=14.0, dy=14.0)
 Rotate(degrees=45.0, pivotX=0.0, pivotY=0.0)
@@ -261,30 +595,41 @@ DrawRect(left=-8.0, top=-1.0, right=8.0, bottom=1.0, paint=PaintStyle(color=Colo
 MatrixRestore
 MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=2.0, dy=60.0)
+Translate(dx=0.0, dy=0.0)
 DrawPath(commands=[MoveTo(x=0.0, y=15.0), LineTo(x=20.0, y=15.0), LineTo(x=20.0, y=35.0)], paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
 MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=30.0, dy=60.0)
+Translate(dx=0.0, dy=0.0)
 DrawPath(commands=[MoveTo(x=10.0, y=10.0), LineTo(x=20.0, y=10.0), LineTo(x=20.0, y=20.0), LineTo(x=10.0, y=20.0), Close], paint=PaintStyle(color=Color(0.18039216, 0.49019608, 0.19607843, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
-DrawRect(left=100.0, top=185.0, right=116.0, bottom=199.0, paint=PaintStyle(color=Color(0.9372549, 0.42352942, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 DrawRect(left=35.0, top=185.0, right=63.0, bottom=199.0, paint=PaintStyle(color=Color(0.21960784, 0.5568628, 0.23529412, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 DrawRect(left=66.0, top=185.0, right=94.0, bottom=199.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixSave
-ClipRect(left=96.0, top=185.0, right=101.0, bottom=195.0)
-MatrixSave
+Translate(dx=0.0, dy=0.0)
 Translate(dx=96.0, dy=185.0)
+ClipRect(left=0.0, top=0.0, right=5.0, bottom=10.0)
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=0.0, top=0.0, right=30.0, bottom=10.0, paint=PaintStyle(color=Color(0.42745098, 0.29803923, 0.25490198, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-MatrixRestore
 MatrixRestore
 DrawText(stringIndex=91, x=130.0, y=170.0, paint=PaintStyle(color=Color(0.27058825, 0.15294118, 0.627451, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=-1.0, baselineRelative=false)
 DrawText(stringIndex=93, x=130.0, y=190.0, paint=PaintStyle(color=Color(0.0, 0.4117647, 0.36078432, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=-1.0, baselineRelative=false)
 DrawText(stringIndex=96, x=5.0, y=8.0, paint=PaintStyle(color=Color(0.84705883, 0.2627451, 0.08235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=-1.0, baselineRelative=false)
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=0.0, top=0.0, right=0.0, bottom=0.0, paint=PaintStyle(color=Color(0.7294118, 0.0, 0.7294118, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=143.0, top=2.0, right=158.0, bottom=12.0, paint=PaintStyle(color=Color(0.21568628, 0.2784314, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRoundRect(left=143.0, top=2.0, right=158.0, bottom=12.0, radiusX=4.0, radiusY=4.0, paint=PaintStyle(color=Color(0.7294118, 0.0, 0.7294118, 1.0, sRGB IEC61966-2.1), style=STROKE, strokeWidth=2.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=0.0, top=0.0, right=0.0, bottom=0.0, paint=PaintStyle(color=Color(0.0, 1.0, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+Translate(dx=0.0, dy=0.0)
 DrawRect(left=163.0, top=2.0, right=178.0, bottom=12.0, paint=PaintStyle(color=Color(0.21568628, 0.2784314, 0.30980393, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
-DrawRoundRect(left=163.0, top=2.0, right=178.0, bottom=12.0, radiusX=4.0, radiusY=4.0, paint=PaintStyle(color=Color(0.0, 1.0, 0.0, 1.0, sRGB IEC61966-2.1), style=STROKE, strokeWidth=2.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
 DrawText(stringIndex=100, x=5.0, y=45.0, paint=PaintStyle(color=Color(0.41568628, 0.105882354, 0.6039216, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=-1.0, baselineRelative=false)
 DrawText(stringIndex=102, x=5.0, y=65.0, paint=PaintStyle(color=Color(0.0, 0.5137255, 0.56078434, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=-1.0, baselineRelative=false)
 DrawText(stringIndex=103, x=5.0, y=85.0, paint=PaintStyle(color=Color(0.6784314, 0.078431375, 0.34117648, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null), substringStart=null, substringEnd=null, panX=-1.0, panY=-1.0, baselineRelative=false)

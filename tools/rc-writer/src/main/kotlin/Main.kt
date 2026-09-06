@@ -256,12 +256,12 @@ private fun buildTextTransformTest() {
 }
 
 /**
- * A hand-built "dashboard card" — real text, real icons, real nested Row/Column arrangement and
- * alignment modes, real backgrounds — meant to be looked at as a UI, not decoded opcode-by-opcode
- * like `sample.rc`. Every child in every Row/Column below is deliberately drawn at a *placeholder*
- * position (or, for the stat cards, at literally the same raw coordinates as its siblings) so
- * nothing about the final layout comes from hand-placed document coordinates — only from this
- * renderer's own real arrangement code.
+ * A "dashboard card" built the way a real Compose document is: every component declares its
+ * size through modifiers (`fillMaxSize`, `width`, `size`, `padding`) or is a text component the
+ * player measures itself. Canvas draws only appear inside boxes that declare their own size,
+ * since a component with nothing but draw calls has no intrinsic size on the real player. The
+ * three stat cards have different-radius icons, so the row's CENTER cross-alignment visibly
+ * staggers them.
  */
 private fun buildShowcase() {
     val platform = JvmRcPlatformServices()
@@ -269,78 +269,54 @@ private fun buildShowcase() {
 
     val navy = 0xFF1A237E.toInt()
     val slate = 0xFF546E7A.toInt()
-    val cardBg1 = 0xFFE3F2FD.toInt()
-    val cardBg2 = 0xFFE8F5E9.toInt()
-    val cardBg3 = 0xFFFFF3E0.toInt()
-    val accent1 = 0xFF1E88E5.toInt()
-    val accent2 = 0xFF43A047.toInt()
-    val accent3 = 0xFFFB8C00.toInt()
 
-    fun text(s: String, x: Float, y: Float, color: Int) {
-        writer.getRcPaint().setColor(color).commit()
-        writer.drawTextAnchored(s, x, y, 0f, 0f, 0)
+    fun text(s: String, color: Int, size: Float, modifier: RecordingModifier = RecordingModifier()) {
+        val id = writer.addText(s)
+        writer.startTextComponent(modifier, id, color, size, 0, 400f, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
     }
 
-    // Outer vertical rhythm: every top-level section is its own Box (so it's a real, arrangeable
-    // Column child) stacked with real spacing — nothing here is manually y-offset by hand.
-    writer.startColumn(RecordingModifier().spacedBy(18f), 0, 0)
-
-    // -- Title --
-    writer.startBox(RecordingModifier(), 0, 0)
-    text("Dashboard", 20f, 20f, navy)
-    writer.endBox()
-
-    // -- Stat cards row: real declared width, SPACE_EVENLY main axis, CENTER cross axis. Each
-    // card has a *different*-radius icon circle, so the three cards are different heights —
-    // making the row's CENTER cross-alignment visibly stagger them, not just look coincidentally
-    // aligned. Every card's content is drawn starting at the same local (0,0)-ish origin; only
-    // the Row's own arrangement (via the enclosing Box below) spreads the three across x.
-    writer.startBox(RecordingModifier().width(328f), 0, 0)
-    writer.startRow(RecordingModifier(), 7, 2) // RowLayout.SPACE_EVENLY, .CENTER
-    data class Stat(val value: String, val label: String, val radius: Float, val bg: Int, val accent: Int)
-    val stats = listOf(
-        Stat("128", "Users", 10f, cardBg1, accent1),
-        Stat("42", "Orders", 16f, cardBg2, accent2),
-        Stat("97%", "Uptime", 13f, cardBg3, accent3),
-    )
-    for ((value, label, radius, bg, accent) in stats) {
-        writer.startBox(RecordingModifier().background(bg), 0, 0)
-        writer.startColumn(RecordingModifier().spacedBy(6f), 2, 0) // horizontalPositioning=CENTER
-        writer.startBox(RecordingModifier(), 0, 0)
-        writer.getRcPaint().setColor(accent).commit()
+    fun circleBox(radius: Float, color: Int) {
+        writer.startBox(RecordingModifier().size(radius * 2f), 1, 4)
+        writer.getRcPaint().setColor(color).commit()
         writer.drawCircle(radius, radius, radius)
         writer.endBox()
-        writer.startBox(RecordingModifier(), 0, 0)
-        text(value, 0f, 0f, navy)
-        writer.endBox()
-        writer.startBox(RecordingModifier(), 0, 0)
-        text(label, 0f, 0f, slate)
-        writer.endBox()
+    }
+
+    // Column: START horizontally, TOP vertically, 18px between sections, 20px page padding.
+    writer.startColumn(RecordingModifier().fillMaxSize().padding(20f).spacedBy(18f), 1, 4)
+
+    text("Dashboard", navy, 22f)
+
+    // Stat cards: a full-width row, SPACE_EVENLY main axis, CENTER cross axis.
+    writer.startRow(RecordingModifier().fillMaxWidth().height(120f), 7, 2)
+    data class Stat(val value: String, val label: String, val radius: Float, val bg: Int, val accent: Int)
+    val stats = listOf(
+        Stat("128", "Users", 10f, 0xFFE3F2FD.toInt(), 0xFF1E88E5.toInt()),
+        Stat("42", "Orders", 16f, 0xFFE8F5E9.toInt(), 0xFF43A047.toInt()),
+        Stat("97%", "Uptime", 13f, 0xFFFFF3E0.toInt(), 0xFFFB8C00.toInt()),
+    )
+    for ((value, label, radius, bg, accent) in stats) {
+        // background before padding: the fill covers the padded box. In this library a
+        // padding modifier adds to the declared width (LayoutComponent.computeModifierDefinedWidth),
+        // so width(76) + padding(10) is a 96px card; three of them leave 32px for SPACE_EVENLY.
+        writer.startBox(RecordingModifier().width(76f).background(bg).padding(10f), 2, 4)
+        writer.startColumn(RecordingModifier().spacedBy(6f), 2, 4) // children centered horizontally
+        circleBox(radius, accent)
+        text(value, navy, 18f)
+        text(label, slate, 12f)
         writer.endColumn()
         writer.endBox()
     }
     writer.endRow()
-    writer.endBox()
 
-    // -- Subtitle --
-    writer.startBox(RecordingModifier(), 0, 0)
-    text("Activity", 20f, 20f, navy)
-    writer.endBox()
+    text("Activity", navy, 16f)
 
-    // -- Avatar row: real declared width, SPACE_BETWEEN main axis, CENTER cross axis, four
-    // circles of different radii all drawn centered on the same raw point — real spread and real
-    // vertical centering, exactly like the alignment-mode test but with visibly different sizes.
-    writer.startBox(RecordingModifier().width(328f), 0, 0)
-    writer.startRow(RecordingModifier(), 6, 2) // RowLayout.SPACE_BETWEEN, .CENTER
+    // Avatars: START main axis with 10px gaps, CENTER cross axis.
+    writer.startRow(RecordingModifier().spacedBy(10f), 1, 2)
     val avatars = listOf(10f to 0xFFE53935.toInt(), 16f to 0xFF8E24AA.toInt(), 12f to 0xFF00897B.toInt(), 8f to 0xFFFDD835.toInt())
-    for ((radius, color) in avatars) {
-        writer.startBox(RecordingModifier(), 0, 0)
-        writer.getRcPaint().setColor(color).commit()
-        writer.drawCircle(radius, radius, radius)
-        writer.endBox()
-    }
+    for ((radius, color) in avatars) circleBox(radius, color)
     writer.endRow()
-    writer.endBox()
 
     writer.endColumn()
 

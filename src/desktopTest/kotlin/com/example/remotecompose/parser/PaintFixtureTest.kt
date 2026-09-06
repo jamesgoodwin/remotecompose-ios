@@ -25,9 +25,12 @@ class PaintFixtureTest {
         RemoteComposeParser.parse(File("tools/rc-writer/paint.rc").readBytes())
     }
 
-    private inline fun <reified T : Opcode> op(index: Int): T = assertIs<T>(document.opcodes[index])
+    /** The draw opcodes only; layout wrappers (save/translate/restore) around the Box are skipped. */
+    private val draws by lazy {
+        document.opcodes.filter { it is Opcode.DrawRect || it is Opcode.DrawCircle || it is Opcode.DrawLine || it is Opcode.DrawText }
+    }
 
-    private fun paintOf(index: Int): PaintStyle = when (val op = document.opcodes[index]) {
+    private fun paintOf(index: Int): PaintStyle = when (val op = draws[index]) {
         is Opcode.DrawRect -> op.paint
         is Opcode.DrawCircle -> op.paint
         is Opcode.DrawLine -> op.paint
@@ -42,7 +45,7 @@ class PaintFixtureTest {
                 "DrawRect", "DrawCircle", "DrawRect", "DrawLine", "DrawText", "DrawText",
                 "DrawRect", "DrawCircle", "DrawRect", "DrawRect", "DrawRect", "DrawRect", "DrawCircle",
             ),
-            document.opcodes.map { it::class.simpleName },
+            draws.map { it::class.simpleName },
         )
     }
 
