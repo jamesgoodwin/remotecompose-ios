@@ -54,7 +54,54 @@ fun main(args: Array<String>) {
         buildPaintSample()
         return
     }
+    if (args.getOrNull(0) == "anim") {
+        buildAnimSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * Time-driven float expressions, the first document that changes from frame to frame. Every
+ * value comes from `RemoteComposeWriter.floatExpression`, so the bytes carry real
+ * `FloatExpression` records with NaN-tagged operators and system-variable references.
+ */
+private fun buildAnimSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(200, 200, "anim", platform)
+    // 1. A circle whose x oscillates: 100 + 60 * sin(2 * t).
+    val circleX = writer.floatExpression(Rc.Time.CONTINUOUS_SEC, 2f, Rc.FloatExpression.MUL, Rc.FloatExpression.SIN, 60f, Rc.FloatExpression.MUL, 100f, Rc.FloatExpression.ADD)
+    writer.getRcPaint().setColor(0xFF1E88E5.toInt()).commit()
+    writer.drawCircle(circleX, 40f, 16f)
+
+    // 2. A static expression: radius = hypot(3, 4) * 4 = 20.
+    val radius = writer.floatExpression(3f, 4f, Rc.FloatExpression.HYPOT, 4f, Rc.FloatExpression.MUL)
+    writer.getRcPaint().setColor(0xFF43A047.toInt()).commit()
+    writer.drawCircle(40f, 100f, radius)
+
+    // 3. A stepping target (0 or 100, flipping every second) eased over half a second with the
+    //    standard cubic curve: a real FloatAnimation attached to the expression.
+    val target = floatArrayOf(Rc.Time.CONTINUOUS_SEC, Rc.FloatExpression.FLOOR, 2f, Rc.FloatExpression.MOD, 100f, Rc.FloatExpression.MUL)
+    val animation = androidx.compose.remote.core.operations.utilities.easing.FloatAnimation.packToFloatArray(
+        0.5f,
+        androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+        null,
+        Float.NaN,
+        Float.NaN,
+    )
+    val slideX = writer.floatExpression(target, animation)
+    val slideRight = writer.floatExpression(slideX, 40f, Rc.FloatExpression.ADD)
+    writer.getRcPaint().setColor(0xFFE53935.toInt()).commit()
+    writer.drawRect(slideX, 140f, slideRight, 170f)
+
+    // 4. The elapsed seconds as text, so a screenshot shows which frame it is.
+    val clockText = writer.createTextFromFloat(Rc.Time.CONTINUOUS_SEC, 2, 2, 0x1000)
+    writer.getRcPaint().setColor(0xFF000000.toInt()).setTextSize(14f).commit()
+    writer.drawTextAnchored(clockText, 100f, 195f, -1f, -1f, 0)
+
+    val bytes = writer.encodeToByteArray()
+    File("anim.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to anim.rc")
 }
 
 /**

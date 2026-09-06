@@ -32,4 +32,5 @@ class GoldenOpcodeTest {
     @Test fun sample() = check("sample")
     @Test fun showcase() = check("showcase")
     @Test fun paint() = check("paint")
+    @Test fun anim() = check("anim")
 }

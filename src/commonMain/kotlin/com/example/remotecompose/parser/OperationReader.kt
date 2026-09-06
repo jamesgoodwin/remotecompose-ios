@@ -220,6 +220,16 @@ internal object OperationReader {
             shapeType = r.readS32(),
         )
         Operations.DATA_FLOAT -> Op.FloatConstant(r.readS32(), r.readFloat32())
+        Operations.ANIMATED_FLOAT -> {
+            val id = r.readS32()
+            val packed = r.readS32()
+            val expLength = packed and 0xFFFF
+            val animLength = (packed shr 16) and 0xFFFF
+            if (expLength > 32) throw RemoteComposeParseException("Float expression too long ($expLength)")
+            val expression = FloatArray(expLength) { r.readFloat32() }
+            val animation = if (animLength > 0) FloatArray(animLength) { r.readFloat32() } else null
+            Op.FloatExpression(id, expression, animation)
+        }
         Operations.DATA_INT -> Op.IntegerConstant(r.readS32(), r.readS32())
         Operations.DATA_BOOLEAN -> Op.BooleanConstant(r.readS32(), r.readU8() != 0)
         Operations.DATA_LONG -> Op.LongConstant(r.readS32(), r.readS64())

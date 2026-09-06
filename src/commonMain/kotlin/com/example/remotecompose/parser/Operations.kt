@@ -31,6 +31,7 @@ internal object Operations {
     const val DRAW_BITMAP_INT = 66
     const val MODIFIER_HEIGHT = 67
     const val DATA_FLOAT = 80
+    const val ANIMATED_FLOAT = 81
     const val MODIFIER_MULTI_CLICK = 83
     const val LAYOUT_CUSTOM = 93
     const val DATA_BITMAP = 101

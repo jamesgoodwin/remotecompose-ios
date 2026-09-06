@@ -9,6 +9,7 @@ import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
 import com.example.remotecompose.parser.Operation as Op
+import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.EstimatedTextMetrics
 import com.example.remotecompose.text.TextAnchoring
 import com.example.remotecompose.text.TextMetricsProvider
@@ -127,61 +128,51 @@ object RemoteComposeParser {
     private const val DEFAULT_TEXT_SIZE_SP = 16f
 
     /**
-     * Parses [bytes] as a real `.rc` document containing only the opcode subset documented above.
+     * Decodes [bytes] into a live [RemoteComposeDocument] whose [RemoteComposeDocument.frame]
+     * produces the flattened opcodes for a moment in time.
      *
-     * @throws RemoteComposeParseException if an opcode outside that subset is encountered, or if
-     *   the buffer runs out mid-record.
-     */
-    /**
      * @param textMetrics Measures text for the layout heuristics. Pass
      *   [com.example.remotecompose.engine.ComposeTextMetrics] for real font metrics; the default
      *   is a font-free estimate, adequate for tests and headless use.
+     * @throws RemoteComposeParseException on an unhandled opcode or a truncated record.
      */
+    fun load(bytes: ByteArray, textMetrics: TextMetricsProvider = EstimatedTextMetrics): RemoteComposeDocument {
+        val operations = OperationReader.readAll(bytes)
+        val header = operations.filterIsInstance<Op.Header>().firstOrNull()?.let {
+            Header(it.majorVersion, it.minorVersion, it.patchVersion, it.width, it.height, it.capabilities)
+        } ?: Header(0, 0, 0, 0, 0, 0L)
+        return RemoteComposeDocument(header, operations, RemoteContext(), textMetrics)
+    }
+
+    /** A static snapshot: [load] followed by the first frame at time zero. */
     fun parse(bytes: ByteArray, textMetrics: TextMetricsProvider = EstimatedTextMetrics): RemoteDocument =
-        build(OperationReader.readAll(bytes), textMetrics)
+        load(bytes, textMetrics).frame(0L)
 
-    /** Evaluates decoded [operations] into a flat [RemoteDocument]; see the class KDoc. */
-    private fun build(operations: List<Op>, textMetrics: TextMetricsProvider): RemoteDocument {
-
-        var width = 0
-        var height = 0
-        var majorVersion = 0
-        var minorVersion = 0
-        var patchVersion = 0
-        var capabilities = 0L
+    /**
+     * Evaluates [operations] against [context] and flattens the result into draw opcodes; see the
+     * class KDoc. Constants are applied only the first time (`context.inflated`), so a later
+     * change to a pool value persists across frames; everything else is re-applied every frame.
+     */
+    internal fun build(operations: List<Op>, context: RemoteContext, textMetrics: TextMetricsProvider): List<Opcode> {
         // Cumulative paint, exactly as the real player's PaintContext keeps it: each PAINT_VALUES
         // bundle is a delta applied on top of the previous state, and every draw opcode captures
         // a snapshot of it. Saved on scope push and restored on CONTAINER_END, mirroring
         // Component.paint()'s savePaint()/restorePaint() around each component's own painting.
         val paint = PaintState()
-        val textPool = mutableMapOf<Int, String>()
-        val pathPool = mutableMapOf<Int, List<PathCommand>>()
-        val idListPool = mutableMapOf<Int, List<Int>>()
-        val bitmapPool = mutableMapOf<Int, ByteArray>()
-        val colorPool = mutableMapOf<Int, Color>()
-        val floatPool = mutableMapOf<Int, Float>()
-        val intPool = mutableMapOf<Int, Int>()
-        val booleanPool = mutableMapOf<Int, Boolean>()
-        val longPool = mutableMapOf<Int, Long>()
-        val dataMapPool = mutableMapOf<Int, List<Op.DataMapEntry>>()
+        val textPool = context.texts
+        val pathPool = context.paths
+        val idListPool = context.idLists
+        val bitmapPool = context.bitmaps
+        val colorPool = context.colors
+        val floatPool = context.floats
+        val intPool = context.ints
+        val booleanPool = context.booleans
+        val longPool = context.longs
+        val dataMapPool = context.dataMaps
         val opcodes = mutableListOf<Opcode>()
 
-        /**
-         * Resolves a raw wire float that may be a NaN-tagged [floatPool] reference (the
-         * `Utils.asNan(id)`/`idFromNan(value)` scheme — see [Op.FloatConstant]'s KDoc) rather than a
-         * literal value: real Compose lets a document write `RemoteComposeWriter
-         * .addFloatConstant(value)`'s returned reference anywhere a plain float field is expected,
-         * so a field this parser previously always read as a literal would decode as `NaN` (and
-         * corrupt whatever math used it — e.g. a `Translate` by `NaN` renders nothing at all)
-         * whenever a document actually exercises that path. Falls back to the raw value itself
-         * when it isn't NaN, or when the referenced id was never registered by a prior
-         * [Op.FloatConstant].
-         */
-        fun resolveFloat(raw: Float): Float {
-            if (!raw.isNaN()) return raw
-            val id = raw.toRawBits() and 0x3FFFFF
-            return floatPool[id] ?: raw
-        }
+        /** A wire float that may be a NaN-tagged id, resolved through the context (see [RemoteContext.resolveFloat]). */
+        fun resolveFloat(raw: Float): Float = context.resolveFloat(raw)
 
         // Shared by Op.TextSubtext/Op.TextTransform (real TextSubtext/TextTransform.apply()'s
         // own identical [start, start+len) / [start, end) — when len == -1f — String.substring()
@@ -906,6 +897,7 @@ object RemoteComposeParser {
         }
 
         for (op in operations) {
+            if (context.inflated && op.isConstant()) continue
             when (op) {
                 // Decoded by OperationReader so the stream stays aligned, but with no effect in
                 // this evaluator: their semantics are runtime state, actions or animation, which
@@ -916,14 +908,9 @@ object RemoteComposeParser {
                 is Op.ModifierRipple, is Op.ModifierDrawContent, is Op.TouchExpression,
                 is Op.ValueIntegerChange, is Op.ValueStringChange, is Op.ValueFloatChange,
                 is Op.ValueIntegerExpressionChange, is Op.ValueFloatExpressionChange -> Unit
-                is Op.Header -> {
-                    majorVersion = op.majorVersion
-                    minorVersion = op.minorVersion
-                    patchVersion = op.patchVersion
-                    width = op.width
-                    height = op.height
-                    capabilities = op.capabilities
-                }
+                is Op.Header -> Unit // captured by load()
+
+                is Op.FloatExpression -> context.applyFloatExpression(op)
 
                 is Op.TextData -> {
                     val id = op.id
@@ -986,10 +973,10 @@ object RemoteComposeParser {
                 }
 
                 is Op.DrawRect -> {
-                    val left = op.left
-                    val top = op.top
-                    val right = op.right
-                    val bottom = op.bottom
+                    val left = resolveFloat(op.left)
+                    val top = resolveFloat(op.top)
+                    val right = resolveFloat(op.right)
+                    val bottom = resolveFloat(op.bottom)
                     opcodes += Opcode.DrawRect(
                         left, top, right, bottom,
                         paint.snapshot(),
@@ -997,9 +984,9 @@ object RemoteComposeParser {
                 }
 
                 is Op.DrawCircle -> {
-                    val centerX = op.centerX
-                    val centerY = op.centerY
-                    val radius = op.radius
+                    val centerX = resolveFloat(op.centerX)
+                    val centerY = resolveFloat(op.centerY)
+                    val radius = resolveFloat(op.radius)
                     opcodes += Opcode.DrawCircle(
                         centerX, centerY, radius,
                         paint.snapshot(),
@@ -1007,12 +994,12 @@ object RemoteComposeParser {
                 }
 
                 is Op.DrawRoundRect -> {
-                    val left = op.left
-                    val top = op.top
-                    val right = op.right
-                    val bottom = op.bottom
-                    val radiusX = op.radiusX
-                    val radiusY = op.radiusY
+                    val left = resolveFloat(op.left)
+                    val top = resolveFloat(op.top)
+                    val right = resolveFloat(op.right)
+                    val bottom = resolveFloat(op.bottom)
+                    val radiusX = resolveFloat(op.radiusX)
+                    val radiusY = resolveFloat(op.radiusY)
                     opcodes += Opcode.DrawRoundRect(
                         left, top, right, bottom, radiusX, radiusY,
                         paint.snapshot(),
@@ -1023,8 +1010,8 @@ object RemoteComposeParser {
                     val textId = op.textId
                     val start = op.start
                     val end = op.end
-                    val x = op.x
-                    val y = op.y
+                    val x = resolveFloat(op.x)
+                    val y = resolveFloat(op.y)
                     opcodes += Opcode.DrawText(
                         stringIndex = textId,
                         x = x,
@@ -1054,10 +1041,10 @@ object RemoteComposeParser {
 
                 is Op.DrawTextOnCircle -> {
                     val textId = op.textId
-                    val centerX = op.centerX
-                    val centerY = op.centerY
-                    val radius = op.radius
-                    val startAngleDegrees = op.startAngleDegrees
+                    val centerX = resolveFloat(op.centerX)
+                    val centerY = resolveFloat(op.centerY)
+                    val radius = resolveFloat(op.radius)
+                    val startAngleDegrees = resolveFloat(op.startAngleDegrees)
                     val startAngleRadians = startAngleDegrees * (PI.toFloat() / 180f)
                     opcodes += Opcode.DrawText(
                         stringIndex = textId,
@@ -1084,10 +1071,10 @@ object RemoteComposeParser {
                 }
 
                 is Op.DrawLine -> {
-                    val x1 = op.x1
-                    val y1 = op.y1
-                    val x2 = op.x2
-                    val y2 = op.y2
+                    val x1 = resolveFloat(op.x1)
+                    val y1 = resolveFloat(op.y1)
+                    val x2 = resolveFloat(op.x2)
+                    val y2 = resolveFloat(op.y2)
                     opcodes += Opcode.DrawLine(
                         x1, y1, x2, y2,
                         paint.snapshot().copy(style = PaintStyleKind.STROKE),
@@ -1095,10 +1082,10 @@ object RemoteComposeParser {
                 }
 
                 is Op.DrawOval -> {
-                    val left = op.left
-                    val top = op.top
-                    val right = op.right
-                    val bottom = op.bottom
+                    val left = resolveFloat(op.left)
+                    val top = resolveFloat(op.top)
+                    val right = resolveFloat(op.right)
+                    val bottom = resolveFloat(op.bottom)
                     opcodes += Opcode.DrawOval(
                         left, top, right, bottom,
                         paint.snapshot(),
@@ -1106,12 +1093,12 @@ object RemoteComposeParser {
                 }
 
                 is Op.DrawArc, is Op.DrawSector -> {
-                    val left = op.left
-                    val top = op.top
-                    val right = op.right
-                    val bottom = op.bottom
-                    val startAngle = op.startAngle
-                    val sweepAngle = op.sweepAngle
+                    val left = resolveFloat(op.left)
+                    val top = resolveFloat(op.top)
+                    val right = resolveFloat(op.right)
+                    val bottom = resolveFloat(op.bottom)
+                    val startAngle = resolveFloat(op.startAngle)
+                    val sweepAngle = resolveFloat(op.sweepAngle)
                     opcodes += Opcode.DrawArc(
                         left, top, right, bottom, startAngle, sweepAngle,
                         useCenter = op is Op.DrawSector,
@@ -1222,10 +1209,10 @@ object RemoteComposeParser {
 
                 is Op.DrawBitmap -> {
                     val bitmapId = op.bitmapId
-                    val left = op.left
-                    val top = op.top
-                    val right = op.right
-                    val bottom = op.bottom
+                    val left = resolveFloat(op.left)
+                    val top = resolveFloat(op.top)
+                    val right = resolveFloat(op.right)
+                    val bottom = resolveFloat(op.bottom)
                     opcodes += Opcode.DrawBitmap(bitmapId, left, top, right, bottom)
                 }
 
@@ -1275,10 +1262,10 @@ object RemoteComposeParser {
 
                 is Op.ClickArea -> {
                     val actionId = op.actionId
-                    val left = op.left
-                    val top = op.top
-                    val right = op.right
-                    val bottom = op.bottom
+                    val left = resolveFloat(op.left)
+                    val top = resolveFloat(op.top)
+                    val right = resolveFloat(op.right)
+                    val bottom = resolveFloat(op.bottom)
                     val metadataTextId = op.metadataTextId
                     opcodes += Opcode.ActionClick(actionId, metadataTextId, left, top, right, bottom)
                 }
@@ -2026,8 +2013,8 @@ object RemoteComposeParser {
                     // A real semantic effect (not just a byte-skip): translates every subsequent
                     // draw belonging to this container's children, undone at this container's own
                     // closing CONTAINER_END via the scope stack above.
-                    val x = op.x
-                    val y = op.y
+                    val x = resolveFloat(op.x)
+                    val y = resolveFloat(op.y)
                     opcodes += Opcode.MatrixSave
                     opcodes += Opcode.Translate(x, y)
                     attachToTopScope(Opcode.MatrixRestore)
@@ -2106,8 +2093,8 @@ object RemoteComposeParser {
                     pushScope() // no payload — opens a nested action list, closed by its own CONTAINER_END
 
                 is Op.ModifierWidthIn, is Op.ModifierHeightIn -> {
-                    val min = op.min
-                    val max = op.max
+                    val min = resolveFloat(op.min)
+                    val max = resolveFloat(op.max)
                     val frame = scopeStack.lastOrNull()
                     if (op is Op.ModifierWidthIn) {
                         frame?.widthInMin = min
@@ -2127,7 +2114,7 @@ object RemoteComposeParser {
                 }
 
                 is Op.ModifierZIndex -> {
-                    val zIndex = op.zIndex
+                    val zIndex = resolveFloat(op.zIndex)
                     scopeStack.lastOrNull()?.zIndex = zIndex
                 }
 
@@ -2191,56 +2178,58 @@ object RemoteComposeParser {
                 is Op.MatrixRestore -> opcodes += Opcode.MatrixRestore
 
                 is Op.MatrixTranslate -> {
-                    val dx = op.dx
-                    val dy = op.dy
+                    val dx = resolveFloat(op.dx)
+                    val dy = resolveFloat(op.dy)
                     opcodes += Opcode.Translate(dx, dy)
                 }
 
                 is Op.MatrixScale -> {
-                    val sx = op.sx
-                    val sy = op.sy
-                    val pivotX = op.pivotX
-                    val pivotY = op.pivotY
+                    val sx = resolveFloat(op.sx)
+                    val sy = resolveFloat(op.sy)
+                    val pivotX = resolveFloat(op.pivotX)
+                    val pivotY = resolveFloat(op.pivotY)
                     opcodes += Opcode.Scale(sx, sy, pivotX, pivotY)
                 }
 
                 is Op.MatrixRotate -> {
-                    val degrees = op.degrees
-                    val pivotX = op.pivotX
-                    val pivotY = op.pivotY
+                    val degrees = resolveFloat(op.degrees)
+                    val pivotX = resolveFloat(op.pivotX)
+                    val pivotY = resolveFloat(op.pivotY)
                     opcodes += Opcode.Rotate(degrees, pivotX, pivotY)
                 }
 
                 is Op.MatrixSkew -> {
-                    val skewX = op.skewX
-                    val skewY = op.skewY
+                    val skewX = resolveFloat(op.skewX)
+                    val skewY = resolveFloat(op.skewY)
                     opcodes += Opcode.Skew(skewX, skewY)
                 }
 
                 is Op.ClipRect -> {
-                    val left = op.left
-                    val top = op.top
-                    val right = op.right
-                    val bottom = op.bottom
+                    val left = resolveFloat(op.left)
+                    val top = resolveFloat(op.top)
+                    val right = resolveFloat(op.right)
+                    val bottom = resolveFloat(op.bottom)
                     opcodes += Opcode.ClipRect(left, top, right, bottom)
                 }
 
             }
         }
 
-        return RemoteDocument(
-            header = Header(
-                majorVersion = majorVersion,
-                minorVersion = minorVersion,
-                patchVersion = patchVersion,
-                width = width,
-                height = height,
-                capabilities = capabilities,
-            ),
-            strings = textPool.toMap(),
-            bitmaps = BitmapPool.fromEntries(bitmapPool),
-            opcodes = opcodes,
-        )
+        context.inflated = true
+        return opcodes
+    }
+
+    /**
+     * Operations whose only effect is to define a pool value once. They are skipped after the
+     * first pass so that later writes to the same id (an animation, an action) are not undone
+     * every frame; `PathCreate`/`PathAdd` are included because re-applying them would append
+     * segments again.
+     */
+    private fun Op.isConstant(): Boolean = when (this) {
+        is Op.TextData, is Op.FloatConstant, is Op.IntegerConstant, is Op.BooleanConstant,
+        is Op.LongConstant, is Op.ColorConstant, is Op.BitmapData, is Op.PathData,
+        is Op.PathCreate, is Op.PathAdd, is Op.IdList, is Op.DataMapIds -> true
+        else -> false
     }
 
     /**

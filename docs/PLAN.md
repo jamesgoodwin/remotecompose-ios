@@ -145,10 +145,16 @@ green on Desktop tests and visually checked on one device.
    is bottom-at-y, `1` is top-at-y, `BASELINE_RELATIVE` honoured). `TextMetricsProvider` feeds
    real `TextMeasurer` metrics into the parser's layout heuristics; the font-free estimate
    remains only as the headless default.
-5. **`RemoteContext` and per-frame evaluation.** Operations stop writing into parse-time pools
-   and instead `apply()` against a context each frame. Add `FloatExpression` evaluation and the
-   system variables (`TIME_IN_SEC`, `DENSITY`, `WIDTH`/`HEIGHT`). `ANIMATED_FLOAT` becomes real.
-   This unblocks the entire "dynamic" half of the opcode table.
+5. **`RemoteContext` and per-frame evaluation (done).** `RemoteComposeParser.load` returns a
+   `RemoteComposeDocument` whose `frame(nowMillis)` re-evaluates every non-constant operation
+   against a `RemoteContext` (pools, time, size, density) and flattens the result; constants
+   apply once so later writes persist. `FloatExpression` (`ANIMATED_FLOAT`) is decoded and
+   evaluated by a transcription of `AnimatedFloatExpression.opEval` (scalar operators; collection,
+   random and spline operators yield NaN), with `FloatAnimation` cubic easing. All geometry
+   opcodes now resolve NaN-tagged ids. `rememberDocumentFrames` drives the composables from
+   `withFrameMillis` while the document reports `needsRepaint`. Calendar variables
+   (`TIME_IN_SEC` etc.) are UTC; wrap/directional-snap, bounce, elastic and spline easing are
+   decoded but not applied.
 6. **Component tree with a real measure pass.** Port `BoxLayout`, `RowLayout`, `ColumnLayout`,
    `TextLayout`, `ImageLayout` measure/layout logic from bytecode. Replace `contentBounds()`
    inference and the `ScopeFrame` state machine. Modifiers become `ModifierOperation`s on a

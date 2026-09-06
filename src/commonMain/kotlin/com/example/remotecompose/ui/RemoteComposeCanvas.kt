@@ -3,10 +3,17 @@ package com.example.remotecompose.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
+import com.example.remotecompose.model.RemoteDocument
+import com.example.remotecompose.parser.RemoteComposeDocument
+import com.example.remotecompose.runtime.currentTimeMillis
+import kotlinx.coroutines.isActive
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
@@ -52,16 +59,18 @@ fun RemoteComposeCanvas(
     fallback: (@Composable () -> Unit)? = null,
 ) {
     val textMeasurer = rememberTextMeasurer()
-    val document = remember(bytes, textMeasurer) {
-        runCatching { RemoteComposeParser.parse(bytes, ComposeTextMetrics(textMeasurer)) }.getOrNull()
+    val loaded = remember(bytes, textMeasurer) {
+        runCatching { RemoteComposeParser.load(bytes, ComposeTextMetrics(textMeasurer)) }.getOrNull()
     }
 
-    if (document == null) {
+    if (loaded == null) {
         fallback?.invoke()
         return
     }
 
-    val renderContext = remember(document, textMeasurer) { RenderContext(document, textMeasurer) }
+    val document by rememberDocumentFrames(loaded)
+    val renderContext = remember(loaded, textMeasurer) { RenderContext(document, textMeasurer) }
+    renderContext.document = document
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 
     Canvas(
@@ -100,6 +109,23 @@ fun RemoteComposeCanvas(
  * The uniform scale + centering offset that fits a [Header.width] x [Header.height] document into
  * a `canvasWidth` x `canvasHeight` viewport without distortion (equivalent to `ContentScale.Fit`).
  */
+/**
+ * Drives a loaded document's frames: evaluates it once immediately, then, for as long as the
+ * document reports [RemoteComposeDocument.needsRepaint], re-evaluates it on every display frame
+ * with the wall clock. A static document is evaluated once and never again.
+ */
+@Composable
+fun rememberDocumentFrames(loaded: RemoteComposeDocument): State<RemoteDocument> {
+    val frame = remember(loaded) { mutableStateOf(loaded.frame(currentTimeMillis())) }
+    LaunchedEffect(loaded) {
+        while (isActive) {
+            withFrameMillis { }
+            if (loaded.needsRepaint) frame.value = loaded.frame(currentTimeMillis())
+        }
+    }
+    return frame
+}
+
 private data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float) {
     /** Maps a point in on-screen canvas coordinates back into the document's own coordinate space. */
     fun toDocumentSpace(canvasPoint: Offset): Offset =

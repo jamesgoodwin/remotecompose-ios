@@ -31,17 +31,18 @@ import androidx.compose.ui.unit.sp
  * it's purely a demo-host switcher.
  */
 /**
- * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint). Lets the
+ * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint, 3 anim). Lets the
  *   device hosts be launched straight onto a given page for scripted screenshots: Android reads
  *   an `--ei page N` intent extra, iOS reads an `RC_PAGE` environment variable.
  */
 @Composable
 fun DemoScreen(initialPage: Int = 0) {
-    var page by remember { mutableStateOf(initialPage.coerceIn(0, 2)) }
+    var page by remember { mutableStateOf(initialPage.coerceIn(0, 3)) }
     val pages = listOf(
         "Coverage" to SAMPLE_RC_BYTES,
         "Showcase" to SHOWCASE_RC_BYTES,
         "Paint" to PAINT_RC_BYTES,
+        "Anim" to ANIM_RC_BYTES,
     )
     val (label, bytes) = pages[page]
     Box(

@@ -38,6 +38,18 @@ sealed interface Operation {
 
     data class TextData(val id: Int, val text: String) : Operation
     data class FloatConstant(val id: Int, val value: Float) : Operation
+
+    /**
+     * `FloatExpression` (opcode `ANIMATED_FLOAT`): `[id][packed: expLen | animLen shl 16]`
+     * then `expLen` expression floats and `animLen` animation-description floats. The expression
+     * is RPN over literals, NaN-tagged float-pool ids and NaN-tagged operators; see
+     * [com.example.remotecompose.runtime.FloatExpressionEvaluator]. Identity-compared so the
+     * runtime can keep per-instance animation state.
+     */
+    class FloatExpression(val id: Int, val expression: FloatArray, val animation: FloatArray?) : Operation {
+        override fun toString(): String =
+            "FloatExpression(id=$id, expression=${expression.toList()}, animation=${animation?.toList()})"
+    }
     data class IntegerConstant(val id: Int, val value: Int) : Operation
     data class BooleanConstant(val id: Int, val value: Boolean) : Operation
     data class LongConstant(val id: Int, val value: Long) : Operation

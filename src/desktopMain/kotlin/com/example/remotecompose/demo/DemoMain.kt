@@ -25,7 +25,7 @@ import java.io.File
  * [OpcodeExecutor.render] call is what backs the on-screen iOS composable.
  */
 /**
- * @param args optional `[inputRcPath] [outputPngPath]`, defaulting to the opcode-coverage sample
+ * @param args optional `[inputRcPath] [outputPngPath] [timeSeconds]`, defaulting to the opcode-coverage sample
  *   used by the cross-platform demo apps — passing an alternate `.rc` (e.g. a hand-built showcase
  *   document) renders it the exact same way without touching that shared coverage fixture.
  */
@@ -35,7 +35,11 @@ fun main(args: Array<String>) {
     val bytes = File(inputPath).readBytes()
     val density = Density(1f)
     val textMeasurer = TextMeasurer(createFontFamilyResolver(), density, LayoutDirection.Ltr)
-    val document = RemoteComposeParser.parse(bytes, ComposeTextMetrics(textMeasurer))
+    // Optional third argument: the animation time in seconds at which to evaluate the document.
+    val timeMillis = (args.getOrNull(2)?.toFloatOrNull() ?: 0f).let { (it * 1000f).toLong() }
+    val loaded = RemoteComposeParser.load(bytes, ComposeTextMetrics(textMeasurer))
+    loaded.frame(0L)
+    val document = loaded.frame(timeMillis)
     println("Parsed real payload: ${document.header.width}x${document.header.height}, ${document.opcodes.size} opcode(s): ${document.opcodes}")
 
     val width = document.header.width

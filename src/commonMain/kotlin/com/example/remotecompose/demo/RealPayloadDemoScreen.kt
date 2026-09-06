@@ -16,6 +16,8 @@ import com.example.remotecompose.engine.ComposeTextMetrics
 import com.example.remotecompose.engine.OpcodeExecutor
 import com.example.remotecompose.engine.RenderContext
 import com.example.remotecompose.parser.RemoteComposeParser
+import com.example.remotecompose.ui.rememberDocumentFrames
+import androidx.compose.runtime.getValue
 
 /**
  * Demo host for the cross-platform screenshot comparison: parses [bytes] with
@@ -33,10 +35,12 @@ import com.example.remotecompose.parser.RemoteComposeParser
 @Composable
 fun RealPayloadDemoScreen(bytes: ByteArray) {
     val textMeasurer = rememberTextMeasurer()
-    val document = remember(bytes, textMeasurer) {
-        RemoteComposeParser.parse(bytes, ComposeTextMetrics(textMeasurer))
+    val loaded = remember(bytes, textMeasurer) {
+        RemoteComposeParser.load(bytes, ComposeTextMetrics(textMeasurer))
     }
-    val renderContext = remember(document, textMeasurer) { RenderContext(document, textMeasurer) }
+    val document by rememberDocumentFrames(loaded)
+    val renderContext = remember(loaded, textMeasurer) { RenderContext(document, textMeasurer) }
+    renderContext.document = document
 
     // The .rc wire format's coordinates are raw device-independent-ish units matching
     // document.header.width/height 1:1 — every opcode's x/y/left/top/etc is drawn straight into
