@@ -20,6 +20,7 @@ import androidx.compose.remote.creation.modifiers.WidthModifier
 import androidx.compose.remote.creation.modifiers.ZIndexModifier
 import androidx.compose.remote.core.operations.BitmapFontData
 import androidx.compose.remote.core.operations.DrawTextOnCircle
+import androidx.compose.remote.core.operations.utilities.MatrixOperations
 import androidx.compose.remote.core.operations.layout.modifiers.DimensionModifierOperation
 import java.io.File
 
@@ -227,6 +228,25 @@ private fun buildAdvancedSample() {
             writer.floatExpression(px, 2f, Rc.FloatExpression.ADD),
             writer.floatExpression(py, 8f, Rc.FloatExpression.SUB),
         )
+    }
+
+    // 10. A matrix expression: translate to (150, 40), then turn 20 degrees. Four corners are
+    //     pushed through it and the transformed ids drive the lines of a rotated square.
+    val transform = writer.matrixExpression(
+        150f, 40f, MatrixOperations.TRANSLATE2,
+        20f, MatrixOperations.ROT_Z,
+    )
+    fun corner(x: Float, y: Float): FloatArray {
+        val out = floatArrayOf(0f, 0f) // filled with the ids of the transformed components
+        writer.addMatrixMultiply(transform, floatArrayOf(x, y), out)
+        return out
+    }
+    val corners = listOf(corner(-22f, -14f), corner(22f, -14f), corner(22f, 14f), corner(-22f, 14f))
+    writer.getRcPaint().setColor(0xFF6D4C41.toInt()).setStyle(1).setStrokeWidth(2f).commit()
+    for (k in corners.indices) {
+        val from = corners[k]
+        val to = corners[(k + 1) % corners.size]
+        writer.drawLine(from[0], from[1], to[0], to[1])
     }
 
     val bytes = writer.encodeToByteArray()

@@ -130,6 +130,21 @@ class AdvancedFixtureTest {
     }
 
     @Test
+    fun theMatrixExpressionMovesThePointsItIsGiven() {
+        // Four corners of a 44x28 rectangle, translated to (150, 40) and turned 20 degrees.
+        val lines = document.opcodes.filterIsInstance<Opcode.DrawLine>()
+        assertEquals(4, lines.size)
+        val corners = lines.map { it.x1 to it.y1 }
+        for ((x, y) in corners) {
+            assertEquals(hypot(22f, 14f), hypot(x - 150f, y - 40f), 0.01f, "a turn keeps every corner at its distance")
+        }
+        // Turned, so no edge is axis-aligned any more, and the sides keep their lengths.
+        assertTrue(lines.none { it.y1 == it.y2 || it.x1 == it.x2 })
+        assertEquals(44f, hypot(lines[0].x2 - lines[0].x1, lines[0].y2 - lines[0].y1), 0.01f)
+        assertEquals(28f, hypot(lines[1].x2 - lines[1].x1, lines[1].y2 - lines[1].y1), 0.01f)
+    }
+
+    @Test
     fun aLinearJoinKeepsItsControlPointsOnTheSegments() {
         // The same samples as the spline, joined straight: each cubic's controls are its ends.
         val zigzag = paths[2].commands.filterIsInstance<PathCommand.CubicTo>()

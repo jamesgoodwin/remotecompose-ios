@@ -8,6 +8,8 @@ import com.example.remotecompose.model.PaintStyle
 import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
+import com.example.remotecompose.geometry.Matrix4
+import com.example.remotecompose.geometry.MatrixExpressionEvaluator
 import com.example.remotecompose.geometry.PathGenerator
 import com.example.remotecompose.geometry.PathGeometry
 import com.example.remotecompose.layout.Dimension
@@ -1018,6 +1020,45 @@ object RemoteComposeParser {
                             // An unsupported operator anywhere in either expression samples to
                             // NaN; storing that would draw nothing but hide the reason.
                             if (PathGenerator.isFinite(commands)) pathPool[op.id] = commands else pathPool.remove(op.id)
+                        }
+                    }
+
+                    is Op.MatrixConstant -> {
+                        // MatrixConstant.apply(): the values, each of which may be a float id.
+                        context.matrices[op.id] = resolveExpression(op.values)
+                    }
+
+                    is Op.MatrixExpression -> {
+                        // MatrixExpression.apply(): run the matrix machine and store the result.
+                        // The matrix operators live outside the float operator range, so they
+                        // have to be spared the pool lookup by hand.
+                        val resolved = FloatArray(op.expression.size) { k ->
+                            val v = op.expression[k]
+                            if (!MatrixExpressionEvaluator.isOperator(v) && FloatExpressionEvaluator.isVariable(v)) {
+                                resolveFloat(v)
+                            } else {
+                                v
+                            }
+                        }
+                        val matrix = MatrixExpressionEvaluator.eval(resolved)
+                        if (matrix != null) context.matrices[op.id] = matrix.values.copyOf()
+                    }
+
+                    is Op.MatrixVectorMath -> {
+                        // MatrixVectorMath.apply(): transform the inputs and store each component
+                        // of the result under its own float id.
+                        val values = context.matrices[op.matrixId]
+                        if (values != null) {
+                            val matrix = Matrix4()
+                            matrix.copyFrom(values)
+                            val inputs = resolveExpression(op.inputs)
+                            val outputs = FloatArray(op.outputs.size)
+                            if (op.type == 0) {
+                                matrix.transformPoint(inputs, outputs)
+                            } else {
+                                matrix.transformPerspective(inputs, outputs)
+                            }
+                            for ((k, id) in op.outputs.withIndex()) context.loadFloat(id, outputs[k])
                         }
                     }
 

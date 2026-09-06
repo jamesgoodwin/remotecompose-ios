@@ -256,6 +256,48 @@ sealed interface Operation {
     data class LoopStart(val indexVariableId: Int, val from: Float, val step: Float, val until: Float) : Operation
 
     /**
+     * `MatrixConstant`: stores [values] — 16 for a full matrix, 9 for a 3x3 affine one — as the
+     * matrix [id]. Each value may be a NaN-tagged float id.
+     */
+    data class MatrixConstant(val id: Int, val type: Int, val values: FloatArray) : Operation {
+        override fun equals(other: Any?): Boolean =
+            other is MatrixConstant && id == other.id && type == other.type && values.contentEquals(other.values)
+
+        override fun hashCode(): Int = id * 31 + type
+
+        override fun toString(): String = "MatrixConstant(id=$id, type=$type, values=${values.toList()})"
+    }
+
+    /** `MatrixExpression`: builds the matrix [id] by running [expression] on the matrix machine. */
+    data class MatrixExpression(val id: Int, val type: Int, val expression: FloatArray) : Operation {
+        override fun equals(other: Any?): Boolean =
+            other is MatrixExpression && id == other.id && type == other.type &&
+                expression.contentEquals(other.expression)
+
+        override fun hashCode(): Int = id * 31 + type
+
+        override fun toString(): String = "MatrixExpression(id=$id, type=$type, expression=${expression.toList()})"
+    }
+
+    /**
+     * `MatrixVectorMath`: transforms [inputs] by the matrix [matrixId] and stores the components
+     * of the result under [outputs]. [type] 0 transforms a point, anything else divides through
+     * by w for a perspective projection.
+     */
+    data class MatrixVectorMath(
+        val type: Int, val outputs: List<Int>, val matrixId: Int, val inputs: FloatArray,
+    ) : Operation {
+        override fun equals(other: Any?): Boolean =
+            other is MatrixVectorMath && type == other.type && outputs == other.outputs &&
+                matrixId == other.matrixId && inputs.contentEquals(other.inputs)
+
+        override fun hashCode(): Int = matrixId * 31 + type
+
+        override fun toString(): String =
+            "MatrixVectorMath(type=$type, outputs=$outputs, matrixId=$matrixId, inputs=${inputs.toList()})"
+    }
+
+    /**
      * `ParticlesCreate`: [particleCount] particles, each with one value per entry of [varIds].
      * A particle's starting values come from [equations], which see the particle's index in the
      * first caller variable slot.

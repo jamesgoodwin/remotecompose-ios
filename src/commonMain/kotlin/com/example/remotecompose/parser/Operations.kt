@@ -86,6 +86,9 @@ internal object Operations {
     const val DEBUG_MESSAGE = 179
     const val MATRIX_FROM_PATH = 181
     const val BITMAP_TEXT_MEASURE = 183
+    const val MATRIX_CONSTANT = 186
+    const val MATRIX_EXPRESSION = 187
+    const val MATRIX_VECTOR_MATH = 188
     const val TEXT_SUBTEXT = 182
     const val REM = 185
     const val ID_LOOKUP = 192

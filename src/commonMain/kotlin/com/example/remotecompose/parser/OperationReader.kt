@@ -180,6 +180,30 @@ internal object OperationReader {
             )
         }
         Operations.DATA_MAP_LOOKUP -> Op.DataMapLookup(r.readS32(), r.readS32(), r.readS32())
+        Operations.MATRIX_CONSTANT -> {
+            val id = r.readS32()
+            val type = r.readS32()
+            val length = r.readS32()
+            if (length > 16) throw RemoteComposeParseException("Matrix constant $id has $length values (max 16)")
+            Op.MatrixConstant(id, type, FloatArray(length) { r.readFloat32() })
+        }
+        Operations.MATRIX_EXPRESSION -> {
+            val id = r.readS32()
+            val type = r.readS32()
+            val length = r.readS32()
+            if (length > 32) throw RemoteComposeParseException("Matrix expression $id has $length entries (max 32)")
+            Op.MatrixExpression(id, type, FloatArray(length) { r.readFloat32() })
+        }
+        Operations.MATRIX_VECTOR_MATH -> {
+            val type = r.readU16()
+            val matrixId = r.readS32()
+            val outCount = r.readS32()
+            if (outCount !in 1..4) throw RemoteComposeParseException("Matrix vector math writes $outCount values")
+            val outputs = List(outCount) { r.readS32() }
+            val inCount = r.readS32()
+            if (inCount !in 1..4) throw RemoteComposeParseException("Matrix vector math reads $inCount values")
+            Op.MatrixVectorMath(type, outputs, matrixId, FloatArray(inCount) { r.readFloat32() })
+        }
         Operations.PARTICLES_CREATE -> {
             val id = r.readS32()
             val particleCount = r.readS32()

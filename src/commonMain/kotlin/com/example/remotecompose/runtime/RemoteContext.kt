@@ -30,6 +30,9 @@ class RemoteContext {
     val bitmaps = mutableMapOf<Int, ByteArray>()
     val bitmapFonts = mutableMapOf<Int, BitmapFont>()
 
+    /** Matrices, keyed by id, as the raw values a `MatrixAccess` hands out. */
+    val matrices = mutableMapOf<Int, FloatArray>()
+
     /** Particle variables, keyed by the id of the `ParticlesCreate` that made them. */
     val particles = mutableMapOf<Int, ParticleSystem>()
 
