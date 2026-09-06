@@ -9,6 +9,9 @@ import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
 import com.example.remotecompose.parser.Operation as Op
+import com.example.remotecompose.text.EstimatedTextMetrics
+import com.example.remotecompose.text.TextAnchoring
+import com.example.remotecompose.text.TextMetricsProvider
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -129,10 +132,16 @@ object RemoteComposeParser {
      * @throws RemoteComposeParseException if an opcode outside that subset is encountered, or if
      *   the buffer runs out mid-record.
      */
-    fun parse(bytes: ByteArray): RemoteDocument = build(OperationReader.readAll(bytes))
+    /**
+     * @param textMetrics Measures text for the layout heuristics. Pass
+     *   [com.example.remotecompose.engine.ComposeTextMetrics] for real font metrics; the default
+     *   is a font-free estimate, adequate for tests and headless use.
+     */
+    fun parse(bytes: ByteArray, textMetrics: TextMetricsProvider = EstimatedTextMetrics): RemoteDocument =
+        build(OperationReader.readAll(bytes), textMetrics)
 
     /** Evaluates decoded [operations] into a flat [RemoteDocument]; see the class KDoc. */
-    private fun build(operations: List<Op>): RemoteDocument {
+    private fun build(operations: List<Op>, textMetrics: TextMetricsProvider): RemoteDocument {
 
         var width = 0
         var height = 0
@@ -537,11 +546,11 @@ object RemoteComposeParser {
                         // participate in real Column/Row arrangement without being ignored
                         // entirely, not a claim of pixel-accurate text bounds.
                         val text = textPool[op.stringIndex] ?: ""
-                        val estimatedWidth = text.length * op.paint.textSize * 0.55f
-                        val estimatedHeight = op.paint.textSize * 1.2f
+                        val metrics = textMetrics.measure(text, op.paint)
+                        val (left, top) = TextAnchoring.topLeft(op, metrics)
                         expand(
-                            op.x + offsetX, op.y + offsetY,
-                            op.x + estimatedWidth + offsetX, op.y + estimatedHeight + offsetY,
+                            left + offsetX, top + offsetY,
+                            left + metrics.width + offsetX, top + metrics.height + offsetY,
                         )
                     }
                     else -> Unit
@@ -1039,6 +1048,7 @@ object RemoteComposeParser {
                         paint = paint.snapshot(),
                         panX = panX,
                         panY = panY,
+                        baselineRelative = op.flags and 8 != 0, // DrawTextAnchored.BASELINE_RELATIVE
                     )
                 }
 
@@ -1725,7 +1735,12 @@ object RemoteComposeParser {
                         // coverage only, same honest gate MODIFIER_WIDTH_IN's own effect needs.
                         if (frame.isTextLayout) {
                             val text = textPool[frame.textId] ?: ""
-                            val estimatedWidth = text.length * frame.textFontSize * 0.55f
+                            val textPaint = PaintStyle(
+                                Color(frame.textColorArgb),
+                                PaintStyleKind.FILL,
+                                textSize = frame.textFontSize,
+                            )
+                            val estimatedWidth = textMetrics.measure(text, textPaint).width
                             val boxWidth = frame.parent?.explicitWidthPx
                             val alignOffsetX = if (boxWidth != null) {
                                 val posMode = when (frame.textAlign) {
@@ -1737,15 +1752,14 @@ object RemoteComposeParser {
                             } else {
                                 0f
                             }
+                            // Real TextLayout draws with its baseline at -bounds[1], i.e. the
+                            // text's top at the component origin: panY = 1 says "top at y".
                             opcodes += Opcode.DrawText(
                                 stringIndex = frame.textId,
                                 x = alignOffsetX,
                                 y = 0f,
-                                paint = PaintStyle(
-                                    Color(frame.textColorArgb),
-                                    PaintStyleKind.FILL,
-                                    textSize = frame.textFontSize,
-                                ),
+                                paint = textPaint,
+                                panY = 1f,
                             )
                         }
                         // MODIFIER_GRAPHICS_LAYER's SHAPE/SHAPE_RADIUS: a real clip, nested

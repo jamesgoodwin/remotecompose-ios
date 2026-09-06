@@ -89,11 +89,13 @@ private fun buildPaintSample() {
     writer.getRcPaint().setColor(0xFF000000.toInt()).setStrokeWidth(4f).setStrokeCap(2).commit()
     writer.drawLine(150f, 20f, 190f, 60f)
 
-    // 5. Text size 24 then 10 with a bold italic monospace typeface.
+    // 5. Text size 24 then 10 with a bold italic monospace typeface. panY = -1 anchors the
+    //    text's bottom at y (DrawTextAnchored.getVerticalOffset), so these y values are baselines
+    //    plus descent, not top edges.
     writer.getRcPaint().setTextSize(24f).commit()
-    writer.drawTextAnchored("Big", 12f, 66f, -1f, -1f, 0)
+    writer.drawTextAnchored("Big", 12f, 90f, -1f, -1f, 0)
     writer.getRcPaint().setTextSize(10f).setTypeface(RcPaint.FONT_TYPE_MONOSPACE, 700, true).commit()
-    writer.drawTextAnchored("bold mono", 70f, 76f, -1f, -1f, 0)
+    writer.drawTextAnchored("bold mono", 70f, 86f, -1f, -1f, 0)
 
     // 6. Linear gradient with explicit stops, clamp tile mode.
     writer.getRcPaint()

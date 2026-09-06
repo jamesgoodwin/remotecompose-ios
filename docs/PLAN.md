@@ -140,8 +140,11 @@ green on Desktop tests and visually checked on one device.
    evaluates that list. Golden-file tests pin the opcode output for all three fixtures and were
    identical before and after. The 1,300 lines of per-opcode KDoc became one-line notes on the
    data classes.
-4. **Text baseline and measurement.** `y` is baseline. Use `TextMeasurer` for real bounds so
-   `DrawTextAnchored` pan and the layout engine stop estimating.
+4. **Text baseline and measurement (done).** `Opcode.DrawText` now means "left edge at x,
+   baseline at y", and `TextAnchoring` applies `DrawTextAnchored`'s real pan formulas (`panY = -1`
+   is bottom-at-y, `1` is top-at-y, `BASELINE_RELATIVE` honoured). `TextMetricsProvider` feeds
+   real `TextMeasurer` metrics into the parser's layout heuristics; the font-free estimate
+   remains only as the headless default.
 5. **`RemoteContext` and per-frame evaluation.** Operations stop writing into parse-time pools
    and instead `apply()` against a context each frame. Add `FloatExpression` evaluation and the
    system variables (`TIME_IN_SEC`, `DENSITY`, `WIDTH`/`HEIGHT`). `ANIMATED_FLOAT` becomes real.

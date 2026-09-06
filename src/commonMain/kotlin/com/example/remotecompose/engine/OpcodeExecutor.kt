@@ -20,12 +20,8 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import com.example.remotecompose.model.FontFamilyKind
 import com.example.remotecompose.model.GradientSpec
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PaintStyle
@@ -33,6 +29,8 @@ import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.StrokeCapKind
 import com.example.remotecompose.model.StrokeJoinKind
+import com.example.remotecompose.text.TextAnchoring
+import com.example.remotecompose.text.TextMetrics
 import kotlin.math.roundToInt
 
 /**
@@ -210,26 +208,15 @@ object OpcodeExecutor {
                             fullText
                         }
                         val style = textStyleOf(drawScope, opcode.paint)
-                        // panX/panY == -1f (every other DrawText-producing opcode's own implicit
-                        // top-left-anchor behavior) needs no measurement at all — the common case.
-                        val drawX: Float
-                        val drawY: Float
-                        if (opcode.panX == -1f && opcode.panY == -1f) {
-                            drawX = opcode.x
-                            drawY = opcode.y
-                        } else {
-                            val measured = context.textMeasurer.measure(text, style).size
-                            drawX = if (opcode.panX == -1f) {
-                                opcode.x
-                            } else {
-                                opcode.x - measured.width * (1f + opcode.panX) / 2f
-                            }
-                            drawY = if (opcode.panY == -1f) {
-                                opcode.y
-                            } else {
-                                opcode.y - measured.height * (1f + opcode.panY) / 2f
-                            }
-                        }
+                        // y is a baseline (and the pans move the anchor across the box), so every
+                        // text needs measuring to find its top-left; TextMeasurer caches layouts.
+                        val layout = context.textMeasurer.measure(text, style)
+                        val metrics = TextMetrics(
+                            width = layout.size.width.toFloat(),
+                            ascent = layout.firstBaseline,
+                            descent = layout.size.height - layout.firstBaseline,
+                        )
+                        val (drawX, drawY) = TextAnchoring.topLeft(opcode, metrics)
                         drawScope.drawText(
                             textMeasurer = context.textMeasurer,
                             text = text,
@@ -413,32 +400,7 @@ object OpcodeExecutor {
      */
     private fun textStyleOf(drawScope: DrawScope, paint: PaintStyle): TextStyle {
         val fontSize = with(drawScope) { paint.textSize.toSp() }
-        val weight = FontWeight(paint.fontWeight.coerceIn(1, 1000))
-        val fontStyle = if (paint.fontItalic) FontStyle.Italic else FontStyle.Normal
-        val family = when (paint.fontFamily) {
-            FontFamilyKind.DEFAULT -> FontFamily.Default
-            FontFamilyKind.SANS_SERIF -> FontFamily.SansSerif
-            FontFamilyKind.SERIF -> FontFamily.Serif
-            FontFamilyKind.MONOSPACE -> FontFamily.Monospace
-        }
-        val gradient = paint.gradient
-        return if (gradient != null) {
-            TextStyle(
-                brush = brushOf(paint),
-                fontSize = fontSize,
-                fontWeight = weight,
-                fontStyle = fontStyle,
-                fontFamily = family,
-            )
-        } else {
-            TextStyle(
-                color = paint.color,
-                fontSize = fontSize,
-                fontWeight = weight,
-                fontStyle = fontStyle,
-                fontFamily = family,
-            )
-        }
+        return paint.toTextStyle(fontSize, brush = if (paint.gradient != null) brushOf(paint) else null)
     }
 
     /** Reconstructs a Compose [Path] from a decoded `OP_DRAW_PATH` / `OP_CLIP_PATH` command list. */

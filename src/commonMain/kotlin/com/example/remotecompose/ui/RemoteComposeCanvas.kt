@@ -13,6 +13,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
+import com.example.remotecompose.engine.ComposeTextMetrics
 import com.example.remotecompose.engine.OpcodeExecutor
 import com.example.remotecompose.engine.RenderContext
 import com.example.remotecompose.model.Header
@@ -50,8 +51,9 @@ fun RemoteComposeCanvas(
     onAction: (RemoteAction) -> Unit = {},
     fallback: (@Composable () -> Unit)? = null,
 ) {
-    val document = remember(bytes) {
-        runCatching { RemoteComposeParser.parse(bytes) }.getOrNull()
+    val textMeasurer = rememberTextMeasurer()
+    val document = remember(bytes, textMeasurer) {
+        runCatching { RemoteComposeParser.parse(bytes, ComposeTextMetrics(textMeasurer)) }.getOrNull()
     }
 
     if (document == null) {
@@ -59,7 +61,6 @@ fun RemoteComposeCanvas(
         return
     }
 
-    val textMeasurer = rememberTextMeasurer()
     val renderContext = remember(document, textMeasurer) { RenderContext(document, textMeasurer) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 

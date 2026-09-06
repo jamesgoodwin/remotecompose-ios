@@ -8,6 +8,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import com.example.remotecompose.engine.ComposeTextMetrics
 import com.example.remotecompose.engine.OpcodeExecutor
 import com.example.remotecompose.engine.RenderContext
 import com.example.remotecompose.parser.RemoteComposeParser
@@ -32,15 +33,14 @@ fun main(args: Array<String>) {
     val inputPath = args.getOrElse(0) { "tools/rc-writer/sample.rc" }
     val outputPath = args.getOrElse(1) { "real-payload-render.png" }
     val bytes = File(inputPath).readBytes()
-    val document = RemoteComposeParser.parse(bytes)
+    val density = Density(1f)
+    val textMeasurer = TextMeasurer(createFontFamilyResolver(), density, LayoutDirection.Ltr)
+    val document = RemoteComposeParser.parse(bytes, ComposeTextMetrics(textMeasurer))
     println("Parsed real payload: ${document.header.width}x${document.header.height}, ${document.opcodes.size} opcode(s): ${document.opcodes}")
 
     val width = document.header.width
     val height = document.header.height
     val surface = Surface.makeRasterN32Premul(width, height)
-
-    val density = Density(1f)
-    val textMeasurer = TextMeasurer(createFontFamilyResolver(), density, LayoutDirection.Ltr)
     val renderContext = RenderContext(document, textMeasurer)
 
     CanvasDrawScope().draw(

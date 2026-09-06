@@ -102,37 +102,23 @@ sealed interface Opcode {
     ) : Opcode
 
     /**
-     * Draws text at ([x], [y]).
+     * Draws text anchored at ([x], [y]) with Android's `drawTextRun` semantics: [x] is the left
+     * edge and [y] the **baseline**. [com.example.remotecompose.text.TextAnchoring] turns that,
+     * plus the optional pans, into a top-left corner once the text is measured.
      *
      * @property stringIndex Id into [RemoteDocument.strings].
      * @property paint The cumulative paint in effect when the text was issued: color, text size
-     *   in document pixels, weight/italic/family, and any gradient shader. Same source of truth
-     *   as every shape opcode's paint.
-     * @property substringStart When non-null (only `Operations.DRAW_TEXT_RUN` carries these —
-     *   plain `Operations.DRAW_TEXT_ANCHORED` always draws the whole pool entry), only the
-     *   `[substringStart, substringEnd)` slice of the resolved string is drawn, resolved at
-     *   render time so the pool entry itself stays shared rather than duplicated per opcode.
-     * @property panX Only `Operations.DRAW_TEXT_ANCHORED` carries a real one (source-confirmed via
-     *   javap on the real `DrawTextAnchored.getHorizontalOffset()`): a `-1f..1f` fraction of the
-     *   text's own measured width describing which point of it [x] anchors — `-1f` (this class's
-     *   default, matching every other `DrawText`-producing opcode's own implicit left-anchor
-     *   behavior) means [x] is the left edge, `0f` means [x] is the horizontal center, `1f` means
-     *   [x] is the right edge, linearly interpolated in between. The real formula also involves
-     *   the text's own left-side bearing (`bounds[0]`), approximated here as `0` (a real, honest
-     *   simplification — this renderer has no access to that specific font metric — not a
-     *   byte-level guess), same discipline as `DRAW_TEXT_ON_CIRCLE`'s own documented
-     *   straight-line approximation elsewhere in this codebase.
-     * @property panY Same shape as [panX], but for the vertical axis: `-1f` (this class's default)
-     *   means [y] anchors the text's own top edge, `0f` its vertical center, `1f` its bottom edge.
-     *   The real `DrawTextAnchored.getVerticalOffset()` computes this from the text's own
-     *   baseline-relative ascent/descent (further branching on `ANCHOR_MONOSPACE_MEASURE`/
-     *   `BASELINE_RELATIVE` flag bits this renderer doesn't track), which this renderer's
-     *   `drawText(topLeft = ...)` API has no equivalent access to. Since that API already treats
-     *   [y] as the text's own top-left corner (unlike the real SDK's baseline-relative primitive),
-     *   the real *conceptual* top/center/bottom anchoring effect is reproduced here using this
-     *   renderer's own measured text height instead of the real font's ascent/descent — the same
-     *   "real effect via this renderer's own accurate geometry, not a byte-level port of the real
-     *   formula" approximation already used for [panX]'s own `bounds[0]` simplification.
+     *   in document pixels, weight/italic/family, and any gradient shader.
+     * @property substringStart When non-null (`DRAW_TEXT_RUN`), only `[substringStart,
+     *   substringEnd)` of the string is drawn.
+     * @property panX `DRAW_TEXT_ANCHOR` only: which point of the measured width sits at [x], from
+     *   `-1` (left edge) through `0` (center) to `1` (right edge). Null or NaN means the left
+     *   edge, as for every other text opcode.
+     * @property panY Same for the vertical axis, per `DrawTextAnchored.getVerticalOffset`: `-1`
+     *   puts the text's bottom at [y], `0` centers it, `1` puts its top at [y]. Null or NaN means
+     *   [y] is the baseline.
+     * @property baselineRelative `DrawTextAnchored.BASELINE_RELATIVE` flag: the vertical pan
+     *   measures from the box's own center instead of from the baseline.
      */
     data class DrawText(
         val stringIndex: Int,
@@ -141,8 +127,9 @@ sealed interface Opcode {
         val paint: PaintStyle,
         val substringStart: Int? = null,
         val substringEnd: Int? = null,
-        val panX: Float = -1f,
-        val panY: Float = -1f,
+        val panX: Float? = null,
+        val panY: Float? = null,
+        val baselineRelative: Boolean = false,
     ) : Opcode
 
     /**
