@@ -199,7 +199,7 @@ object OpcodeExecutor {
                     }
 
                     is Opcode.DrawText -> {
-                        val fullText = context.document.strings[opcode.stringIndex]
+                        val fullText = context.document.strings[opcode.stringIndex] ?: ""
                         val start = opcode.substringStart
                         val end = opcode.substringEnd
                         val text = if (start != null && end != null) {
@@ -274,8 +274,6 @@ object OpcodeExecutor {
                                 ?.let { context.document.strings[it] },
                         )
                     )
-
-                    is Opcode.Unknown -> Unit // Deliberately not rendered; see Opcode.Unknown KDoc.
                 }
             } catch (_: Exception) {
                 // A single malformed/unsupported opcode must never break the rest of the draw

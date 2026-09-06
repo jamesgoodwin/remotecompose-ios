@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import com.example.remotecompose.engine.OpcodeExecutor
 import com.example.remotecompose.engine.RenderContext
-import com.example.remotecompose.parser.RealRemoteComposeParser
+import com.example.remotecompose.parser.RemoteComposeParser
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Surface
 import java.io.File
@@ -18,7 +18,7 @@ import java.io.File
 /**
  * Headless proof that a real `androidx.compose.remote` payload — written by the official
  * `remote-creation-jvm` library, not by anything in this codebase — decodes and renders correctly
- * through our own [RealRemoteComposeParser] / [OpcodeExecutor], the exact same execution engine
+ * through our own [RemoteComposeParser] / [OpcodeExecutor], the exact same execution engine
  * [com.example.remotecompose.ui.RemoteComposeCanvas] uses on iOS. Rendering here goes straight to
  * an off-screen Skia surface so it runs without a display server; the same
  * [OpcodeExecutor.render] call is what backs the on-screen iOS composable.
@@ -32,7 +32,7 @@ fun main(args: Array<String>) {
     val inputPath = args.getOrElse(0) { "tools/rc-writer/sample.rc" }
     val outputPath = args.getOrElse(1) { "real-payload-render.png" }
     val bytes = File(inputPath).readBytes()
-    val document = RealRemoteComposeParser.parse(bytes)
+    val document = RemoteComposeParser.parse(bytes)
     println("Parsed real payload: ${document.header.width}x${document.header.height}, ${document.opcodes.size} opcode(s): ${document.opcodes}")
 
     val width = document.header.width

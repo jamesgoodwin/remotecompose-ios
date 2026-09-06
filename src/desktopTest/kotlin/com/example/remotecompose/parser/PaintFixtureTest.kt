@@ -22,7 +22,7 @@ import kotlin.test.assertNull
 class PaintFixtureTest {
 
     private val document by lazy {
-        RealRemoteComposeParser.parse(File("tools/rc-writer/paint.rc").readBytes())
+        RemoteComposeParser.parse(File("tools/rc-writer/paint.rc").readBytes())
     }
 
     private inline fun <reified T : Opcode> op(index: Int): T = assertIs<T>(document.opcodes[index])

@@ -126,13 +126,15 @@ Key pieces, each mapping to a real class:
 Each step is a mergeable commit with a test. Do not start the next until the current one is
 green on Desktop tests and visually checked on one device.
 
-1. **Paint bundle decode (in progress).** Full attribute parser matching `PaintBundle.applyPaintChange`,
-   cumulative paint state, stroke/fill/cap/join/miter, alpha, text size in document pixels
-   (fixes the density bug as a side effect), gradients as Compose `Brush`, typeface
-   bold/italic/family. Fixture with every attribute. First unit tests in `commonTest`.
-2. **Delete the invented format.** Remove `RemoteComposeParser`, `Header.read`, `StringPool`,
-   `VariablePool`, `BitmapPool`, `RcOpcode`. Point `RemoteComposeCanvas` at the real parser.
-   `RemoteDocument` becomes header + pools + operations.
+1. **Paint bundle decode (done, `6b2f44a`).** Full attribute parser matching
+   `PaintBundle.applyPaintChange`, cumulative paint state, stroke/fill/cap/join/miter, alpha,
+   text size in document pixels (fixes the density bug as a side effect), gradients as Compose
+   `Brush`, typeface bold/italic/family. Fixture with every attribute. First unit tests.
+2. **Delete the invented format (done).** `RemoteComposeParser`, `Header.read`, `StringPool`,
+   `VariablePool`, `RcOpcode` and the varint reader are gone; the real parser now carries the
+   `RemoteComposeParser` name and `RemoteComposeCanvas` uses it. `Header` holds the real
+   version/size/capability fields; `RemoteDocument` is header + string map + bitmap pool +
+   opcodes.
 3. **Split `parse()`.** Move each opcode's decode into its own `Operation` class with a
    `read(buffer)` companion, exactly like the real library. No behaviour change; this is the
    refactor that makes step 5 possible. Golden-file test: parsing `sample.rc` yields the same

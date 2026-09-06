@@ -21,8 +21,7 @@ import com.example.remotecompose.model.RemoteDocument
  * `OP_MATRIX_SAVE`/`OP_MATRIX_RESTORE` balanced even against a malformed document.
  *
  * @property document The parsed document currently being rendered. Supplies [RemoteDocument.strings]
- *   and [RemoteDocument.bitmaps] for resolving `OP_DRAW_TEXT` / `OP_DRAW_BITMAP` pool indices, and
- *   [RemoteDocument.variables] for future expression-driven opcodes.
+ *   and [RemoteDocument.bitmaps] for resolving text and bitmap pool ids.
  * @property textMeasurer Shared [TextMeasurer] used to lay out every `OP_DRAW_TEXT` opcode. Must
  *   come from `rememberTextMeasurer()` in the composable layer — constructing one directly is
  *   expensive and not itself Composable.

@@ -34,13 +34,14 @@ import com.example.remotecompose.parser.RemoteComposeParser
  * by the most recent draw pass, and surfaced to [onAction] as [RemoteAction.Click]. Overlapping
  * regions resolve to the last one recorded — i.e. the one drawn on top.
  *
- * @param bytes The raw `.rc` payload. Re-parsed only when this exact [ByteArray] instance changes
+ * @param bytes The raw `.rc` payload as produced by `androidx.compose.remote`'s
+ *   `RemoteComposeWriter`. Re-parsed only when this exact [ByteArray] instance changes
  *   (`remember(bytes)`), matching Kotlin's reference-based `ByteArray` equality — pass a new array
  *   instance when the underlying content changes, not the same array mutated in place.
  * @param onAction Invoked when a tap lands inside an interactive region. Defaults to a no-op.
  * @param fallback Optional composable shown instead of the canvas when [bytes] fails to parse
- *   (e.g. a bad magic header or a truncated fixed-format section). When `null` and parsing fails,
- *   nothing is emitted.
+ *   (a truncated record, or an opcode this parser does not handle). When `null` and parsing
+ *   fails, nothing is emitted.
  */
 @Composable
 fun RemoteComposeCanvas(

@@ -14,20 +14,16 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.example.remotecompose.engine.OpcodeExecutor
 import com.example.remotecompose.engine.RenderContext
-import com.example.remotecompose.parser.RealRemoteComposeParser
+import com.example.remotecompose.parser.RemoteComposeParser
 
 /**
- * Proof-of-concept screen for the real-`androidx.compose.remote`-payload round trip: parses
- * [bytes] with [RealRemoteComposeParser] (the real wire format, not the placeholder one
- * [com.example.remotecompose.ui.RemoteComposeCanvas] is built against) and renders the result
- * through the exact same [OpcodeExecutor] the real composable uses.
+ * Demo host for the cross-platform screenshot comparison: parses [bytes] with
+ * [RemoteComposeParser] and renders through the same [OpcodeExecutor] that
+ * [com.example.remotecompose.ui.RemoteComposeCanvas] uses.
  *
- * Deliberately skips [com.example.remotecompose.ui.RemoteComposeCanvas] itself here — that
- * composable is hardwired to [com.example.remotecompose.parser.RemoteComposeParser] per its Phase
- * 3 contract, and swapping its parser is a real API decision for later, not something to fold
- * into a one-off demo. This screen exists only to prove the real payload renders correctly on
- * iOS; it skips fit-scaling and tap dispatch since the demo document has neither multiple sizes
- * nor interactive regions to exercise.
+ * Draws directly rather than through `RemoteComposeCanvas` because the screenshot pipeline needs
+ * the document at exactly 1:1 physical pixels at a known offset (no fit-scaling), and because
+ * the canvas's own tap handling would swallow the page-switching tap in [DemoScreen].
  *
  * The document's own [Header] canvas is centered on a neutral backdrop, rather than pinned to the
  * top-left of a full-screen canvas, so it doesn't sit under the status bar/notch in screenshots —
@@ -35,7 +31,7 @@ import com.example.remotecompose.parser.RealRemoteComposeParser
  */
 @Composable
 fun RealPayloadDemoScreen(bytes: ByteArray) {
-    val document = remember(bytes) { RealRemoteComposeParser.parse(bytes) }
+    val document = remember(bytes) { RemoteComposeParser.parse(bytes) }
     val textMeasurer = rememberTextMeasurer()
     val renderContext = remember(document, textMeasurer) { RenderContext(document, textMeasurer) }
 

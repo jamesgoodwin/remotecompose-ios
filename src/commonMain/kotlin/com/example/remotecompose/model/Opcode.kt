@@ -4,11 +4,9 @@ package com.example.remotecompose.model
  * A single decoded instruction from the `.rc` opcode stream: a transform, a clip, a draw call, or
  * an interaction target.
  *
- * String and bitmap payloads are carried as pool indices (`stringIndex`, `bitmapIndex`) rather
- * than resolved values, since resolution requires the [com.example.remotecompose.parser.StringPool]
- * / [com.example.remotecompose.parser.BitmapPool] that live on the parsed
- * [com.example.remotecompose.model.RemoteDocument] alongside the opcode list — resolving eagerly
- * here would duplicate that data per opcode instead of sharing it.
+ * String and bitmap payloads are carried as pool ids (`stringIndex`, `bitmapIndex`) rather than
+ * resolved values, since resolution requires the pools on the parsed [RemoteDocument] alongside
+ * the opcode list — resolving eagerly here would duplicate that data per opcode.
  */
 sealed interface Opcode {
 
@@ -106,7 +104,7 @@ sealed interface Opcode {
     /**
      * Draws text at ([x], [y]).
      *
-     * @property stringIndex Index into the document's [com.example.remotecompose.parser.StringPool].
+     * @property stringIndex Id into [RemoteDocument.strings].
      * @property paint The cumulative paint in effect when the text was issued: color, text size
      *   in document pixels, weight/italic/family, and any gradient shader. Same source of truth
      *   as every shape opcode's paint.
@@ -174,12 +172,4 @@ sealed interface Opcode {
         val targetUrlStringIndex: Int,
         val left: Float, val top: Float, val right: Float, val bottom: Float,
     ) : Opcode
-
-    /**
-     * An opcode whose ID was not recognized by this version of the parser. Carries just enough
-     * information to explain what was skipped and where, without attempting to interpret a
-     * payload shape it doesn't know. See [RcOpcode]'s framing note on how skipping stays safe
-     * regardless of the unknown opcode's actual payload length.
-     */
-    data class Unknown(val opcodeId: Int, val payloadLength: Int) : Opcode
 }
