@@ -30,9 +30,10 @@ class AdvancedFixtureTest {
     fun eachCallRunsTheFunctionBodyWithItsOwnArguments() {
         // bar(value, scale) = value * scale, called with (30, 4) then (15, 4); each bar starts
         // at x = 12 and is as wide as the value its own call left behind.
-        assertEquals(2, rects.size)
-        assertEquals(132f, rects[0].right, 0.001f)
-        assertEquals(72f, rects[1].right, 0.001f)
+        val bars = rects.filter { it.top == 12f || it.top == 30f }
+        assertEquals(2, bars.size)
+        assertEquals(132f, bars[0].right, 0.001f)
+        assertEquals(72f, bars[1].right, 0.001f)
     }
 
     @Test
@@ -56,6 +57,55 @@ class AdvancedFixtureTest {
             val radius = hypot(x - 100f, y - 80f)
             assertTrue(radius in 17.9f..34.1f, "radius $radius is inside the petal range")
         }
+    }
+
+    @Test
+    fun aBitmapFontRunPlacesOneBitmapPerGlyph() {
+        // "RC C! R" with spacing 1: five drawn glyphs, the two spaces drawing nothing.
+        val glyphs = document.opcodes.filterIsInstance<Opcode.DrawBitmap>().filter { it.top == 50f }
+        assertEquals(5, glyphs.size)
+        assertEquals(listOf(13f, 24f, 47f, 62f, 79f), glyphs.map { it.left })
+        // Every glyph is drawn at its own bitmap's size, from the run's top edge down.
+        assertTrue(glyphs.all { it.bottom - it.top == 14f })
+        assertEquals(10f, glyphs[0].right - glyphs[0].left, "R is 10 wide")
+        assertEquals(6f, glyphs[3].right - glyphs[3].left, "! is 6 wide")
+    }
+
+    @Test
+    fun kerningPullsTheSecondGlyphLeft() {
+        val glyphs = document.opcodes.filterIsInstance<Opcode.DrawBitmap>().filter { it.top == 50f }
+        // R ends at 23 and both margins are 1, so an unkerned C would start at 25; "RC" is -2.
+        assertEquals(24f, glyphs[1].left)
+    }
+
+    @Test
+    fun theUnderlineIsAsWideAsTheMeasuredRun() {
+        val underline = document.opcodes.filterIsInstance<Opcode.DrawRect>().first { it.top == 66f }
+        // BITMAP_TEXT_MEASURE width: the advance loop's end, 79, from a left edge of 12.
+        assertEquals(91f, underline.right, 0.001f)
+    }
+
+    @Test
+    fun theSameRunOnAPathIsCentredOnEachPointAndRotated() {
+        val opcodes = document.opcodes
+        val onPath = opcodes.indices.filter {
+            opcodes[it].let { op -> op is Opcode.DrawBitmap && op.left < 0f }
+        }
+        assertEquals(5, onPath.size)
+        for (i in onPath) {
+            val bitmap = opcodes[i] as Opcode.DrawBitmap
+            // Centred horizontally on the path point, and lifted by the -7 y adjustment.
+            assertEquals(0f, bitmap.left + bitmap.right, 0.001f)
+            assertEquals(-7f, bitmap.top, 0.001f)
+            assertTrue(opcodes[i - 3] is Opcode.MatrixSave)
+            assertTrue(opcodes[i - 2] is Opcode.Translate)
+            assertTrue(opcodes[i - 1] is Opcode.Rotate)
+            assertTrue(opcodes[i + 1] is Opcode.MatrixRestore)
+        }
+        // The glyphs run left to right along the wave and lean with it.
+        val translates = onPath.map { opcodes[it - 2] as Opcode.Translate }
+        assertTrue(translates.zipWithNext().all { (a, b) -> b.dx > a.dx })
+        assertTrue(onPath.map { (opcodes[it - 1] as Opcode.Rotate).degrees }.distinct().size > 3)
     }
 
     @Test

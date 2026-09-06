@@ -1,6 +1,7 @@
 package com.example.remotecompose.parser
 
 import com.example.remotecompose.model.PathCommand
+import com.example.remotecompose.text.BitmapGlyph
 
 /**
  * One decoded `.rc` record, exactly as it sits on the wire: no pool lookups, no NaN-id
@@ -253,6 +254,41 @@ sealed interface Operation {
     data class ConditionalOperations(val type: Byte, val varA: Float, val varB: Float) : Operation
 
     data class LoopStart(val indexVariableId: Int, val from: Float, val step: Float, val until: Float) : Operation
+
+    /**
+     * `BitmapFontData`: a font whose glyphs are bitmaps. [version] 1 and later carry the
+     * [kerning] table, keyed by the two glyph strings either side of a join.
+     */
+    data class BitmapFontData(
+        val id: Int, val version: Int, val glyphs: List<BitmapGlyph>, val kerning: Map<String, Int>,
+    ) : Operation
+
+    /**
+     * `DrawBitmapFontText`: draws `[start, end)` of the text at [textId] in the bitmap font at
+     * [fontId], with the run's origin at ([x], [y]) and [glyphSpacing] added after every glyph.
+     * An [end] of -1 (or 0 with a non-zero [start]) runs to the end of the string.
+     */
+    data class DrawBitmapFontText(
+        val textId: Int, val fontId: Int, val start: Int, val end: Int,
+        val x: Float, val y: Float, val glyphSpacing: Float,
+    ) : Operation
+
+    /**
+     * `DrawBitmapFontTextOnPath`: the same run laid along the path at [pathId], each glyph
+     * centred on its own point and rotated to the tangent, [yAdj] from the path.
+     */
+    data class DrawBitmapFontTextOnPath(
+        val textId: Int, val fontId: Int, val pathId: Int, val start: Int, val end: Int,
+        val yAdj: Float, val glyphSpacing: Float,
+    ) : Operation
+
+    /**
+     * `BitmapTextMeasure`: measures the text at [textId] in the bitmap font at [fontId] and
+     * stores one component under [id]. [type] takes the same values as [TextMeasure]'s.
+     */
+    data class BitmapTextMeasure(
+        val id: Int, val textId: Int, val fontId: Int, val type: Int, val glyphSpacing: Float,
+    ) : Operation
 
     /**
      * `PathExpression`: builds the path [id] by sampling [expressionX] and [expressionY] at

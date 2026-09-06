@@ -2,6 +2,7 @@ package com.example.remotecompose.runtime
 
 import androidx.compose.ui.graphics.Color
 import com.example.remotecompose.model.PathCommand
+import com.example.remotecompose.text.BitmapFont
 import com.example.remotecompose.parser.Operation
 import com.example.remotecompose.parser.Operation.TouchExpression
 
@@ -27,6 +28,7 @@ class RemoteContext {
     val idLists = mutableMapOf<Int, List<Int>>()
     val dataMaps = mutableMapOf<Int, List<Operation.DataMapEntry>>()
     val bitmaps = mutableMapOf<Int, ByteArray>()
+    val bitmapFonts = mutableMapOf<Int, BitmapFont>()
 
     /**
      * Previous operands of each `ConditionalOperations`, keyed by its index in the operation

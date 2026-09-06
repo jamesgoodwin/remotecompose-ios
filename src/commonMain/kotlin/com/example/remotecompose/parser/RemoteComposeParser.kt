@@ -23,6 +23,7 @@ import com.example.remotecompose.runtime.DocumentAction
 import com.example.remotecompose.runtime.FloatExpressionEvaluator
 import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.RemoteContext
+import com.example.remotecompose.text.BitmapFont
 import com.example.remotecompose.text.EstimatedTextMetrics
 import com.example.remotecompose.text.GlyphPlacement
 import com.example.remotecompose.text.TextAnchoring
@@ -127,6 +128,14 @@ object RemoteComposeParser {
             val startIdx = start.toInt().coerceIn(0, src.length)
             val endIdx = if (len == -1f) src.length else (startIdx + len.toInt()).coerceIn(startIdx, src.length)
             return src.substring(startIdx, endIdx)
+        }
+
+        // DrawBitmapFontText.paint()'s own start/end handling: an end past the string (which
+        // includes the -1 the writer sends for "all of it") runs to the string's end.
+        fun runOf(text: String, start: Int, end: Int): String {
+            val from = start.coerceIn(0, text.length)
+            val to = if (end < 0 || end > text.length) text.length else end.coerceAtLeast(from)
+            return text.substring(from, to)
         }
 
         // A single stateless "add this draw" routine: inside a component the opcode becomes part
@@ -899,6 +908,87 @@ object RemoteComposeParser {
                         i = end // the block's own CONTAINER_END
                     }
 
+                    is Op.BitmapFontData -> {
+                        context.bitmapFonts[op.id] = BitmapFont(op.glyphs, op.kerning)
+                    }
+
+                    is Op.DrawBitmapFontText -> {
+                        // DrawBitmapFontText.paint(): walk the run and draw each glyph's bitmap
+                        // where the advance loop puts it, relative to the run's origin.
+                        val text = textPool[op.textId]
+                        val font = context.bitmapFonts[op.fontId]
+                        if (text != null && font != null) {
+                            val x = resolveFloat(op.x)
+                            val y = resolveFloat(op.y)
+                            for (placement in font.layout(runOf(text, op.start, op.end), resolveFloat(op.glyphSpacing)).placements) {
+                                emit(Opcode.DrawBitmap(
+                                    placement.glyph.bitmapId,
+                                    x + placement.left, y + placement.top,
+                                    x + placement.right, y + placement.bottom,
+                                ))
+                            }
+                        }
+                    }
+
+                    is Op.DrawBitmapFontTextOnPath -> {
+                        // DrawBitmapFontTextOnPath.paint(): each glyph is centred on the point a
+                        // fraction of the way along the path and rotated to the tangent there,
+                        // the fraction being its own centre over the run's total width.
+                        val text = textPool[op.textId]
+                        val font = context.bitmapFonts[op.fontId]
+                        val path = pathPool[op.pathId]
+                        if (text != null && font != null && path != null) {
+                            val run = runOf(text, op.start, op.end)
+                            val spacing = resolveFloat(op.glyphSpacing)
+                            val total = font.measureWidth(run)
+                            val yAdj = resolveFloat(op.yAdj)
+                            if (total > 0f) {
+                                for (placement in font.layout(run, spacing).placements) {
+                                    val halfWidth = placement.glyph.bitmapWidth / 2f
+                                    val point = PathGeometry.pointAtFraction(path, (placement.left + halfWidth) / total)
+                                        ?: continue
+                                    emit(Opcode.MatrixSave)
+                                    emit(Opcode.Translate(point.x, point.y))
+                                    emit(Opcode.Rotate(
+                                        atan2(point.tangentY, point.tangentX) * 180f / PI.toFloat(), 0f, 0f,
+                                    ))
+                                    emit(Opcode.DrawBitmap(
+                                        placement.glyph.bitmapId,
+                                        -halfWidth, yAdj + placement.glyph.marginTop,
+                                        halfWidth, yAdj + placement.glyph.bitmapHeight + placement.glyph.marginTop,
+                                    ))
+                                    emit(Opcode.MatrixRestore)
+                                }
+                            }
+                        }
+                    }
+
+                    is Op.BitmapTextMeasure -> {
+                        // BitmapTextMeasure.measure(): the run's bounds from the same advance
+                        // loop. The monospace and max-height flags are not applied.
+                        val text = textPool[op.textId]
+                        val font = context.bitmapFonts[op.fontId]
+                        if (text != null && font != null) {
+                            val spacing = resolveFloat(op.glyphSpacing)
+                            val run = font.layout(text, spacing)
+                            val placements = run.placements
+                            val top = placements.minOfOrNull { it.glyph.marginTop.toFloat() } ?: 0f
+                            val bottom = placements.maxOfOrNull {
+                                (it.glyph.bitmapHeight + it.glyph.marginTop + it.glyph.marginBottom).toFloat()
+                            } ?: 0f
+                            val value = when (op.type and 0xFF) {
+                                0 -> run.width // MEASURE_WIDTH, from a left edge of zero
+                                1 -> bottom - top // MEASURE_HEIGHT
+                                2 -> 0f // MEASURE_LEFT
+                                3 -> run.width // MEASURE_RIGHT
+                                4 -> top // MEASURE_TOP
+                                5 -> bottom // MEASURE_BOTTOM
+                                else -> Float.NaN
+                            }
+                            context.loadFloat(op.id, value)
+                        }
+                    }
+
                     is Op.PathExpression -> {
                         // PathExpression.apply(): sample the two expressions into the path pool.
                         // Its variables resolve exactly as a FloatExpression's, except the caller
@@ -1083,7 +1173,7 @@ object RemoteComposeParser {
     private fun Op.isConstant(): Boolean = when (this) {
         is Op.TextData, is Op.FloatConstant, is Op.IntegerConstant, is Op.BooleanConstant,
         is Op.LongConstant, is Op.ColorConstant, is Op.BitmapData, is Op.PathData,
-        is Op.PathCreate, is Op.PathAdd, is Op.IdList, is Op.DataMapIds -> true
+        is Op.PathCreate, is Op.PathAdd, is Op.IdList, is Op.DataMapIds, is Op.BitmapFontData -> true
         else -> false
     }
 

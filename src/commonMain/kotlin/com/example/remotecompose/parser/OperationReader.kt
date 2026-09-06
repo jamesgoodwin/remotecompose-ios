@@ -1,6 +1,7 @@
 package com.example.remotecompose.parser
 
 import com.example.remotecompose.model.PathCommand
+import com.example.remotecompose.text.BitmapGlyph
 import com.example.remotecompose.parser.Operation as Op
 
 /**
@@ -179,6 +180,54 @@ internal object OperationReader {
             )
         }
         Operations.DATA_MAP_LOOKUP -> Op.DataMapLookup(r.readS32(), r.readS32(), r.readS32())
+        Operations.DATA_BITMAP_FONT -> {
+            val id = r.readS32()
+            val packed = r.readS32()
+            val version = packed ushr 16
+            val glyphCount = packed and 0xFFFF
+            val glyphs = List(glyphCount) {
+                BitmapGlyph(
+                    chars = r.readUtf8(r.readS32()),
+                    bitmapId = r.readS32(),
+                    marginLeft = r.readS16(), marginTop = r.readS16(),
+                    marginRight = r.readS16(), marginBottom = r.readS16(),
+                    bitmapWidth = r.readS16(), bitmapHeight = r.readS16(),
+                )
+            }
+            // Version 1 added the kerning table; version 0 documents stop after the glyphs.
+            val kerning = if (version >= 1) {
+                val pairCount = r.readU16()
+                buildMap { repeat(pairCount) { put(r.readUtf8(r.readS32()), r.readS16()) } }
+            } else {
+                emptyMap()
+            }
+            Op.BitmapFontData(id, version, glyphs, kerning)
+        }
+        Operations.DRAW_BITMAP_FONT_TEXT_RUN -> {
+            // The text id carries a flag in its top bit: set means a glyph spacing float follows.
+            val tagged = r.readS32()
+            val textId = tagged and 0x7FFFFFFF
+            val glyphSpacing = if (tagged and GLYPH_SPACING_FLAG != 0) r.readFloat32() else 0f
+            Op.DrawBitmapFontText(
+                textId = textId, fontId = r.readS32(), start = r.readS32(), end = r.readS32(),
+                x = r.readFloat32(), y = r.readFloat32(), glyphSpacing = glyphSpacing,
+            )
+        }
+        Operations.DRAW_BITMAP_FONT_TEXT_ON_PATH -> {
+            val tagged = r.readS32()
+            val textId = tagged and 0x7FFFFFFF
+            val glyphSpacing = if (tagged and GLYPH_SPACING_FLAG != 0) r.readFloat32() else 0f
+            Op.DrawBitmapFontTextOnPath(
+                textId = textId, fontId = r.readS32(), pathId = r.readS32(),
+                start = r.readS32(), end = r.readS32(), yAdj = r.readFloat32(), glyphSpacing = glyphSpacing,
+            )
+        }
+        Operations.BITMAP_TEXT_MEASURE -> {
+            val tagged = r.readS32()
+            val id = tagged and 0x7FFFFFFF
+            val glyphSpacing = if (tagged and GLYPH_SPACING_FLAG != 0) r.readFloat32() else 0f
+            Op.BitmapTextMeasure(id, textId = r.readS32(), fontId = r.readS32(), type = r.readS32(), glyphSpacing = glyphSpacing)
+        }
         Operations.PATH_EXPRESSION -> {
             val id = r.readS32()
             val flags = r.readS32()
@@ -314,6 +363,12 @@ internal object OperationReader {
             "Opcode $opId at byte ${r.position - 1} is not handled by this reader",
         )
     }
+
+    /**
+     * `DrawBitmapFontText`, `DrawBitmapFontTextOnPath` and `BitmapTextMeasure` set the top bit of
+     * their leading id when a glyph-spacing float follows it, and clear it from the id itself.
+     */
+    private const val GLYPH_SPACING_FLAG = Int.MIN_VALUE
 
     private const val PATH_CMD_MOVE = 10
     private const val PATH_CMD_LINE = 11

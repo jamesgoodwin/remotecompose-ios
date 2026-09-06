@@ -16,6 +16,8 @@ internal object Operations {
     const val DRAW_BITMAP = 44
     const val DRAW_CIRCLE = 46
     const val DRAW_LINE = 47
+    const val DRAW_BITMAP_FONT_TEXT_RUN = 48
+    const val DRAW_BITMAP_FONT_TEXT_ON_PATH = 49
     const val DRAW_ROUND_RECT = 51
     const val DRAW_SECTOR = 52
     const val DRAW_TEXT_ON_PATH = 53
@@ -71,6 +73,7 @@ internal object Operations {
     const val PATH_CREATE = 159
     const val PATH_ADD = 160
     const val FLOAT_FUNCTION_CALL = 166
+    const val DATA_BITMAP_FONT = 167
     const val FLOAT_FUNCTION_DEFINE = 168
     const val CANVAS_OPERATIONS = 173
     const val MODIFIER_DRAW_CONTENT = 174
@@ -80,6 +83,7 @@ internal object Operations {
     const val HAPTIC_FEEDBACK = 177
     const val DEBUG_MESSAGE = 179
     const val MATRIX_FROM_PATH = 181
+    const val BITMAP_TEXT_MEASURE = 183
     const val TEXT_SUBTEXT = 182
     const val REM = 185
     const val ID_LOOKUP = 192

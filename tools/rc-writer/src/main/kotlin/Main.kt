@@ -18,6 +18,7 @@ import androidx.compose.remote.creation.modifiers.RoundedRectShape
 import androidx.compose.remote.creation.modifiers.WidthInModifier
 import androidx.compose.remote.creation.modifiers.WidthModifier
 import androidx.compose.remote.creation.modifiers.ZIndexModifier
+import androidx.compose.remote.core.operations.BitmapFontData
 import androidx.compose.remote.core.operations.DrawTextOnCircle
 import androidx.compose.remote.core.operations.layout.modifiers.DimensionModifierOperation
 import java.io.File
@@ -134,6 +135,51 @@ private fun buildAdvancedSample() {
     )
     writer.getRcPaint().setColor(0xFF37474F.toInt()).setStyle(1).setStrokeWidth(2f).commit()
     writer.drawPath(zigzag)
+
+    // 5. A bitmap font: each glyph is its own little image, spaced by the margins in the font
+    //    table and by a kerning pair. The same run is then laid along a path.
+    fun glyphImage(color: Int, width: Int, height: Int): java.awt.image.BufferedImage {
+        val image = java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        for (py in 0 until height) {
+            for (px in 0 until width) {
+                // A hollow block, so a wrongly sized destination rect is obvious.
+                val edge = px == 0 || py == 0 || px == width - 1 || py == height - 1
+                image.setRGB(px, py, if (edge) color else (color and 0x40FFFFFF))
+            }
+        }
+        return image
+    }
+    val glyphs = arrayOf(
+        BitmapFontData.Glyph(
+            "R", writer.storeBitmap(glyphImage(0xFFE53935.toInt(), 10, 14)),
+            1.toShort(), 0.toShort(), 1.toShort(), 0.toShort(), 10.toShort(), 14.toShort(),
+        ),
+        BitmapFontData.Glyph(
+            "C", writer.storeBitmap(glyphImage(0xFF1E88E5.toInt(), 12, 14)),
+            1.toShort(), 0.toShort(), 1.toShort(), 0.toShort(), 12.toShort(), 14.toShort(),
+        ),
+        BitmapFontData.Glyph(
+            "!", writer.storeBitmap(glyphImage(0xFF43A047.toInt(), 6, 14)),
+            1.toShort(), 0.toShort(), 1.toShort(), 0.toShort(), 6.toShort(), 14.toShort(),
+        ),
+        // No bitmap: a space that only advances.
+        BitmapFontData.Glyph(" ", -1, 4.toShort(), 0.toShort(), 4.toShort(), 0.toShort(), 0.toShort(), 0.toShort()),
+    )
+    // "RC" is kerned two pixels tighter than the margins alone would put it.
+    val font = writer.addBitmapFont(glyphs, mapOf("RC" to (-2).toShort()))
+    val fontText = writer.addText("RC C! R")
+    writer.drawBitmapFontTextRun(fontText, font, 0, -1, 12f, 50f, 1f)
+
+    // 6. BITMAP_TEXT_MEASURE: an underline exactly as wide as that run.
+    val runWidth = writer.bitmapTextMeasure(fontText, font, 0, 1f) // MEASURE_WIDTH
+    writer.getRcPaint().setColor(0xFF9E9E9E.toInt()).setStyle(0).commit()
+    writer.drawRect(12f, 66f, writer.floatExpression(runWidth, 12f, Rc.FloatExpression.ADD), 68f)
+
+    // 7. The same font laid along the wave, each glyph rotated to the tangent.
+    val wave = RemotePath()
+    wave.moveTo(14f, 104f)
+    wave.cubicTo(60f, 78f, 140f, 122f, 186f, 96f)
+    writer.drawBitmapFontTextRunOnPath(fontText, font, wave, 0, -1, -7f, 1f)
 
     val bytes = writer.encodeToByteArray()
     File("advanced.rc").writeBytes(bytes)

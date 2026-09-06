@@ -64,6 +64,12 @@ class BufferReader(private val buffer: ByteArray) {
         return (hi shl 8) or lo
     }
 
+    /**
+     * Reads a 16-bit big-endian value as the signed short the caller stores it in: `readShort`
+     * returns it widened and unsigned, and every field it feeds is declared `short`.
+     */
+    fun readS16(): Int = readU16().toShort().toInt()
+
     /** Reads a signed 32-bit big-endian integer (`WireBuffer.readInt`). */
     fun readS32(): Int {
         requireRemaining(4)
