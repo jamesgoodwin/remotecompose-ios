@@ -66,7 +66,78 @@ fun main(args: Array<String>) {
         buildTextPathSample()
         return
     }
+    if (args.getOrNull(0) == "advanced") {
+        buildAdvancedSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * The operations that generate their own content rather than drawing what the buffer spells out:
+ * `FLOAT_FUNCTION_DEFINE`/`CALL` for a body that runs once per call with new arguments, and
+ * `PATH_EXPRESSION` for a path sampled from a pair of float expressions, in both cartesian and
+ * polar form.
+ */
+private fun buildAdvancedSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(200, 200, "advanced", platform)
+
+    // 1. A float function: bar(value, scale) leaves value * scale in one float id. The writer
+    //    fills `args` with the ids the body reads, so the body is written in terms of them.
+    val args = floatArrayOf(0f, 0f)
+    val function = writer.createFloatFunction(args)
+    val barWidth = writer.floatExpression(args[0], args[1], Rc.FloatExpression.MUL)
+    writer.endFloatFunction()
+
+    // Two calls with different arguments: each bar is drawn from the value its own call left.
+    writer.getRcPaint().setColor(0xFF1E88E5.toInt()).commit()
+    writer.callFloatFunction(function, 30f, 4f) // 120
+    writer.drawRect(12f, 12f, writer.floatExpression(barWidth, 12f, Rc.FloatExpression.ADD), 26f)
+    writer.getRcPaint().setColor(0xFF43A047.toInt()).commit()
+    writer.callFloatFunction(function, 15f, 4f) // 60
+    writer.drawRect(12f, 30f, writer.floatExpression(barWidth, 12f, Rc.FloatExpression.ADD), 44f)
+
+    // 2. A spline path expression: x = 20 + 25t, y = 130 + 20 sin(2t), sampled 16 times over
+    //    t in [0, 6.2832]. The sample position arrives in the first caller variable slot.
+    val curve = writer.addPathExpression(
+        floatArrayOf(Rc.FloatExpression.VAR1, 25f, Rc.FloatExpression.MUL, 20f, Rc.FloatExpression.ADD),
+        floatArrayOf(
+            Rc.FloatExpression.VAR1, 2f, Rc.FloatExpression.MUL, Rc.FloatExpression.SIN,
+            20f, Rc.FloatExpression.MUL, 130f, Rc.FloatExpression.ADD,
+        ),
+        0f, 6.2831855f, 16f, Rc.PathExpression.SPLINE_PATH,
+    )
+    writer.getRcPaint().setColor(0xFFE53935.toInt()).setStyle(1).setStrokeWidth(3f).commit()
+    writer.drawPath(curve)
+
+    // 3. The same operation in polar form, looped into a closed flower: r = 26 + 8 sin(5t)
+    //    around (100, 80), sampled 40 times over a full turn.
+    val flower = writer.addPolarPathExpression(
+        floatArrayOf(
+            Rc.FloatExpression.VAR1, 5f, Rc.FloatExpression.MUL, Rc.FloatExpression.SIN,
+            8f, Rc.FloatExpression.MUL, 26f, Rc.FloatExpression.ADD,
+        ),
+        0f, 6.2831855f, 40f, 100f, 80f, Rc.PathExpression.POLAR_PATH or Rc.PathExpression.LOOP_PATH,
+    )
+    writer.getRcPaint().setColor(0xFF8E24AA.toInt()).setStyle(0).commit()
+    writer.drawPath(flower)
+
+    // 4. A linear path expression over the same points, so the two joins can be told apart.
+    val zigzag = writer.addPathExpression(
+        floatArrayOf(Rc.FloatExpression.VAR1, 25f, Rc.FloatExpression.MUL, 20f, Rc.FloatExpression.ADD),
+        floatArrayOf(
+            Rc.FloatExpression.VAR1, 2f, Rc.FloatExpression.MUL, Rc.FloatExpression.SIN,
+            12f, Rc.FloatExpression.MUL, 180f, Rc.FloatExpression.ADD,
+        ),
+        0f, 6.2831855f, 16f, Rc.PathExpression.LINEAR_PATH,
+    )
+    writer.getRcPaint().setColor(0xFF37474F.toInt()).setStyle(1).setStrokeWidth(2f).commit()
+    writer.drawPath(zigzag)
+
+    val bytes = writer.encodeToByteArray()
+    File("advanced.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to advanced.rc")
 }
 
 /**

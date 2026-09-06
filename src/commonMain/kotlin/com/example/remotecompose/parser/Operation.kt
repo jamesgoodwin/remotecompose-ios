@@ -253,6 +253,42 @@ sealed interface Operation {
     data class ConditionalOperations(val type: Byte, val varA: Float, val varB: Float) : Operation
 
     data class LoopStart(val indexVariableId: Int, val from: Float, val step: Float, val until: Float) : Operation
+
+    /**
+     * `PathExpression`: builds the path [id] by sampling [expressionX] and [expressionY] at
+     * [count] points between [min] and [max], with the sample position in the expression's first
+     * caller variable slot. [flags] carries `LOOP`(1), the join kind in bits 1-2 —
+     * `MONOTONIC`(2), `LINEAR`(4), spline when neither — `POLAR`(8), and the winding rule in
+     * bits 24-25.
+     */
+    data class PathExpression(
+        val id: Int, val flags: Int, val min: Float, val max: Float, val count: Float,
+        val expressionX: FloatArray, val expressionY: FloatArray,
+    ) : Operation {
+        override fun equals(other: Any?): Boolean =
+            other is PathExpression && id == other.id && flags == other.flags && min == other.min &&
+                max == other.max && count == other.count &&
+                expressionX.contentEquals(other.expressionX) && expressionY.contentEquals(other.expressionY)
+
+        override fun hashCode(): Int = id * 31 + flags
+
+        override fun toString(): String =
+            "PathExpression(id=$id, flags=$flags, min=$min, max=$max, count=$count, " +
+                "x=${expressionX.toList()}, y=${expressionY.toList()})"
+    }
+
+    /**
+     * `FloatFunctionDefine`: names the block that follows as a reusable body. [argIds] are the
+     * float-pool ids a call binds its arguments to before running the body, which is closed by a
+     * `ContainerEnd`. Defining does not run anything.
+     */
+    data class FloatFunctionDefine(val id: Int, val argIds: List<Int>) : Operation
+
+    /**
+     * `FloatFunctionCall`: writes [args] (each a value or a NaN-tagged float id) into the
+     * argument ids of the function [id], then runs its body's value operations.
+     */
+    data class FloatFunctionCall(val id: Int, val args: List<Float>) : Operation
     data object ContainerEnd : Operation
     data class AnimationSpec(
         val animationId: Int, val motionDuration: Float, val motionEasingType: Int,

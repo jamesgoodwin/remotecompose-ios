@@ -8,6 +8,7 @@ import com.example.remotecompose.model.PaintStyle
 import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.model.RemoteDocument
+import com.example.remotecompose.geometry.PathGenerator
 import com.example.remotecompose.geometry.PathGeometry
 import com.example.remotecompose.layout.Dimension
 import com.example.remotecompose.layout.DimensionType
@@ -19,6 +20,7 @@ import com.example.remotecompose.layout.Visibility
 import com.example.remotecompose.parser.Operation as Op
 import com.example.remotecompose.runtime.ActionTrigger
 import com.example.remotecompose.runtime.DocumentAction
+import com.example.remotecompose.runtime.FloatExpressionEvaluator
 import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.EstimatedTextMetrics
@@ -140,6 +142,18 @@ object RemoteComposeParser {
             if (!tree.addCleanup(Opcode.MatrixRestore)) trailing += Opcode.MatrixRestore
         }
         val scopeEnds = matchScopes(operations)
+        // FloatFunctionDefine only names a body; a call runs it. Collected before the walk so a
+        // call is not order-dependent on where its define sits in the stream.
+        val functions = HashMap<Int, Op.FloatFunctionDefine>()
+        val functionBodies = HashMap<Int, IntRange>()
+        for ((i, op) in operations.withIndex()) {
+            if (op is Op.FloatFunctionDefine) {
+                functions[op.id] = op
+                functionBodies[op.id] = (i + 1) until (scopeEnds[i] ?: operations.size)
+            }
+        }
+        // Guards FloatFunctionDefine's "Recursion not allowed".
+        val executing = HashSet<Int>()
         // ConditionalOperations TYPE_CHANGED compares against the previous frame's operands.
         val conditionalPrevious = context.conditionalPrevious
 
@@ -885,6 +899,51 @@ object RemoteComposeParser {
                         i = end // the block's own CONTAINER_END
                     }
 
+                    is Op.PathExpression -> {
+                        // PathExpression.apply(): sample the two expressions into the path pool.
+                        // Its variables resolve exactly as a FloatExpression's, except the caller
+                        // variable slot the sampler fills in, which is an operator and so passes
+                        // through untouched.
+                        fun resolveExpression(expression: FloatArray) = FloatArray(expression.size) { k ->
+                            val v = expression[k]
+                            if (FloatExpressionEvaluator.isVariable(v)) resolveFloat(v) else v
+                        }
+                        val count = resolveFloat(op.count)
+                        val min = resolveFloat(op.min)
+                        val max = resolveFloat(op.max)
+                        if (!count.isNaN() && count >= 1f && !min.isNaN() && !max.isNaN()) {
+                            val x = resolveExpression(op.expressionX)
+                            val y = resolveExpression(op.expressionY)
+                            val kind = PathGenerator.kindOf(op.flags)
+                            val loop = (op.flags and 1) == 1
+                            val commands = if ((op.flags and 8) == 8) {
+                                PathGenerator.generatePolar(x, y, min, max, count.toInt(), kind, loop)
+                            } else {
+                                PathGenerator.generate(x, y, min, max, count.toInt(), kind, loop)
+                            }
+                            // An unsupported operator anywhere in either expression samples to
+                            // NaN; storing that would draw nothing but hide the reason.
+                            if (PathGenerator.isFinite(commands)) pathPool[op.id] = commands else pathPool.remove(op.id)
+                        }
+                    }
+
+                    is Op.FloatFunctionDefine -> i = scopeEnds[i] ?: operations.size
+
+                    is Op.FloatFunctionCall -> {
+                        // FloatFunctionCall.paint(): each argument is written into the function's
+                        // matching argument id, then the body's value operations run.
+                        val function = functions[op.id]
+                        val body = functionBodies[op.id]
+                        if (function != null && body != null && executing.add(op.id)) {
+                            for ((k, arg) in op.args.withIndex()) {
+                                val target = function.argIds.getOrNull(k) ?: break
+                                context.loadFloat(target, resolveFloat(arg))
+                            }
+                            walk(body.first, body.last + 1)
+                            executing.remove(op.id)
+                        }
+                    }
+
                     is Op.LoopStart -> {
                         // LoopOperation: re-apply the body once per index with the loop variable set.
                         val end = scopeEnds[i] ?: operations.size
@@ -1007,7 +1066,7 @@ object RemoteComposeParser {
                 is Op.LayoutText, is Op.LayoutImage, is Op.LayoutCanvas, is Op.LayoutCustom, is Op.LayoutState,
                 is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations, is Op.LoopStart, is Op.ConditionalOperations,
                 is Op.ModifierClick, is Op.ModifierMultiClick, is Op.ModifierTouchDown, is Op.ModifierTouchUp,
-                is Op.ModifierTouchCancel -> open.addLast(i)
+                is Op.ModifierTouchCancel, is Op.FloatFunctionDefine -> open.addLast(i)
                 is Op.ContainerEnd -> open.removeLastOrNull()?.let { ends[it] = i }
                 else -> Unit
             }

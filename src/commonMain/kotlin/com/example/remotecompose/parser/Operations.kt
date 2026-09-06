@@ -70,6 +70,8 @@ internal object Operations {
     const val PATH_TWEEN = 158
     const val PATH_CREATE = 159
     const val PATH_ADD = 160
+    const val FLOAT_FUNCTION_CALL = 166
+    const val FLOAT_FUNCTION_DEFINE = 168
     const val CANVAS_OPERATIONS = 173
     const val MODIFIER_DRAW_CONTENT = 174
     const val CONDITIONAL_OPERATIONS = 178
@@ -81,6 +83,7 @@ internal object Operations {
     const val TEXT_SUBTEXT = 182
     const val REM = 185
     const val ID_LOOKUP = 192
+    const val PATH_EXPRESSION = 193
     const val TEXT_TRANSFORM = 199
     const val LAYOUT_ROOT = 200
     const val LAYOUT_CONTENT = 201

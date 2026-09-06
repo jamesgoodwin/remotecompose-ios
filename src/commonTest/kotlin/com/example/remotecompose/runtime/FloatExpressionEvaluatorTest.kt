@@ -90,6 +90,30 @@ class FloatExpressionEvaluatorTest {
         assertTrue(!FloatExpressionEvaluator.isVariable(1f))
     }
 
+    @Test
+    fun callerVariablesArePushedFromTheirSlots() {
+        val vars = floatArrayOf(2f, 3f, 4f)
+        fun eval(vararg items: Any) = FloatExpressionEvaluator.eval(
+            FloatArray(items.size) { i -> when (val v = items[i]) { is Float -> v; is Int -> v.toFloat(); is String -> op(v); else -> error(v) } },
+            vars,
+        )
+        assertEquals(2f, eval("VAR1"))
+        assertEquals(3f, eval("VAR2"))
+        assertEquals(4f, eval("VAR3"))
+        assertEquals(14f, eval("VAR1", "VAR2", "VAR3", "MUL", "ADD"))
+        // Without the caller supplying them the expression has no value at all.
+        assertTrue(FloatExpressionEvaluator.eval(floatArrayOf(op("VAR1"))).isNaN())
+    }
+
+    @Test
+    fun cubicEasesTheTopOfTheStackThroughFourControls() {
+        // The linear curve maps t to itself; the ease-in-out curve pulls the middle towards 0.5.
+        assertEquals(0.25f, eval(0.25f, 0.25f, 0.75f, 0.75f, 0.25f, "CUBIC"), 0.02f)
+        assertEquals(0.5f, eval(0.4f, 0f, 0.6f, 1f, 0.5f, "CUBIC"), 0.02f)
+        assertEquals(0f, eval(0.4f, 0f, 0.6f, 1f, 0f, "CUBIC"), 0.001f)
+        assertEquals(1f, eval(0.4f, 0f, 0.6f, 1f, 1f, "CUBIC"), 0.001f)
+    }
+
     companion object {
         val OPS = mapOf(
             "ADD" to 1, "SUB" to 2, "MUL" to 3, "DIV" to 4, "MOD" to 5, "MIN" to 6, "MAX" to 7, "POW" to 8,
@@ -99,7 +123,7 @@ class FloatExpressionEvaluatorTest {
             "RAD" to 30, "CEIL" to 31, "A_SUM" to 35, "RAND" to 39, "SQUARE_SUM" to 43, "STEP" to 44,
             "SQUARE" to 45, "DUP" to 46, "HYPOT" to 47, "SWAP" to 48, "LERP" to 49, "SMOOTH_STEP" to 50,
             "LOG2" to 51, "INV" to 52, "FRACT" to 53, "PINGPONG" to 54, "NOP" to 55, "STORE_R0" to 56,
-            "LOAD_R0" to 60, "CHANGE_SIGN" to 73,
+            "LOAD_R0" to 60, "VAR1" to 70, "VAR2" to 71, "VAR3" to 72, "CHANGE_SIGN" to 73, "CUBIC" to 74,
         )
     }
 }

@@ -69,7 +69,7 @@ object FloatExpressionEvaluator {
      * returns the stack top, or NaN if the expression uses an unsupported operator or is
      * malformed.
      */
-    fun eval(expression: FloatArray): Float {
+    fun eval(expression: FloatArray, vars: FloatArray = EMPTY_VARS): Float {
         val stack = FloatArray(expression.size + 4)
         val regs = FloatArray(4)
         var sp = -1
@@ -85,7 +85,7 @@ object FloatExpressionEvaluator {
                 stack[++sp] = v
                 continue
             }
-            sp = applyOperator(id - OFFSET, stack, sp, regs)
+            sp = applyOperator(id - OFFSET, stack, sp, regs, vars)
             // A store leaves the stack legitimately empty (sp == -1); only overflow or an
             // unsupported operator aborts.
             if (sp == UNSUPPORTED || sp >= stack.size) return Float.NaN
@@ -95,7 +95,9 @@ object FloatExpressionEvaluator {
 
     private const val UNSUPPORTED = Int.MIN_VALUE
 
-    private fun applyOperator(op: Int, s: FloatArray, sp: Int, regs: FloatArray): Int {
+    private val EMPTY_VARS = FloatArray(0)
+
+    private fun applyOperator(op: Int, s: FloatArray, sp: Int, regs: FloatArray, vars: FloatArray): Int {
         fun binary(f: (Float, Float) -> Float): Int {
             if (sp < 1) return UNSUPPORTED
             s[sp - 1] = f(s[sp - 1], s[sp])
@@ -205,9 +207,19 @@ object FloatExpressionEvaluator {
                 s[sp + 1] = regs[op - 60]
                 sp + 1
             }
+            70, 71, 72 -> { // VAR1..3: push a caller-supplied variable
+                val slot = op - 70
+                if (slot >= vars.size) return UNSUPPORTED
+                s[sp + 1] = vars[slot]
+                sp + 1
+            }
             73 -> unary { -it } // CHANGE_SIGN
-            // A_* collection ops (32..38, 75..79), RAND family (39..42), CMD* (64..67),
-            // VAR1..3 (70..72, only meaningful with caller-supplied variables) and CUBIC (74).
+            74 -> { // CUBIC: (x1, y1, x2, y2, t) eased by the same cubic curve as an animation
+                if (sp < 4) return UNSUPPORTED
+                s[sp - 4] = CubicEasing(s[sp - 4], s[sp - 3], s[sp - 2], s[sp - 1]).get(s[sp])
+                sp - 4
+            }
+            // A_* collection ops (32..38, 75..79), RAND family (39..42) and CMD* (64..67).
             else -> UNSUPPORTED
         }
     }

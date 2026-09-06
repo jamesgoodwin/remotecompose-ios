@@ -179,6 +179,31 @@ internal object OperationReader {
             )
         }
         Operations.DATA_MAP_LOOKUP -> Op.DataMapLookup(r.readS32(), r.readS32(), r.readS32())
+        Operations.PATH_EXPRESSION -> {
+            val id = r.readS32()
+            val flags = r.readS32()
+            val min = r.readFloat32()
+            val max = r.readFloat32()
+            val count = r.readFloat32()
+            val lengthX = r.readS32()
+            if (lengthX > 32) throw RemoteComposeParseException("Path expression $id has a $lengthX-entry x expression (max 32)")
+            val expressionX = FloatArray(lengthX) { r.readFloat32() }
+            val lengthY = r.readS32()
+            if (lengthY > 32) throw RemoteComposeParseException("Path expression $id has a $lengthY-entry y expression (max 32)")
+            Op.PathExpression(id, flags, min, max, count, expressionX, FloatArray(lengthY) { r.readFloat32() })
+        }
+        Operations.FLOAT_FUNCTION_DEFINE -> {
+            val id = r.readS32()
+            val count = r.readS32()
+            if (count > 32) throw RemoteComposeParseException("Float function $id declares $count arguments (max 32)")
+            Op.FloatFunctionDefine(id, List(count) { r.readS32() })
+        }
+        Operations.FLOAT_FUNCTION_CALL -> {
+            val id = r.readS32()
+            val count = r.readS32()
+            if (count > 80) throw RemoteComposeParseException("Float function call $id passes $count arguments (max 80)")
+            Op.FloatFunctionCall(id, List(count) { r.readFloat32() })
+        }
         Operations.LOOP_START -> Op.LoopStart(r.readS32(), r.readFloat32(), r.readFloat32(), r.readFloat32())
         Operations.LAYOUT_STATE -> Op.LayoutState(r.readS32(), r.readS32(), r.readS32(), r.readS32(), r.readS32())
         Operations.LAYOUT_CONTENT -> Op.LayoutContent(r.readS32())

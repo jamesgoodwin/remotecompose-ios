@@ -26,12 +26,12 @@ import androidx.compose.ui.unit.sp
  * an interactive document handles its own buttons; a tap it does not claim moves to the next page.
  *
  * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint, 3 anim,
- *   4 actions, 5 text paths). Lets the device hosts launch straight onto a page for scripted screenshots:
+ *   4 actions, 5 text paths, 6 generated). Lets the device hosts launch straight onto a page for scripted screenshots:
  *   Android reads an `--ei page N` intent extra, iOS an `RC_PAGE` environment variable.
  */
 @Composable
 fun DemoScreen(initialPage: Int = 0) {
-    var page by remember { mutableStateOf(initialPage.coerceIn(0, 5)) }
+    var page by remember { mutableStateOf(initialPage.coerceIn(0, 6)) }
     val pages = listOf(
         "Coverage" to SAMPLE_RC_BYTES,
         "Showcase" to SHOWCASE_RC_BYTES,
@@ -39,6 +39,7 @@ fun DemoScreen(initialPage: Int = 0) {
         "Anim" to ANIM_RC_BYTES,
         "Actions" to ACTIONS_RC_BYTES,
         "Text paths" to TEXTPATH_RC_BYTES,
+        "Generated" to ADVANCED_RC_BYTES,
     )
     val (label, bytes) = pages[page]
     Box(
