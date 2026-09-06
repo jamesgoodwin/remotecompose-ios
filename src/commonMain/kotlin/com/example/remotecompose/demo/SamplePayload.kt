@@ -408,8 +408,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * proof: a genuine RPN stack machine (source-confirmed via javap on the real
  * `IntegerExpressionEvaluator`) computes `17 MOD 3` (not a naive pass-through of either operand),
  * and that computed `2` feeds `TEXT_LOOKUP_INT`'s own index the same way the `ID_LOOKUP` proof
- * above does, again resolving the Alpha/Beta/Gamma collection's index 2, "Gamma". Shared by every
- * platform demo entry
+ * above does, again resolving the Alpha/Beta/Gamma collection's index 2, "Gamma", and a real
+ * `TEXT_FROM_FLOAT` (`writer.createTextFromFloat(value, digitsBefore, digitsAfter, flags): Int` —
+ * previously a completely unhandled opcode) proof: with the `FULL_FORMAT` flag, real `apply()`
+ * (source-confirmed via javap) does a plain `Float.toString(value)` — `42.75f` computes `"42.75"`
+ * exactly (confirmed via the parsed document's own string pool), not `"42"`/`"0.75"`/an unresolved
+ * reference. Shared by every platform demo entry
  * point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -537,6 +541,6 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AABDHgAAQUAAANbWhgAAAGIA/wAEPqqqqz+AAAA/gAAAyv///yr/////AAAAAAAAAABrAAAAAgAAAGIAAAAAAAAAAEAAAABAgAAAAAAAAAAAAAAAAAAA" +
             "AAAAAAAAAADJ////KSgAAAACAAAABP83R08qQyMAAEAAAABDMgAAQUAAANbWkgAgACsAAAADAAAAAAAAAAEAAAACwAAAAGMAIAArQAAAAJkAAABkACAA" +
             "KgAAAGMoAAAAAgAAAAT/ahuahQAAAGRAoAAAQjQAAL+AAAC/gAAAAAAAAJAAAABlAAAABAAAAAMAAAARAAAAAwABAAWZAAAAZgAgACoAAABlKAAAAAIA" +
-            "AAAE/wCDj4UAAABmQKAAAEKCAAC/gAAAv4AAAAAAAAA=",
+            "AAAE/wCDj4UAAABmQKAAAEKCAAC/gAAAv4AAAAAAAACHAAAAZ0IrAAAAAAAAAAAQACgAAAACAAAABP+tFFeFAAAAZ0CgAABCqgAAv4AAAL+AAAAAAAAA",
     )
 }

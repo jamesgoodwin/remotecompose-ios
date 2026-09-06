@@ -1475,6 +1475,14 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF00838F.toInt()).commit()
     writer.drawTextAnchored(exprTextId, 5f, 65f, -1f, -1f, 0)
 
+    // OP_TEXT_FROM_FLOAT (opcode 135) — previously completely unhandled. Real TextFromFloat.apply()
+    // (source-confirmed via javap) branches on flags; FULL_FORMAT (0x1000) does a plain real
+    // Float.toString(value) — 42.75 should compute "42.75" exactly, not "42"/"0.75"/an unresolved
+    // reference. digitsBefore/digitsAfter are irrelevant on this path but still required params.
+    val floatTextId = writer.createTextFromFloat(42.75f, 0, 0, 0x1000)
+    writer.getRcPaint().setColor(0xFFAD1457.toInt()).commit()
+    writer.drawTextAnchored(floatTextId, 5f, 85f, -1f, -1f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

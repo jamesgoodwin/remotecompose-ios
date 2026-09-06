@@ -521,6 +521,21 @@ object RealRemoteComposeParser {
      */
     private const val OP_INTEGER_EXPRESSION = 144
 
+    /**
+     * `Operations.TEXT_FROM_FLOAT` — `RemoteComposeWriter.createTextFromFloat(value, digitsBefore,
+     * digitsAfter, flags): Int` writes `[textId:declareId][value:f32(NaN-taggable)]
+     * [(digitsBefore:u16 shl 16) or digitsAfter:u16][flags:i32]` (source-confirmed via javap on
+     * the real `TextFromFloat.read()`/`write()`/`apply()`). Real `apply()` branches three ways on
+     * `flags`: `FULL_FORMAT` (`0x1000`) does a plain `Float.toString(value)`; `LEGACY_MODE`
+     * (`0x400`) and the default path both call increasingly involved `StringUtils.floatToString()`
+     * overloads with padding/grouping/separator/sign options this parser doesn't replicate. Real
+     * only for the `FULL_FORMAT` path — implemented as a direct Kotlin `Float.toString()`, which
+     * targets the same shortest-round-trip algorithm family as the real JVM one closely enough for
+     * plain values; the default/legacy padded-and-grouped formats are left unresolved, the same
+     * honest fallback every other unresolvable case in this parser already gets.
+     */
+    private const val OP_TEXT_FROM_FLOAT = 135
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2765,6 +2780,16 @@ object RealRemoteComposeParser {
                             }
                         }
                         if (valid && sp >= 0) intPool[id] = stack[sp]
+                    }
+                }
+
+                OP_TEXT_FROM_FLOAT -> {
+                    val textId = reader.readS32()
+                    val value = resolveFloat(reader.readFloat32())
+                    reader.readS32() // packed (digitsBefore shl 16) or digitsAfter — unused by FULL_FORMAT
+                    val flags = reader.readS32()
+                    if (!value.isNaN() && flags and 0x1000 != 0) {
+                        textPool[textId] = value.toString()
                     }
                 }
 
