@@ -359,7 +359,15 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * completely unhandled opcode) followed immediately by a plain `drawRect` — real `Rem` has no
  * rendering effect of any kind (a pure source comment), so the only real thing to prove is
  * correct byte alignment, confirmed by that `drawRect` landing at its own exact documented
- * position rather than shifted by a misaligned read. Shared by every platform demo entry point (iOS, Android) so they
+ * position rather than shifted by a misaligned read, and a real `TEXT_LENGTH`
+ * (`writer.textLength(srcId)` — previously a completely unhandled opcode) computing the real
+ * character count (`5`) of a registered "Hello" string and using the resulting NaN-tagged float
+ * directly as a `width()` value on a box wrapping an oversized (30x10) rect clipped to its own
+ * bounds — confirmed via the parsed opcode dump: the box's own real declared width lands at
+ * exactly `5` (`ClipRect(left=96, top=185, right=101, bottom=195)`), not the unresolved reference
+ * the old completely-unhandled behavior could never have computed at all, since this op loads its
+ * result into the exact same value pool `resolveFloat` already resolves every other NaN-tagged
+ * field against. Shared by every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
  */
@@ -477,6 +485,7 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "Bf+AAAsAAAAAAAAAAEHwAABBIAAAoAAAAFQAAAAF/4AACwAAAAAAAAAAQfAAAEHwAACgAAAAVAAAAAX/gAALAAAAAAAAAABBIAAAQfAAAKAAAABUAAAA" +
             "Af+AAA+vAAAAVQAAAFMAAABUASgAAAACAAAABP8ufTJ8AAAAVdbWrSgAAAACAAAABP/vbAAqQsgAAEM5AABC6AAAQ0cAANbxAAAAAgAAAAAAAAAeKAAA" +
             "AAIAAAAE/9UAACpAAAAAQzkAAEHwAABDRwAA8QAAAAF/////AAAAHigAAAACAAAABP84jjwqQgwAAEM5AABCfAAAQ0cAALkAAAAndGhpcyBpcyBhIGNv" +
-            "bW1lbnQsIG5vdCBhIHJlYWwgVUkgb3Bjb2RlKAAAAAIAAAAE/wBpXCpChAAAQzkAAEK8AABDRwAA",
+            "bW1lbnQsIG5vdCBhIHJlYWwgVUkgb3Bjb2RlKAAAAAIAAAAE/wBpXCpChAAAQzkAAEK8AABDRwAAZgAAAFYAAAAFSGVsbG+cAAAAVwAAAFbK////Lv//" +
+            "//8AAAAAAAAAAN1CwAAAQzkAABAAAAAA/4AAV0MAAAAAQSAAAGzJ////LSgAAAACAAAABP9tTEEqAAAAAAAAAABB8AAAQSAAANbW",
     )
 }

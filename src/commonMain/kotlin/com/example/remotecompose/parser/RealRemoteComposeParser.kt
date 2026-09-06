@@ -386,6 +386,23 @@ object RealRemoteComposeParser {
      */
     private const val OP_REM = 185
 
+    /**
+     * `Operations.TEXT_LENGTH` — `RemoteComposeWriter.textLength(textId): Float` writes
+     * `[lengthId:i32][textId:i32]` (source-confirmed via javap on the real `TextLength.read()`/
+     * `write()`) — `lengthId` (like [OP_TEXT_SUBTEXT]/[OP_TEXT_TRANSFORM]/[OP_PATH_TWEEN]'s own
+     * leading id) is a *newly* allocated slot, but unlike those, the real writer method itself
+     * *returns* a NaN-tagged float directly referencing it (`Utils.asNan(lengthId)`, confirmed via
+     * javap), meant to be passed straight into another float field elsewhere (a `width()`, an
+     * `x`/`y`, anything [resolveFloat] resolves) rather than drawn on its own. Real
+     * `apply(RemoteContext)` (source-confirmed via javap) computes `textId`'s own pool string's
+     * real `.length` and `loadFloat(lengthId, length)`s it — the exact same [floatPool] map
+     * [resolveFloat] already reads from, so this needs no new resolution machinery at all: once
+     * this op populates `floatPool[lengthId]`, every other already-real NaN-tagged field
+     * anywhere in this parser automatically picks up the real computed length wherever a document
+     * references it.
+     */
+    private const val OP_TEXT_LENGTH = 156
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2502,6 +2519,12 @@ object RealRemoteComposeParser {
                 OP_REM -> {
                     val length = reader.readS32()
                     reader.readUtf8(length) // a source comment — no visual effect to reproduce
+                }
+
+                OP_TEXT_LENGTH -> {
+                    val lengthId = reader.readS32()
+                    val textId = reader.readS32()
+                    floatPool[lengthId] = (textPool[textId]?.length ?: 0).toFloat()
                 }
 
                 OP_LOOP_START -> {

@@ -1372,6 +1372,22 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF00695C.toInt()).commit()
     writer.drawRect(66f, 185f, 94f, 199f)
 
+    // TEXT_LENGTH real computed-value proof: writer.textLength(srcId) on a registered "Hello"
+    // string (5 chars) returns a NaN-tagged float directly usable as any other float field
+    // elsewhere — used here as a width() value on a box wrapping an oversized (30x10) rect clipped
+    // to its own bounds. Real TextLength.apply() (source-confirmed via javap) computes the real
+    // string length and loads it into the exact same value pool this parser's own resolveFloat
+    // already resolves NaN-tagged fields against, so this box's own real declared width should be
+    // exactly 5 (not the unresolved NaN — or the parse exception the old completely-unhandled
+    // behavior would have thrown for the whole document) — only a 5-wide sliver of the oversized
+    // rect should be visible, not the full 30.
+    val lengthSrcId = writer.addText("Hello")
+    val lengthNan = writer.textLength(lengthSrcId)
+    writer.startBox(RecordingModifier().offset(96f, 185f).width(lengthNan).height(10f).clip(RectShape(0f, 0f, 30f, 10f)), 0, 0)
+    writer.getRcPaint().setColor(0xFF6D4C41.toInt()).commit()
+    writer.drawRect(0f, 0f, 30f, 10f)
+    writer.endBox()
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
