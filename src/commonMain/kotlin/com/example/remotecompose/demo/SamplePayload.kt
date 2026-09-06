@@ -413,7 +413,14 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * previously a completely unhandled opcode) proof: with the `FULL_FORMAT` flag, real `apply()`
  * (source-confirmed via javap) does a plain `Float.toString(value)` — `42.75f` computes `"42.75"`
  * exactly (confirmed via the parsed document's own string pool), not `"42"`/`"0.75"`/an unresolved
- * reference. Shared by every platform demo entry
+ * reference, and a real `ID_MAP`/`DATA_MAP_LOOKUP` (`writer.addDataMap(...)`/
+ * `writer.mapLookup(dataMapId, key): Int` — both previously completely unhandled opcodes) proof:
+ * real `DataMapIds.apply()` (source-confirmed via javap) just registers a named lookup table, and
+ * real `DataMapLookup.apply()` looks a key up in it and resolves the matching entry's real value
+ * by its own real type — looking up `"banana"` in a real two-entry (`apple`/`banana`)
+ * string-valued map computes `"Yellow Banana"` exactly (confirmed via the parsed document's own
+ * string pool), not `"Red Apple"`/an empty string/an unresolved reference. Shared by every
+ * platform demo entry
  * point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
@@ -541,6 +548,8 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "AABDHgAAQUAAANbWhgAAAGIA/wAEPqqqqz+AAAA/gAAAyv///yr/////AAAAAAAAAABrAAAAAgAAAGIAAAAAAAAAAEAAAABAgAAAAAAAAAAAAAAAAAAA" +
             "AAAAAAAAAADJ////KSgAAAACAAAABP83R08qQyMAAEAAAABDMgAAQUAAANbWkgAgACsAAAADAAAAAAAAAAEAAAACwAAAAGMAIAArQAAAAJkAAABkACAA" +
             "KgAAAGMoAAAAAgAAAAT/ahuahQAAAGRAoAAAQjQAAL+AAAC/gAAAAAAAAJAAAABlAAAABAAAAAMAAAARAAAAAwABAAWZAAAAZgAgACoAAABlKAAAAAIA" +
-            "AAAE/wCDj4UAAABmQKAAAEKCAAC/gAAAv4AAAAAAAACHAAAAZ0IrAAAAAAAAAAAQACgAAAACAAAABP+tFFeFAAAAZ0CgAABCqgAAv4AAAL+AAAAAAAAA",
+            "AAAE/wCDj4UAAABmQKAAAEKCAAC/gAAAv4AAAAAAAACHAAAAZ0IrAAAAAAAAAAAQACgAAAACAAAABP+tFFeFAAAAZ0CgAABCqgAAv4AAAL+AAAAAAAAA" +
+            "ZgAAAGgAAAAJUmVkIEFwcGxlZgAAAGkAAAANWWVsbG93IEJhbmFuYZEAIAAsAAAAAgAAAAVhcHBsZQAAAABoAAAABmJhbmFuYQAAAABpZgAAAGoAAAAG" +
+            "YmFuYW5hmgAAAGsAIAAsAAAAaigAAAACAAAABP8zaR6FAAAAa0CgAABC0gAAv4AAAL+AAAAAAAAA",
     )
 }

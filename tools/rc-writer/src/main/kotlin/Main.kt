@@ -1483,6 +1483,20 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFFAD1457.toInt()).commit()
     writer.drawTextAnchored(floatTextId, 5f, 85f, -1f, -1f, 0)
 
+    // OP_ID_MAP (opcode 145) + OP_DATA_MAP_LOOKUP (opcode 154) — both previously completely
+    // unhandled. Real DataMapIds.apply() (source-confirmed via javap) just registers a named
+    // lookup table; real DataMapLookup.apply() looks a key up in it and resolves the matching
+    // entry's real value by its own real type. Looking up "banana" in a real two-entry
+    // (apple/banana) string-valued map should compute "Yellow Banana" exactly (not "Red Apple", an
+    // empty string, or an unresolved reference).
+    val fruitMapId = writer.addDataMap(
+        RemoteComposeWriter.map("apple", "Red Apple"),
+        RemoteComposeWriter.map("banana", "Yellow Banana"),
+    )
+    val mapLookupTextId = writer.mapLookup(fruitMapId, "banana")
+    writer.getRcPaint().setColor(0xFF33691E.toInt()).commit()
+    writer.drawTextAnchored(mapLookupTextId, 5f, 105f, -1f, -1f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

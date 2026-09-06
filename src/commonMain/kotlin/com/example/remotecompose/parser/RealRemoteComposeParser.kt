@@ -536,6 +536,34 @@ object RealRemoteComposeParser {
      */
     private const val OP_TEXT_FROM_FLOAT = 135
 
+    /**
+     * `Operations.ID_MAP` — real class `DataMapIds`, `RemoteComposeWriter.addDataMap(...): Int`
+     * writes `[mapId:declareId][count:i32][count × (name:[length:i32][utf8 bytes]) (type:u8)
+     * (valueId:readId)]` (source-confirmed via javap on the real `DataMapIds.read()`/`write()`) —
+     * each entry's `valueId` was itself registered by a real writer call matching its `type`
+     * (`addText`/`addInteger`/`addFloatConstant`/`addLong`/`addBoolean`, `TYPE_STRING`=0 through
+     * `TYPE_BOOLEAN`=4). Real `apply()` just `putDataMap(mapId, DataMap(names, types, ids))` — a
+     * named lookup table, implemented here as [dataMapPool]: `Map<mapId, List<Triple<name, type,
+     * valueId>>>`, the real value for each entry only resolved (via [textPool]/[intPool]/
+     * [floatPool]/[longPool]/[booleanPool] depending on `type`) when [OP_DATA_MAP_LOOKUP] actually
+     * looks a key up.
+     */
+    private const val OP_ID_MAP = 145
+
+    /**
+     * `Operations.DATA_MAP_LOOKUP` — `RemoteComposeWriter.mapLookup(dataMapId, key: String/Int):
+     * Int` writes `[id:declareId][dataMapId:readId][stringId:readId]` (source-confirmed via javap
+     * on the real `DataMapLookup.read()`/`write()`) — `key`'s `String` overload just `addText()`s
+     * it first, so `stringId` is always a real [textPool] reference. Real `apply()` looks the key
+     * up in the [OP_ID_MAP] map ([dataMapPool]'s `getPos(key)`/`getType(pos)`/`getId(pos)`) then
+     * resolves the found entry's value from the pool matching its type — `loadText`/`loadInteger`/
+     * `loadFloat` for `TYPE_STRING`/`TYPE_INT`/`TYPE_FLOAT`, and (for `TYPE_LONG`/`TYPE_BOOLEAN`)
+     * an `Integer`/`Boolean`-as-`Integer` `loadInteger` sourced from a real `LongConstant`/
+     * `BooleanConstant` object — both of which are exactly [OP_DATA_LONG]/[OP_DATA_BOOLEAN]'s own
+     * real classes, so [longPool]/[booleanPool] resolve them directly.
+     */
+    private const val OP_DATA_MAP_LOOKUP = 154
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -1400,6 +1428,7 @@ object RealRemoteComposeParser {
         val intPool = mutableMapOf<Int, Int>()
         val booleanPool = mutableMapOf<Int, Boolean>()
         val longPool = mutableMapOf<Int, Long>()
+        val dataMapPool = mutableMapOf<Int, List<Triple<String, Int, Int>>>()
         val opcodes = mutableListOf<Opcode>()
 
         /**
@@ -2790,6 +2819,37 @@ object RealRemoteComposeParser {
                     val flags = reader.readS32()
                     if (!value.isNaN() && flags and 0x1000 != 0) {
                         textPool[textId] = value.toString()
+                    }
+                }
+
+                OP_ID_MAP -> {
+                    val mapId = reader.readS32()
+                    val count = reader.readS32()
+                    val entries = List(count) {
+                        val nameLength = reader.readS32()
+                        val name = reader.readUtf8(nameLength)
+                        val type = reader.readU8()
+                        val valueId = reader.readS32()
+                        Triple(name, type, valueId)
+                    }
+                    dataMapPool[mapId] = entries
+                }
+
+                OP_DATA_MAP_LOOKUP -> {
+                    val id = reader.readS32()
+                    val dataMapId = reader.readS32()
+                    val stringId = reader.readS32()
+                    val key = textPool[stringId]
+                    val entry = dataMapPool[dataMapId]?.firstOrNull { it.first == key }
+                    if (entry != null) {
+                        val (_, type, valueId) = entry
+                        when (type) {
+                            0 -> textPool[valueId]?.let { textPool[id] = it }
+                            1 -> intPool[valueId]?.let { intPool[id] = it }
+                            2 -> floatPool[valueId]?.let { floatPool[id] = it }
+                            3 -> longPool[valueId]?.let { intPool[id] = it.toInt() }
+                            4 -> booleanPool[valueId]?.let { intPool[id] = if (it) 1 else 0 }
+                        }
                     }
                 }
 
