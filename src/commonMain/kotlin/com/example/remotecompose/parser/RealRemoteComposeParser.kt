@@ -428,6 +428,19 @@ object RealRemoteComposeParser {
      */
     private const val OP_TEXT_LOOKUP = 151
 
+    /**
+     * `Operations.TEXT_LOOKUP_INT` — `RemoteComposeWriter.textLookup(dataSet, indexRefId): Int`
+     * writes `[textId:declareId][dataSetId:readId][index:readId]` (source-confirmed via javap on
+     * the real `TextLookupInt.read()`/`write()`) — the int-indexed sibling of [OP_TEXT_LOOKUP]:
+     * unlike its NaN-taggable float `index`, this one's `index` is *always* an [intPool] reference
+     * (real `updateVariables()` unconditionally calls `RemoteContext.getInteger(mIndex)`, no
+     * literal-vs-reference branch the way the float variant's `Float.isNaN()` check has), so a
+     * real effect here needs a real [OP_DATA_INT] entry already registered at that id — the same
+     * `idListPool`/[textPool] lookup [OP_TEXT_LOOKUP] already performs, just with the index itself
+     * coming from [intPool] instead of a literal.
+     */
+    private const val OP_TEXT_LOOKUP_INT = 153
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -2565,6 +2578,17 @@ object RealRemoteComposeParser {
                     val index = resolveFloat(reader.readFloat32())
                     if (!index.isNaN()) {
                         idListPool[dataSetId]?.getOrNull(index.toInt())?.let { srcId ->
+                            textPool[srcId]?.let { textPool[textId] = it }
+                        }
+                    }
+                }
+
+                OP_TEXT_LOOKUP_INT -> {
+                    val textId = reader.readS32()
+                    val dataSetId = reader.readS32()
+                    val indexRefId = reader.readS32()
+                    intPool[indexRefId]?.let { index ->
+                        idListPool[dataSetId]?.getOrNull(index)?.let { srcId ->
                             textPool[srcId]?.let { textPool[textId] = it }
                         }
                     }

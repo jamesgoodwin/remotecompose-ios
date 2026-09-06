@@ -1403,6 +1403,18 @@ private fun buildCoverageSample() {
     writer.getRcPaint().setColor(0xFF4527A0.toInt()).commit()
     writer.drawTextAnchored(lookedUpTextId, 130f, 170f, -1f, -1f, 0)
 
+    // OP_TEXT_LOOKUP_INT (opcode 153) — previously completely unhandled. Same real ID_LIST
+    // (lookupListNan: Alpha/Beta/Gamma) as the TEXT_LOOKUP test above, but the index here comes
+    // from a real registered int (writer.addInteger(2).toInt() recovers the plain int-pool id
+    // from the "long NaN-tag" 2^32-offset return value), looked up via
+    // RemoteContext.getInteger(mIndex) unconditionally at apply() time (source-confirmed via
+    // javap on TextLookupInt, unlike TextLookup's NaN-conditional float index) — resolving index
+    // 2 should draw "Gamma", not "Alpha"/"Beta"/an unresolved reference.
+    val lookupIndexRefId = writer.addInteger(2).toInt()
+    val lookedUpIntTextId = writer.textLookup(lookupListNan, lookupIndexRefId)
+    writer.getRcPaint().setColor(0xFF00695C.toInt()).commit()
+    writer.drawTextAnchored(lookedUpIntTextId, 130f, 190f, -1f, -1f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

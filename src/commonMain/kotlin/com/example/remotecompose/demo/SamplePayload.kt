@@ -374,7 +374,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * real collection, then that id's own real string, computing "Beta" (confirmed both via the
  * parsed document's own string pool and visually — a clean crop reads "Beta" directly), not
  * "Alpha"/"Gamma"/an unresolved reference the old unhandled behavior could never have computed at
- * all. Shared by every platform demo entry point (iOS, Android) so they
+ * all, and a real `TEXT_LOOKUP_INT` (`writer.textLookup(dataSet, indexRefId: Int)` fed a real
+ * `writer.addInteger(2).toInt()` registered int reference — previously a completely unhandled
+ * opcode) proof reusing that same `ID_LIST`: `TextLookupInt.apply()` resolves its index
+ * unconditionally via `RemoteContext.getInteger(mIndex)` (unlike `TextLookup`'s NaN-conditional
+ * float index), so looking up index `2` computes "Gamma" (confirmed via the parsed document's own
+ * string pool), not "Alpha"/"Beta"/an unresolved reference. Shared by every platform demo entry
+ * point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
  */
@@ -495,6 +501,6 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "bW1lbnQsIG5vdCBhIHJlYWwgVUkgb3Bjb2RlKAAAAAIAAAAE/wBpXCpChAAAQzkAAEK8AABDRwAAZgAAAFYAAAAFSGVsbG+cAAAAVwAAAFbK////Lv//" +
             "//8AAAAAAAAAAN1CwAAAQzkAABAAAAAA/4AAV0MAAAAAQSAAAGzJ////LSgAAAACAAAABP9tTEEqAAAAAAAAAABB8AAAQSAAANbWZgAAAFgAAAAFQWxw" +
             "aGFmAAAAWQAAAARCZXRhZgAAAFoAAAAFR2FtbWGSACAAKgAAAAMAAABYAAAAWQAAAFqXAAAAWwAgACo/gAAAKAAAAAIAAAAE/0UnoIUAAABbQwIAAEMq" +
-            "AAC/gAAAv4AAAAAAAAA=",
+            "AAC/gAAAv4AAAAAAAACMAAAAXAAAAAKZAAAAXQAgACoAAABcKAAAAAIAAAAE/wBpXIUAAABdQwIAAEM+AAC/gAAAv4AAAAAAAAA=",
     )
 }
