@@ -1388,6 +1388,21 @@ private fun buildCoverageSample() {
     writer.drawRect(0f, 0f, 30f, 10f)
     writer.endBox()
 
+    // ID_LIST/TEXT_LOOKUP real indexed-lookup proof: three registered strings ("Alpha", "Beta",
+    // "Gamma") collected via writer.addList(intArrayOf(...)) (previously a completely unhandled
+    // opcode) into a real ID_LIST, then writer.textLookup(1f, thatList) (also previously
+    // completely unhandled) should resolve index 1 — real TextLookup.apply() (source-confirmed
+    // via javap) looks up the id at that index within the real collection, then that id's own
+    // real string — computing "Beta", not "Alpha"/"Gamma"/an unresolved reference, drawn here to
+    // prove it directly.
+    val lookupAlphaId = writer.addText("Alpha")
+    val lookupBetaId = writer.addText("Beta")
+    val lookupGammaId = writer.addText("Gamma")
+    val lookupListNan = writer.addList(intArrayOf(lookupAlphaId, lookupBetaId, lookupGammaId))
+    val lookedUpTextId = writer.textLookup(lookupListNan, 1f)
+    writer.getRcPaint().setColor(0xFF4527A0.toInt()).commit()
+    writer.drawTextAnchored(lookedUpTextId, 130f, 170f, -1f, -1f, 0)
+
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")

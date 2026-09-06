@@ -367,7 +367,14 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * exactly `5` (`ClipRect(left=96, top=185, right=101, bottom=195)`), not the unresolved reference
  * the old completely-unhandled behavior could never have computed at all, since this op loads its
  * result into the exact same value pool `resolveFloat` already resolves every other NaN-tagged
- * field against. Shared by every platform demo entry point (iOS, Android) so they
+ * field against, and a real `ID_LIST`/`TEXT_LOOKUP` (`writer.addList(intArrayOf(...))`/
+ * `writer.textLookup(dataSet, index)` — both previously completely unhandled opcodes) proof:
+ * three registered strings ("Alpha", "Beta", "Gamma") collected into a real `ID_LIST`, then
+ * looked up at index `1` — real `TextLookup.apply()` resolves the id at that index within the
+ * real collection, then that id's own real string, computing "Beta" (confirmed both via the
+ * parsed document's own string pool and visually — a clean crop reads "Beta" directly), not
+ * "Alpha"/"Gamma"/an unresolved reference the old unhandled behavior could never have computed at
+ * all. Shared by every platform demo entry point (iOS, Android) so they
  * render byte-identical input — the point of the cross-platform comparison is to catch *rendering*
  * differences, not to accidentally compare two different payloads.
  */
@@ -486,6 +493,8 @@ val SAMPLE_RC_BYTES: ByteArray by lazy {
             "Af+AAA+vAAAAVQAAAFMAAABUASgAAAACAAAABP8ufTJ8AAAAVdbWrSgAAAACAAAABP/vbAAqQsgAAEM5AABC6AAAQ0cAANbxAAAAAgAAAAAAAAAeKAAA" +
             "AAIAAAAE/9UAACpAAAAAQzkAAEHwAABDRwAA8QAAAAF/////AAAAHigAAAACAAAABP84jjwqQgwAAEM5AABCfAAAQ0cAALkAAAAndGhpcyBpcyBhIGNv" +
             "bW1lbnQsIG5vdCBhIHJlYWwgVUkgb3Bjb2RlKAAAAAIAAAAE/wBpXCpChAAAQzkAAEK8AABDRwAAZgAAAFYAAAAFSGVsbG+cAAAAVwAAAFbK////Lv//" +
-            "//8AAAAAAAAAAN1CwAAAQzkAABAAAAAA/4AAV0MAAAAAQSAAAGzJ////LSgAAAACAAAABP9tTEEqAAAAAAAAAABB8AAAQSAAANbW",
+            "//8AAAAAAAAAAN1CwAAAQzkAABAAAAAA/4AAV0MAAAAAQSAAAGzJ////LSgAAAACAAAABP9tTEEqAAAAAAAAAABB8AAAQSAAANbWZgAAAFgAAAAFQWxw" +
+            "aGFmAAAAWQAAAARCZXRhZgAAAFoAAAAFR2FtbWGSACAAKgAAAAMAAABYAAAAWQAAAFqXAAAAWwAgACo/gAAAKAAAAAIAAAAE/0UnoIUAAABbQwIAAEMq" +
+            "AAC/gAAAv4AAAAAAAAA=",
     )
 }

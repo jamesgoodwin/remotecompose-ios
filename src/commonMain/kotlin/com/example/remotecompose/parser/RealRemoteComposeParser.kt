@@ -403,6 +403,31 @@ object RealRemoteComposeParser {
      */
     private const val OP_TEXT_LENGTH = 156
 
+    /**
+     * `Operations.ID_LIST` — `RemoteComposeWriter.addList(intArray): Float` writes
+     * `[id:declareId][count:i32][count × i32]` (source-confirmed via javap on the real
+     * `DataListIds.read()`/`write()`) — a plain static list of ids (usually other pool
+     * references, e.g. text-pool ids), the real writer method itself returning a NaN-tagged float
+     * referencing it. Real [OP_TEXT_LOOKUP] is the one real consumer this parser gives an actual
+     * effect to.
+     */
+    private const val OP_ID_LIST = 146
+
+    /**
+     * `Operations.TEXT_LOOKUP` — `RemoteComposeWriter.textLookup(dataSet, index): Int` writes
+     * `[textId:declareId][dataSetId:readId][index:f32(NaN-taggable)]` (source-confirmed via javap
+     * on the real `TextLookup.read()`/`write()`) — `textId` (like every other "new pool slot"
+     * opcode this session) is a *newly* allocated text-pool slot the real writer method returns.
+     * Real `apply()` (source-confirmed via javap) resolves `getCollectionsAccess().getId(dataSetId,
+     * index)` — the id at `index` within the [OP_ID_LIST] collection `dataSetId` references — then
+     * `getText()`s *that* id and registers the result at `textId`: a real indexed text-lookup,
+     * implemented here as `idListPool[dataSetId]?.getOrNull(index)` then a [textPool] lookup, both
+     * pools this parser already maintains. Real only when `index` is literal (not a `NaN`-tagged
+     * live variable reference this parser can't evaluate); left unresolved otherwise, the same
+     * honest fallback every other unresolvable reference in this parser already gets.
+     */
+    private const val OP_TEXT_LOOKUP = 151
+
     // RemotePathBase command tags (source-confirmed values), NaN-encoded via Utils.asNan(tag) —
     // i.e. an IEEE-754 float bit pattern with sign=1, exponent=0xFF, mantissa=tag.
     private const val PATH_CMD_MOVE = 10
@@ -1260,6 +1285,7 @@ object RealRemoteComposeParser {
         var currentColor = Color.Black
         val textPool = mutableMapOf<Int, String>()
         val pathPool = mutableMapOf<Int, List<PathCommand>>()
+        val idListPool = mutableMapOf<Int, List<Int>>()
         val bitmapPool = mutableMapOf<Int, ByteArray>()
         val colorPool = mutableMapOf<Int, Color>()
         val floatPool = mutableMapOf<Int, Float>()
@@ -2525,6 +2551,23 @@ object RealRemoteComposeParser {
                     val lengthId = reader.readS32()
                     val textId = reader.readS32()
                     floatPool[lengthId] = (textPool[textId]?.length ?: 0).toFloat()
+                }
+
+                OP_ID_LIST -> {
+                    val id = reader.readS32()
+                    val count = reader.readS32()
+                    idListPool[id] = List(count) { reader.readS32() }
+                }
+
+                OP_TEXT_LOOKUP -> {
+                    val textId = reader.readS32()
+                    val dataSetId = reader.readS32()
+                    val index = resolveFloat(reader.readFloat32())
+                    if (!index.isNaN()) {
+                        idListPool[dataSetId]?.getOrNull(index.toInt())?.let { srcId ->
+                            textPool[srcId]?.let { textPool[textId] = it }
+                        }
+                    }
                 }
 
                 OP_LOOP_START -> {
