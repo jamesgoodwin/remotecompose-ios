@@ -19,6 +19,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.remotecompose.ui.RemoteComposeCanvas
 
 /**
  * The app entry point on both platforms (see `MainActivity.kt` / `MainViewController.kt`): shows
@@ -26,12 +27,13 @@ import androidx.compose.ui.unit.sp
  * an interactive document handles its own buttons; a tap it does not claim moves to the next page.
  *
  * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint, 3 anim,
- *   4 actions, 5 text paths, 6 generated). Lets the device hosts launch straight onto a page for scripted screenshots:
- *   Android reads an `--ei page N` intent extra, iOS an `RC_PAGE` environment variable.
+ *   4 actions, 5 text paths, 6 generated, 7 material). Lets the device hosts launch straight onto
+ *   a page for scripted screenshots: Android reads an `--ei page N` intent extra, iOS an
+ *   `RC_PAGE` environment variable.
  */
 @Composable
 fun DemoScreen(initialPage: Int = 0) {
-    var page by remember { mutableStateOf(initialPage.coerceIn(0, 6)) }
+    var page by remember { mutableStateOf(initialPage.coerceIn(0, 7)) }
     val pages = listOf(
         "Coverage" to SAMPLE_RC_BYTES,
         "Showcase" to SHOWCASE_RC_BYTES,
@@ -40,15 +42,30 @@ fun DemoScreen(initialPage: Int = 0) {
         "Actions" to ACTIONS_RC_BYTES,
         "Text paths" to TEXTPATH_RC_BYTES,
         "Generated" to ADVANCED_RC_BYTES,
+        "Material" to MATERIAL_RC_BYTES,
     )
     val (label, bytes) = pages[page]
+    val next = { page = (page + 1) % pages.size }
     Box(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        // A tap the document itself does not handle switches to the next page.
-        RealPayloadDemoScreen(bytes) { page = (page + 1) % pages.size }
-        BasicText(
+        if (label == "Material") {
+            // The one page shown through the public composable rather than the 1:1 screenshot
+            // host: it scales the document to the screen, so the buttons are the size a finger
+            // expects. Its own "Next demo" button asks the host to move on through a host action.
+            RemoteComposeCanvas(
+                bytes = bytes,
+                modifier = Modifier.fillMaxSize().background(Color(0xFFFEF7FF)),
+                onAction = { next() },
+            )
+        } else {
+            // A tap the document itself does not handle switches to the next page.
+            RealPayloadDemoScreen(bytes) { next() }
+        }
+        // The Material page carries its own chrome and its own way out, so the overlay label
+        // would only cover its snackbar.
+        if (label != "Material") BasicText(
             text = "$label — tap to switch",
             style = TextStyle(color = Color.White, fontSize = 13.sp, textAlign = TextAlign.Center),
             modifier = Modifier

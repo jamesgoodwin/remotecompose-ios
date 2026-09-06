@@ -25,9 +25,12 @@ import java.io.File
  * [OpcodeExecutor.render] call is what backs the on-screen iOS composable.
  */
 /**
- * @param args optional `[inputRcPath] [outputPngPath] [timeSeconds]`, defaulting to the opcode-coverage sample
- *   used by the cross-platform demo apps — passing an alternate `.rc` (e.g. a hand-built showcase
- *   document) renders it the exact same way without touching that shared coverage fixture.
+ * @param args optional `[inputRcPath] [outputPngPath] [timeSeconds] [taps]`, defaulting to the
+ *   opcode-coverage sample used by the cross-platform demo apps — passing an alternate `.rc`
+ *   (e.g. a hand-built showcase document) renders it the exact same way without touching that
+ *   shared coverage fixture. `taps` is a comma-separated list of `x:y` points in document space,
+ *   clicked in order before the frame is rendered, which is how an interactive document's later
+ *   states get screenshotted.
  */
 fun main(args: Array<String>) {
     val inputPath = args.getOrElse(0) { "tools/rc-writer/sample.rc" }
@@ -39,6 +42,11 @@ fun main(args: Array<String>) {
     val timeMillis = (args.getOrNull(2)?.toFloatOrNull() ?: 0f).let { (it * 1000f).toLong() }
     val loaded = RemoteComposeParser.load(bytes, ComposeTextMetrics(textMeasurer))
     loaded.frame(0L)
+    // Optional fourth argument: taps to deliver before rendering, as "x:y,x:y".
+    args.getOrNull(3)?.split(',')?.filter { it.isNotBlank() }?.forEach { point ->
+        val (x, y) = point.split(':').map { it.trim().toFloat() }
+        println("Tap at $x, $y ${if (loaded.click(x, y)) "handled" else "ignored"}")
+    }
     val document = loaded.frame(timeMillis)
     println("Parsed real payload: ${document.header.width}x${document.header.height}, ${document.opcodes.size} opcode(s): ${document.opcodes}")
 

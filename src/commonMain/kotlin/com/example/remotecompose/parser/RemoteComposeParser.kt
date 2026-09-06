@@ -28,6 +28,7 @@ import com.example.remotecompose.runtime.ParticleSystem
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.BitmapFont
 import com.example.remotecompose.text.EstimatedTextMetrics
+import com.example.remotecompose.text.FloatFormat
 import com.example.remotecompose.text.GlyphPlacement
 import com.example.remotecompose.text.TextAnchoring
 import com.example.remotecompose.text.TextMetricsProvider
@@ -725,11 +726,34 @@ object RemoteComposeParser {
                     }
 
                     is Op.TextFromFloat -> {
-                        val textId = op.textId
+                        // TextFromFloat.apply(): FULL_FORMAT prints the float as it is, and
+                        // otherwise the flags word picks the padding, grouping, separator pair
+                        // and negative style that StringUtils formats with. The digits word packs
+                        // the count before the point in its high half and after it in its low.
                         val value = resolveFloat(op.value)
-                        val flags = op.flags
-                        if (!value.isNaN() && flags and 0x1000 != 0) {
-                            textPool[textId] = value.toString()
+                        if (!value.isNaN()) {
+                            val flags = op.flags
+                            val before = (op.digits shr 16) and 0xFFFF
+                            val after = op.digits and 0xFFFF
+                            val afterPad = when (flags and 3) {
+                                1 -> FloatFormat.NO_PAD
+                                3 -> '0'
+                                else -> ' '
+                            }
+                            val prePad = when (flags and 12) {
+                                4 -> FloatFormat.NO_PAD
+                                12 -> '0'
+                                else -> ' '
+                            }
+                            textPool[op.textId] = when {
+                                flags and 0x1000 != 0 -> value.toString()
+                                flags and 0x400 != 0 -> FloatFormat.formatLegacy(value, before, after, prePad, afterPad)
+                                else -> FloatFormat.format(
+                                    value, before, after, prePad, afterPad,
+                                    separator = (flags shr 6) and 3, grouping = (flags shr 4) and 3,
+                                    options = (flags shr 8) and 3,
+                                )
+                            }
                         }
                     }
 

@@ -76,7 +76,180 @@ fun main(args: Array<String>) {
         buildShaderSample()
         return
     }
+    if (args.getOrNull(0) == "material") {
+        buildMaterialSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * A Material 3 order screen: a top app bar, an outlined card, a quantity stepper, and the four
+ * button kinds — filled, tonal, outlined and text — at their real specs (40 high, fully rounded,
+ * 24 of horizontal padding, Label Large at 14/500). Colours are the baseline light scheme's roles
+ * rather than picked by eye, so the surfaces and their `on` pairs stay in step.
+ *
+ * It is the interactive parts that make it a demo rather than a picture: the stepper's buttons
+ * write the quantity through expression actions, so the count, the line total and the width of
+ * the progress bar all follow; "Add to cart" sets a flag that a conditional block reads to show
+ * the snackbar; and "Next demo" leaves through a host action rather than handling itself.
+ */
+private fun buildMaterialSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(360, 480, "material", platform)
+
+    // Baseline light scheme roles.
+    val surface = 0xFFFEF7FF.toInt()
+    val surfaceContainer = 0xFFF3EDF7.toInt()
+    val surfaceContainerLow = 0xFFF7F2FA.toInt()
+    val surfaceContainerHighest = 0xFFE6E0E9.toInt()
+    val onSurface = 0xFF1D1B20.toInt()
+    val onSurfaceVariant = 0xFF49454F.toInt()
+    val primary = 0xFF6750A4.toInt()
+    val onPrimary = 0xFFFFFFFF.toInt()
+    val secondaryContainer = 0xFFE8DEF8.toInt()
+    val onSecondaryContainer = 0xFF1D192B.toInt()
+    val outline = 0xFF79747E.toInt()
+    val outlineVariant = 0xFFCAC4D0.toInt()
+    val inverseSurface = 0xFF322F35.toInt()
+    val inverseOnSurface = 0xFFF5EFF7.toInt()
+
+    fun text(
+        value: Any,
+        color: Int,
+        size: Float,
+        weight: Float = 400f,
+        modifier: RecordingModifier = RecordingModifier(),
+    ) {
+        val id = if (value is Int) value else writer.addText(value as String)
+        writer.startTextComponent(modifier, id, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    // The quantity, and the two expressions the stepper buttons write back into it.
+    val quantity = writer.addFloatConstant(1f)
+    val quantityId = androidx.compose.remote.core.operations.Utils.idFromNan(quantity)
+    val more = writer.floatExpression(quantity, 1f, Rc.FloatExpression.ADD)
+    val fewer = writer.floatExpression(quantity, 1f, Rc.FloatExpression.SUB, 1f, Rc.FloatExpression.MAX)
+    val added = writer.addFloatConstant(0f)
+    val addedId = androidx.compose.remote.core.operations.Utils.idFromNan(added)
+
+    // PAD_PRE_NONE(4) leaves the count unpadded; PAD_AFTER_ZERO(3) keeps the price at two places.
+    val snackbarText = writer.addText("Added to your cart")
+    val quantityText = writer.createTextFromFloat(quantity, 1, 0, 4 or 1)
+    val totalText = writer.textMerge(
+        writer.addText("\u00a3"),
+        writer.createTextFromFloat(
+            writer.floatExpression(quantity, 3.4f, Rc.FloatExpression.MUL), 2, 2, 4 or 3,
+        ),
+    )
+
+    /** One Material button: a fully rounded 40-high container with its label centred. */
+    fun button(
+        label: String,
+        container: Int?,
+        labelColor: Int,
+        borderColor: Int?,
+        horizontalPadding: Float,
+        vararg actions: androidx.compose.remote.creation.actions.Action,
+    ) {
+        var modifier = RecordingModifier().height(40f).clip(RoundedRectShape(20f, 20f, 20f, 20f))
+        if (container != null) modifier = modifier.background(container)
+        if (borderColor != null) modifier = modifier.border(1f, 20f, borderColor, 2)
+        modifier = modifier.padding(horizontalPadding, 0f, horizontalPadding, 0f).onClick(*actions)
+        writer.startBox(modifier, 2, 2)
+        text(label, labelColor, 14f, weight = 500f)
+        writer.endBox()
+    }
+
+    writer.startColumn(RecordingModifier().fillMaxSize().background(surface), 1, 4)
+
+    // Top app bar, small: 56 high, Title Large, on a container surface.
+    writer.startBox(RecordingModifier().fillMaxWidth().height(56f).background(surfaceContainer).padding(16f, 0f, 16f, 0f), 1, 2)
+    text("Remote Compose", onSurface, 22f)
+    writer.endBox()
+
+    writer.startColumn(RecordingModifier().fillMaxWidth().padding(16f).spacedBy(16f), 1, 4)
+
+    // Outlined card: 12 corner, 1 outline-variant border, 16 padding.
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth()
+            .clip(RoundedRectShape(12f, 12f, 12f, 12f))
+            .background(surfaceContainerLow)
+            .border(1f, 12f, outlineVariant, 2)
+            .padding(16f)
+            .spacedBy(6f),
+        1, 4,
+    )
+    text("Flat white", onSurface, 16f, weight = 500f)
+    text("Oat milk · 250 ml · \u00a33.40", onSurfaceVariant, 14f)
+
+    // Quantity stepper: two tonal buttons either side of the count, total on the right.
+    writer.startRow(RecordingModifier().fillMaxWidth().padding(0f, 10f, 0f, 0f), 1, 2)
+    button("\u2212", secondaryContainer, onSecondaryContainer, null, 16f, ValueFloatExpressionChange(quantityId, androidx.compose.remote.core.operations.Utils.idFromNan(fewer)))
+    writer.startBox(RecordingModifier().width(48f).height(40f), 2, 2)
+    text(quantityText, onSurface, 16f, weight = 500f)
+    writer.endBox()
+    button("+", secondaryContainer, onSecondaryContainer, null, 16f, ValueFloatExpressionChange(quantityId, androidx.compose.remote.core.operations.Utils.idFromNan(more)))
+    writer.startBox(RecordingModifier().width(70f).height(40f), 3, 2)
+    writer.endBox()
+    writer.startBox(RecordingModifier().height(40f), 3, 2)
+    text(totalText, primary, 16f, weight = 500f)
+    writer.endBox()
+    writer.endRow()
+    writer.endColumn()
+
+    // The four button kinds, at their real specs.
+    writer.startRow(RecordingModifier().fillMaxWidth().spacedBy(8f), 1, 2)
+    button("Add to cart", primary, onPrimary, null, 24f, ValueFloatChange(addedId, 1f))
+    button("Details", null, primary, outline, 24f)
+    writer.endRow()
+
+    writer.startRow(RecordingModifier().fillMaxWidth().spacedBy(8f), 1, 2)
+    button("Clear", secondaryContainer, onSecondaryContainer, null, 24f, ValueFloatChange(addedId, 0f), ValueFloatChange(quantityId, 1f))
+    button("Next demo", null, primary, null, 16f, HostAction(7))
+    writer.endRow()
+
+    // A progress track whose fill follows the quantity: 1 of 8 cups.
+    writer.startBox(RecordingModifier().fillMaxWidth().height(4f), 1, 2)
+    writer.getRcPaint().setColor(surfaceContainerHighest).commit()
+    writer.drawRoundRect(0f, 0f, 328f, 4f, 2f, 2f)
+    writer.getRcPaint().setColor(primary).commit()
+    writer.drawRoundRect(
+        0f, 0f,
+        writer.floatExpression(quantity, 8f, Rc.FloatExpression.MIN, 41f, Rc.FloatExpression.MUL),
+        4f, 2f, 2f,
+    )
+    writer.endBox()
+
+    writer.endColumn()
+
+    // A weighted spacer pushes the snackbar to the bottom of the screen, where one belongs.
+    writer.startBox(RecordingModifier().fillMaxWidth().verticalWeight(1f), 1, 4)
+    writer.endBox()
+
+    // Snackbar: inverse surface, 4 corner, only while the cart flag is set. Its string is
+    // created out here on purpose: a text record inside the block would only be applied on a
+    // frame where the block runs, and this evaluator applies each constant once.
+    writer.conditionalOperations(4.toByte(), added, 0.5f) // TYPE_GT
+    writer.startBox(RecordingModifier().fillMaxWidth().padding(16f), 1, 4)
+    writer.startBox(
+        RecordingModifier().fillMaxWidth().height(48f)
+            .clip(RoundedRectShape(4f, 4f, 4f, 4f))
+            .background(inverseSurface)
+            .padding(16f, 0f, 16f, 0f),
+        1, 2,
+    )
+    text(snackbarText, inverseOnSurface, 14f)
+    writer.endBox()
+    writer.endBox()
+    writer.endConditionalOperations()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("material.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to material.rc")
 }
 
 /**
