@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 145 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 146 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -41,6 +41,7 @@ because the format has no generic length prefix to skip by.
 | 210 | `HOST_NAMED_ACTION` | supported | an action named by a string, carrying a float, int, string or float list |
 | 216 | `HOST_METADATA_ACTION` | supported | a numbered action with a string beside it |
 | 137 | `NAMED_VARIABLE` | supported | gives a pool value a name, and `RemoteComposeDocument.setNamed*` is the host putting one in by it |
+| 189 | `DATA_FONT` | decoded only | the bytes are kept, so a document carrying a font parses and draws; nothing selects one to draw with |
 | 45 | `DATA_SHADER` | decoded only | uniforms are kept; painting one needs a runtime shader compiler |
 | 80 | `DATA_FLOAT` | supported |  |
 | 101 | `DATA_BITMAP` | supported |  |
@@ -247,7 +248,6 @@ implements it.
 | 164 | `IMPULSE_START` |
 | 165 | `IMPULSE_PROCESS` |
 | 169 | `DATA_SOUND` |
-| 189 | `DATA_FONT` |
 | 190 | `DRAW_TO_BITMAP` |
 | 191 | `WAKE_IN` |
 | 195 | `UPDATE` |

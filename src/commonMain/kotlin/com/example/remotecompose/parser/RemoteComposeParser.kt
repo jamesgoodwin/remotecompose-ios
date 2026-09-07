@@ -630,6 +630,10 @@ object RemoteComposeParser {
                         emit(Opcode.ClipPath(commands))
                     }
 
+                    // FontData.apply(): loadFont(fontId, bytes). The bytes are kept so that a
+                    // document carrying a font parses and draws; selecting it is not reachable.
+                    is Op.FontData -> context.fonts[op.fontId] = op.bytes
+
                     is Op.BitmapData -> {
                         val bitmapId = op.bitmapId
                         bitmapPool[bitmapId] = op.bytes

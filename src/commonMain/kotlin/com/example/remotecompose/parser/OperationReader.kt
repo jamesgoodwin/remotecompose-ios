@@ -303,6 +303,11 @@ internal object OperationReader {
                 x = r.readFloat32(), y = r.readFloat32(), glyphSpacing = glyphSpacing,
             )
         }
+        Operations.DATA_FONT -> {
+            val fontId = r.readS32()
+            val type = r.readS32()
+            Op.FontData(fontId, type, r.readBytes(r.readS32()))
+        }
         Operations.DRAW_BITMAP_TEXT_ANCHORED -> {
             val tagged = r.readS32()
             val textId = tagged and 0x7FFFFFFF

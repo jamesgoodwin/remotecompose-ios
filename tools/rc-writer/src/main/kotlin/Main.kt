@@ -2686,6 +2686,10 @@ private fun buildHostActionsSample() {
         writer.endTextComponent()
     }
 
+    // An embedded font. Nothing in the creation library points a paint at one, so this is here
+    // to prove a document carrying a font still parses and draws — see docs/OPCODES.md.
+    writer.addFont(ByteArray(64) { (it * 7).toByte() })
+
     // The string a metadata action hands over, and the float a named one carries.
     val metadata = writer.addText("sku-4417")
     val amount = writer.addFloatConstant(12.5f)

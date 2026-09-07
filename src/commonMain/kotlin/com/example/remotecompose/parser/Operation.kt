@@ -618,6 +618,19 @@ sealed interface Operation {
      * way `DRAW_TEXT_ANCHOR` positions ordinary text. The text id carries the glyph-spacing flag
      * in its top bit as the rest of the bitmap-font family does.
      */
+    /**
+     * `FontData` (opcode `DATA_FONT`): `[fontId][type][length][bytes]`, an embedded font file.
+     * `apply` is `loadFont(fontId, bytes)`.
+     *
+     * Kept rather than drawn with: nothing in remote-core or its creation library points a paint
+     * at a loaded font's id. `TYPEFACE` and `TextStyle`'s `P_FONT_FAMILY` both name a family by
+     * string, and the concrete `loadFont` that would register these bytes under such a name is
+     * not in the extracted jars. See `docs/OPCODES.md`.
+     */
+    data class FontData(val fontId: Int, val type: Int, val bytes: ByteArray) : Operation {
+        override fun toString(): String = "FontData(fontId=$fontId, type=$type, bytes=${bytes.size})"
+    }
+
     data class DrawBitmapTextAnchored(
         val textId: Int, val fontId: Int, val start: Float, val end: Float,
         val x: Float, val y: Float, val panX: Float, val panY: Float, val glyphSpacing: Float,

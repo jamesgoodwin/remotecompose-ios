@@ -86,4 +86,23 @@ class HostActionTest {
         assertTrue(document.click(150f, named))
         assertNull(document.onNamedAction)
     }
+
+    /**
+     * `DATA_FONT`: a document carrying an embedded font parses and draws, and the bytes are kept.
+     *
+     * They are not drawn with. Nothing in remote-core or its creation library points a paint at a
+     * loaded font's id — `TYPEFACE` and `TextStyle`'s `P_FONT_FAMILY` both name a family by
+     * string — so this is the whole of what the operation can do here.
+     */
+    @Test
+    fun anEmbeddedFontIsKeptAndDoesNotStopTheDocument() {
+        val font = OperationReader.readAll(bytes).filterIsInstance<Operation.FontData>().single()
+        assertEquals(64, font.bytes.size)
+
+        val document = RemoteComposeParser.load(bytes)
+        document.frame(0L)
+        assertEquals(font.bytes.size, document.context.fonts.getValue(font.fontId).size)
+        // And the rest of the document still draws, which is what decoding it buys.
+        assertTrue(document.frame(0L).opcodes.isNotEmpty())
+    }
 }
