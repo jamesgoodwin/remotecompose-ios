@@ -1543,6 +1543,9 @@ object RemoteComposeParser {
                     // A block kept for later, not run where it is written.
                     is Op.ReferencedOperations -> i = scopeEnds[i] ?: to
 
+                    // `WakeIn.paint`: a request the host reads through `nextRepaintDelayMillis`.
+                    is Op.WakeIn -> context.wakeIn(resolveFloat(op.seconds))
+
                     is Op.ComponentValue -> {
                         // `Component.updateVariables`: what the last layout left, since this
                         // frame has not been measured yet. A component seen for the first time

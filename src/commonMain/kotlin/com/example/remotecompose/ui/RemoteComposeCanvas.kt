@@ -188,9 +188,17 @@ internal fun Modifier.documentGestures(
 fun rememberDocumentFrames(loaded: RemoteComposeDocument): State<RemoteDocument> {
     val frame = remember(loaded) { mutableStateOf(loaded.frame(currentTimeMillis())) }
     LaunchedEffect(loaded) {
+        var drawnAt = currentTimeMillis()
         while (isActive) {
             withFrameMillis { }
-            if (loaded.needsRepaint) frame.value = loaded.frame(currentTimeMillis())
+            val now = currentTimeMillis()
+            // `getOpsToUpdate`: a document that has changed wants a frame now; one that only
+            // asked to be woken wants one when its own delay is up, and nothing in between.
+            val delay = loaded.nextRepaintDelayMillis()
+            if (delay == 0 || (delay > 0 && now - drawnAt >= delay)) {
+                frame.value = loaded.frame(now)
+                drawnAt = now
+            }
         }
     }
     return frame

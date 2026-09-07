@@ -1624,6 +1624,13 @@ private fun buildCoverageSample() {
     writer.drawRect(85f, 61f, 93f, 69f)
     writer.endBox()
 
+    // WakeIn: a request the host reads rather than something drawn, so there is nothing here to
+    // see. `RemoteComposeState.wakeIn` keeps the soonest of them; two are written so a reader can
+    // tell that it is the soonest and not the last. Nothing else in this fixture asks for a
+    // frame, which is what leaves the request visible through `nextRepaintDelayMillis`.
+    writer.getBuffer().wakeIn(5f)
+    writer.getBuffer().wakeIn(2f)
+
     // GraphicsLayerModifierOperation.ROTATION_X=2/ROTATION_Y=3: turning a layer about an axis
     // lying in its own plane. A 16x16 square turned 60 degrees about the horizontal axis keeps
     // its width and loses half its height (cos 60 = 0.5), and one turned 60 degrees about the

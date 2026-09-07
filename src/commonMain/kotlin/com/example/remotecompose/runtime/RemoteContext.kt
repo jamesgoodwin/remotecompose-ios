@@ -176,6 +176,37 @@ class RemoteContext : FloatCollections {
         return id
     }
 
+    /**
+     * `RemoteComposeState.mRepaintSeconds` and `mLastRepaint`: how long the host may wait before
+     * drawing again, and whether one such request has been served yet.
+     */
+    var repaintSeconds: Float = Float.NaN
+        private set
+    private var lastRepaint: Float = Float.NaN
+
+    /**
+     * `RemoteComposeState.wakeIn`: the soonest request wins, but only once one has been served.
+     * Before that any request replaces what is there, which is what lets a document that names
+     * several wakes settle on the last one it wrote rather than the first.
+     */
+    fun wakeIn(seconds: Float) {
+        if (seconds.isNaN() || lastRepaint.isNaN() || repaintSeconds > seconds) {
+            repaintSeconds = seconds
+        }
+    }
+
+    /**
+     * `RemoteComposeState.getOpsToUpdate`: how long the host may wait before drawing again, in
+     * milliseconds, or -1 when nothing has asked for another frame. Taking the answer records it,
+     * as the library does, so that later requests only bring the wake forward.
+     */
+    fun takeRepaintDelayMillis(): Int {
+        if (needsRepaint) return 0
+        if (repaintSeconds.isNaN()) return -1
+        lastRepaint = repaintSeconds
+        return (repaintSeconds * 1000f).toInt()
+    }
+
     /** Starts the generated ids again, so that a frame reuses the previous frame's. */
     fun resetGeneratedIds() {
         generatedIds = FIRST_GENERATED_ID

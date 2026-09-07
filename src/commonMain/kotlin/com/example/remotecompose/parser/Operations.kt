@@ -125,6 +125,7 @@ internal object Operations {
     const val VALUE_STRING_CHANGE_ACTION = 213
     const val CONTAINER_END = 214
     const val COMPONENT_VALUE = 150
+    const val WAKE_IN = 191
     const val REFERENCED_OPERATIONS = 142
     const val LOOP_START = 215
     const val LAYOUT_STATE = 217

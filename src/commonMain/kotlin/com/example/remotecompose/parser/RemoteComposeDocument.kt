@@ -81,6 +81,16 @@ class RemoteComposeDocument internal constructor(
     }
 
     /**
+     * `RemoteComposeState.getOpsToUpdate`: how long the host may wait before drawing this
+     * document again, in milliseconds — 0 when something has already changed, and -1 when nothing
+     * has asked for another frame at all.
+     *
+     * A `WAKE_IN` is how a document that changes rarely says so, instead of being drawn at every
+     * frame. Reading the answer records it, so a later `WAKE_IN` can only bring the wake forward.
+     */
+    fun nextRepaintDelayMillis(): Int = context.takeRepaintDelayMillis()
+
+    /**
      * `CoreDocument.onClick`: runs the click actions of the topmost component containing
      * ([x], [y]) in document coordinates. Returns true when a component handled the tap, so the
      * host can decide what to do with an unhandled one.

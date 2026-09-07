@@ -310,6 +310,15 @@ sealed interface Operation {
     data class UpdateDynamicFloatList(val arrayId: Int, val index: Float, val value: Float) : Operation
 
     /**
+     * `WakeIn`: asks the host to draw the document again in [seconds], which may be an id.
+     *
+     * `RemoteComposeState.wakeIn` keeps the soonest of them and `getOpsToUpdate` hands the delay
+     * to the host, which is how a surface that changes rarely — a face that ticks once a minute —
+     * says so instead of being drawn at every frame.
+     */
+    data class WakeIn(val seconds: Float) : Operation
+
+    /**
      * `ComponentValue`: publishes one measurement of the component [componentId] under [valueId],
      * so the rest of the document can read it as a float.
      *
