@@ -196,7 +196,7 @@ because the format has no generic length prefix to skip by.
 | 211 | `MODIFIER_VISIBILITY` | supported |  |
 | 221 | `MODIFIER_OFFSET` | supported |  |
 | 223 | `MODIFIER_ZINDEX` | supported |  |
-| 224 | `MODIFIER_GRAPHICS_LAYER` | partial | alpha, rotation, scale and translation; the rest of the attributes are ignored |
+| 224 | `MODIFIER_GRAPHICS_LAYER` | partial | alpha, scale, translation, transform origin, shape clip and all three rotations, each read as a value the document may compute per frame rather than a written constant; `ROTATION_X`/`ROTATION_Y` foreshorten without perspective, so `CAMERA_DISTANCE` has no effect. `TRANSLATION_Z`, `SHADOW_ELEVATION`, `SPOT_SHADOW_COLOR`, `AMBIENT_SHADOW_COLOR`, `COMPOSITING_STRATEGY`, `HAS_BLUR`, `BLUR_RADIUS_X`, `BLUR_RADIUS_Y` and `BLUR_TILE_MODE` are decoded and ignored: this renderer has no shadow, blur or projective transform to give them |
 | 226 | `MODIFIER_SCROLL` | partial | the window, the offset, dragging and the glide after a release; notch stops are not applied |
 | 228 | `MODIFIER_MARQUEE` | decoded only | no scrolling text |
 | 229 | `MODIFIER_RIPPLE` | supported | the library's own near-white circle, which shows on a coloured surface and barely on a white one |

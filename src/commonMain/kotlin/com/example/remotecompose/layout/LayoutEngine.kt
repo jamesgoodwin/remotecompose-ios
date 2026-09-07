@@ -9,6 +9,8 @@ import com.example.remotecompose.runtime.CubicEasing
 import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.TextMetricsProvider
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 
@@ -679,22 +681,32 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
      * Graphics-layer attributes with a renderable equivalent: alpha as a compositing layer,
      * scale/rotation/translation about the transform origin (default center), and a rounded or
      * circular shape clip. Returns how many `MatrixRestore`s the caller owes.
+     *
+     * `ROTATION_X`/`ROTATION_Y` turn a layer about an axis in its own plane, which foreshortens
+     * it across that axis by the cosine of the angle. That cosine is all of the turn this
+     * renderer can draw: its transform opcodes are affine, so `CAMERA_DISTANCE` — the vanishing
+     * point that makes the near edge of a turned layer larger than the far one — has nowhere to
+     * go. The two agree as the camera goes to infinity and part company as the angle opens.
      */
     private fun paintGraphicsLayer(node: LayoutNode, layer: Modifier.GraphicsLayer, out: MutableList<Opcode>): Int {
-        val a = layer.attributes
-        fun f(tag: Int): Float? = a[tag]?.let { Float.fromBits(it) }
+        fun f(tag: Int): Float? = layer.floats[tag]?.takeUnless { it.isNaN() }
         var restores = 0
         f(GL_ALPHA)?.let { out += Opcode.SaveLayerAlpha(it); restores++ }
         val sx = f(GL_SCALE_X); val sy = f(GL_SCALE_Y); val rz = f(GL_ROTATION_Z)
+        val rx = f(GL_ROTATION_X); val ry = f(GL_ROTATION_Y)
         val tx = f(GL_TRANSLATION_X); val ty = f(GL_TRANSLATION_Y)
-        if (sx != null || sy != null || rz != null || tx != null || ty != null) {
+        if (sx != null || sy != null || rz != null || rx != null || ry != null || tx != null || ty != null) {
             val pivotX = (f(GL_TRANSFORM_ORIGIN_X) ?: 0.5f) * node.width
             val pivotY = (f(GL_TRANSFORM_ORIGIN_Y) ?: 0.5f) * node.height
             if (tx != null || ty != null) out += Opcode.Translate(tx ?: 0f, ty ?: 0f)
             if (rz != null) out += Opcode.Rotate(rz, pivotX, pivotY)
-            if (sx != null || sy != null) out += Opcode.Scale(sx ?: 1f, sy ?: 1f, pivotX, pivotY)
+            if (sx != null || sy != null || rx != null || ry != null) {
+                val acrossX = ry?.let { cos(it * PI_OVER_180) } ?: 1f
+                val acrossY = rx?.let { cos(it * PI_OVER_180) } ?: 1f
+                out += Opcode.Scale((sx ?: 1f) * acrossX, (sy ?: 1f) * acrossY, pivotX, pivotY)
+            }
         }
-        val shape = a[GL_SHAPE]
+        val shape = layer.ints[GL_SHAPE]
         if (shape != null && shape != 0) {
             val radius = if (shape == 2) min(node.width, node.height) / 2f else (f(GL_SHAPE_RADIUS) ?: 0f)
             out += Opcode.ClipPath(roundedRectPath(0f, 0f, node.width, node.height, radius, radius, radius, radius))
@@ -786,9 +798,14 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
     companion object {
         private val DEFAULT_TEXT_PAINT = PaintStyle(Color.Black, PaintStyleKind.FILL, textSize = 16f)
 
+        /** Degrees to radians, for the two graphics-layer rotations that foreshorten. */
+        private const val PI_OVER_180 = PI.toFloat() / 180f
+
         /** `GraphicsLayerModifierOperation` attribute keys; a float-valued key carries bit `0x400`. */
         const val GL_SCALE_X = 0 or 0x400
         const val GL_SCALE_Y = 1 or 0x400
+        const val GL_ROTATION_X = 2 or 0x400
+        const val GL_ROTATION_Y = 3 or 0x400
         const val GL_ROTATION_Z = 4 or 0x400
         const val GL_TRANSFORM_ORIGIN_X = 5 or 0x400
         const val GL_TRANSFORM_ORIGIN_Y = 6 or 0x400

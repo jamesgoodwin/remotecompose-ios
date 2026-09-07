@@ -1677,7 +1677,16 @@ object RemoteComposeParser {
                     )
 
                     is Op.ModifierGraphicsLayer -> tree.current?.modifiers?.add(
-                        Modifier.GraphicsLayer(op.attributes.associate { it.tag to it.rawValue }),
+                        Modifier.GraphicsLayer(
+                            // A tag carrying bit 0x400 is float-valued, and that float may be a
+                            // NaN-tagged id rather than a number: `AttributeValue.evaluate` reads
+                            // it through the context every frame, so a scale or an alpha can be
+                            // an expression. Resolving here is that evaluation.
+                            floats = op.attributes.filter { it.tag and 0x400 != 0 }
+                                .associate { it.tag to resolveFloat(Float.fromBits(it.rawValue)) },
+                            ints = op.attributes.filterNot { it.tag and 0x400 != 0 }
+                                .associate { it.tag to it.rawValue },
+                        ),
                     )
                 }
                 // Inside a pattern, what the body just declared belongs to this expansion alone:

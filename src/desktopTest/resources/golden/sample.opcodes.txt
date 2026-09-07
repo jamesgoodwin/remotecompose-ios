@@ -206,6 +206,18 @@ DrawRect(left=85.0, top=61.0, right=93.0, bottom=69.0, paint=PaintStyle(color=Co
 MatrixRestore
 MatrixSave
 Translate(dx=0.0, dy=0.0)
+Scale(sx=1.0, sy=0.49999997, pivotX=0.0, pivotY=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=100.0, top=61.0, right=116.0, bottom=77.0, paint=PaintStyle(color=Color(0.9372549, 0.42352942, 0.0, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
+Scale(sx=0.49999997, sy=1.0, pivotX=0.0, pivotY=0.0)
+Translate(dx=0.0, dy=0.0)
+DrawRect(left=120.0, top=61.0, right=136.0, bottom=77.0, paint=PaintStyle(color=Color(0.18039216, 0.49019608, 0.19607843, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
+MatrixSave
+Translate(dx=0.0, dy=0.0)
 ClipPath(commands=[MoveTo(x=0.0, y=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), LineTo(x=0.0, y=0.0), QuadraticTo(x1=0.0, y1=0.0, x2=0.0, y2=0.0), Close])
 Translate(dx=0.0, dy=0.0)
 DrawRect(left=2.0, top=170.0, right=18.0, bottom=186.0, paint=PaintStyle(color=Color(0.3647059, 0.2509804, 0.21568628, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))

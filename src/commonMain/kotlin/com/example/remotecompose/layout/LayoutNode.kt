@@ -61,7 +61,13 @@ sealed class Modifier {
     class RoundedClipRect(val topStart: Float, val topEnd: Float, val bottomStart: Float, val bottomEnd: Float) : Decorator()
     class Offset(val x: Float, val y: Float) : Modifier()
     class ZIndex(val zIndex: Float) : Modifier()
-    class GraphicsLayer(val attributes: Map<Int, Int>) : Modifier()
+    /**
+     * `GraphicsLayerModifierOperation`: each attribute is an `AttributeValue` holding an
+     * `AnimatableValue`, evaluated against the paint context every frame — so a float-valued one
+     * can be an expression rather than a constant. [floats] are those, already resolved; [ints]
+     * are the attributes whose value is a plain int (the shape, the tile mode, a shadow colour).
+     */
+    class GraphicsLayer(val floats: Map<Int, Float>, val ints: Map<Int, Int>) : Modifier()
     class CollapsiblePriority(val orientation: Int, val priority: Float) : Modifier()
 
     /**

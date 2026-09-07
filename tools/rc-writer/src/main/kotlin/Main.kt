@@ -1606,6 +1606,29 @@ private fun buildCoverageSample() {
     writer.drawRect(85f, 61f, 93f, 69f)
     writer.endBox()
 
+    // GraphicsLayerModifierOperation.ROTATION_X=2/ROTATION_Y=3: turning a layer about an axis
+    // lying in its own plane. A 16x16 square turned 60 degrees about the horizontal axis keeps
+    // its width and loses half its height (cos 60 = 0.5), and one turned 60 degrees about the
+    // vertical axis does the opposite — which is the only part of the turn an affine transform
+    // can carry, CAMERA_DISTANCE's vanishing point having nowhere to go in one.
+    val graphicsLayerRotateX = GraphicsLayerModifier()
+    graphicsLayerRotateX.setFloatAttribute(2, 60f) // ROTATION_X
+    writer.startBox(RecordingModifier().then(graphicsLayerRotateX), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFFEF6C00.toInt())
+        .commit()
+    writer.drawRect(100f, 61f, 116f, 77f)
+    writer.endBox()
+
+    val graphicsLayerRotateY = GraphicsLayerModifier()
+    graphicsLayerRotateY.setFloatAttribute(3, 60f) // ROTATION_Y
+    writer.startBox(RecordingModifier().then(graphicsLayerRotateY), 0, 0)
+    writer.getRcPaint()
+        .setColor(0xFF2E7D32.toInt())
+        .commit()
+    writer.drawRect(120f, 61f, 136f, 77f)
+    writer.endBox()
+
     // GraphicsLayerModifierOperation.SHAPE=20/SHAPE_CIRCLE=2: a solid 16x16 square with a
     // SHAPE_CIRCLE-clipped graphics layer should render as a circle inscribed in that square —
     // corners visibly cut off against whatever's behind, the same real quarter-round-cut proof
@@ -3322,12 +3345,13 @@ private fun buildParallaxSample() {
 /**
  * A carousel of pictures that flings, with each picture drifting inside its own card as the card
  * crosses the screen — the effect a photo carousel gets from moving the image slower than the
- * frame that holds it.
+ * frame that holds it — and each card shrinking and dimming as it leaves the middle.
  *
- * Both are the horizontal scroll position. The card's place on screen is `left - scroll`, so how
- * far it is from the middle is `left + half - scroll - 150`, and the picture is shifted by a
- * quarter of that the other way. Every card has its own copy of that sum; nothing is measured at
- * runtime and nothing is asked of the host.
+ * All three are the horizontal scroll position. The card's place on screen is `left - scroll`, so
+ * how far it is from the middle is `left + half - scroll - 150`; the picture is shifted by a
+ * quarter of that the other way, and the card's own scale and alpha come off the same distance.
+ * Every card has its own copy of that sum; nothing is measured at runtime and nothing is asked of
+ * the host.
  */
 private fun buildCarouselSample() {
     val platform = JvmRcPlatformServices()
@@ -3393,8 +3417,30 @@ private fun buildCarouselSample() {
         // The picture drifts a quarter of that, the other way.
         val drift = writer.floatExpression(fromMiddle, -0.25f, Rc.FloatExpression.MUL)
 
+        // The card shrinks and dims as it leaves the middle. Both are graphics-layer attributes,
+        // and both are expressions rather than numbers: `AttributeValue.evaluate` reads them
+        // through the context every frame, so they follow the scroll like anything else.
+        //
+        //   scale = 1 - min(|fromMiddle|, 260) / 260 * 0.16
+        //   alpha = 1 - min(|fromMiddle|, 260) / 260 * 0.55
+        val distance = writer.floatExpression(
+            fromMiddle, Rc.FloatExpression.ABS, 260f, Rc.FloatExpression.MIN,
+            260f, Rc.FloatExpression.DIV,
+        )
+        val cardScale = writer.floatExpression(
+            1f, distance, 0.16f, Rc.FloatExpression.MUL, Rc.FloatExpression.SUB,
+        )
+        val cardAlpha = writer.floatExpression(
+            1f, distance, 0.55f, Rc.FloatExpression.MUL, Rc.FloatExpression.SUB,
+        )
+        val depth = GraphicsLayerModifier()
+        depth.setFloatAttribute(0, cardScale) // SCALE_X
+        depth.setFloatAttribute(1, cardScale) // SCALE_Y
+        depth.setFloatAttribute(11, cardAlpha) // ALPHA
+
         writer.startBox(
             RecordingModifier().width(cardWidth).height(cardHeight)
+                .then(depth)
                 .clip(RoundedRectShape(16f, 16f, 16f, 16f))
                 .background(0xFF1D1A26.toInt())
                 .then(RippleElement()),
