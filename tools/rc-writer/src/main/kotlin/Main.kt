@@ -126,6 +126,10 @@ fun main(args: Array<String>) {
         buildCoreTextSample()
         return
     }
+    if (args.getOrNull(0) == "article") {
+        buildArticleSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2799,4 +2803,116 @@ private fun buildCoreTextSample() {
     val bytes = writer.encodeToByteArray()
     File("coretext.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to coretext.rc")
+}
+
+/**
+ * An article that scrolls, with a bar across the top showing how far through it the reader is.
+ *
+ * The progress is the document's own arithmetic rather than anything the host computes: the
+ * scroll position is a float this writes and `MODIFIER_SCROLL` drives, so the bar's width is that
+ * float over the distance there is to scroll, times the width of the screen.
+ */
+private fun buildArticleSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "article", platform)
+
+    val ink = 0xFF1B1B1F.toInt()
+    val muted = 0xFF5F5A66.toInt()
+    val accent = 0xFF6750A4.toInt()
+
+    // The first short is TextLayout's flags: bit 0 says the colour field is the id of a colour
+    // rather than an ARGB, and these are ARGBs.
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    // The article, as lines short enough to sit inside the column without wrapping — this
+    // renderer draws a run, it does not break one.
+    val lines = listOf(
+        "" to 0f,
+        "Remote Compose sends a drawing," to 13f,
+        "not a picture. A document is a" to 13f,
+        "list of operations: pools of text" to 13f,
+        "and colour, expressions over them," to 13f,
+        "components to lay out, and draws." to 13f,
+        "" to 0f,
+        "Why it scrolls by itself" to 15f,
+        "A scrolling component writes its" to 13f,
+        "offset into a float that a touch" to 13f,
+        "expression drives. Nothing asks" to 13f,
+        "the host where the finger is." to 13f,
+        "" to 0f,
+        "The bar above this text" to 15f,
+        "is that same float, divided by" to 13f,
+        "the distance there is to scroll." to 13f,
+        "The document works it out; the" to 13f,
+        "host only hands over the touch." to 13f,
+        "" to 0f,
+        "Expressions are the point" to 15f,
+        "A value can be a number, or a" to 13f,
+        "little stack machine over other" to 13f,
+        "values and the clock. That is how" to 13f,
+        "one document animates without" to 13f,
+        "anyone sending it a new frame." to 13f,
+        "" to 0f,
+        "Reaching the end" to 15f,
+        "The bar is full, which is the" to 13f,
+        "only way to tell from inside the" to 13f,
+        "document that there is no more." to 13f,
+        "" to 0f,
+    )
+
+    // Each line is its own component: 6 tall for a blank, and the line height otherwise.
+    val lineHeight = 18f
+    val headingHeight = 22f
+    val window = 360f
+    val content = lines.sumOf { (t, size) ->
+        (if (t.isEmpty()) 8.0 else if (size > 13f) headingHeight.toDouble() else lineHeight.toDouble())
+    }.toFloat()
+    val overflow = content - window
+
+    // The float the scroll drives and the bar reads.
+    val scroll = writer.addFloatConstant(0f)
+
+    writer.startColumn(RecordingModifier().fillMaxSize().background(0xFFFFFBFE.toInt()), 1, 4)
+
+    // The progress bar: a track the width of the document, and a fill as wide as the fraction
+    // read so far. `min` holds it at full once the end is reached.
+    writer.startBox(RecordingModifier().fillMaxWidth().height(4f), 1, 2)
+    writer.getRcPaint().setColor(0xFFE7E0EC.toInt()).commit()
+    writer.drawRect(0f, 0f, 300f, 4f)
+    val progress = writer.floatExpression(
+        scroll, overflow, Rc.FloatExpression.DIV, 1f, Rc.FloatExpression.MIN, 300f, Rc.FloatExpression.MUL,
+    )
+    writer.getRcPaint().setColor(accent).commit()
+    writer.drawRect(0f, 0f, progress, 4f)
+    writer.endBox()
+
+    // The article itself, in a window shorter than it is.
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth().height(window).verticalScroll(scroll).padding(16f),
+        1, 4,
+    )
+    for ((line, size) in lines) {
+        if (line.isEmpty()) {
+            writer.startBox(RecordingModifier().fillMaxWidth().height(8f), 1, 2)
+            writer.endBox()
+        } else {
+            text(
+                writer.addText(line),
+                if (size > 13f) ink else muted,
+                size,
+                if (size > 13f) 700f else 400f,
+                RecordingModifier().fillMaxWidth().height(if (size > 13f) headingHeight else lineHeight),
+            )
+        }
+    }
+    writer.endColumn()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("article.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to article.rc; content ${content}, overflow ${overflow}")
 }

@@ -36,7 +36,8 @@ import com.example.remotecompose.ui.RemoteComposeCanvas
  * unreachable while any tap the document did not claim moved to the next page.
  *
  * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint, 3 anim,
- *   4 actions, 5 text paths, 6 generated, 7 material, 8 list, 9 pattern, 10 coffee). Lets the
+ *   4 actions, 5 text paths, 6 generated, 7 material, 8 list, 9 pattern, 10 coffee,
+ *   11 article). Lets the
  *   device hosts launch straight onto a page for scripted screenshots: Android reads an
  *   `--ei page N` intent extra, iOS an `RC_PAGE` environment variable.
  */
@@ -54,6 +55,7 @@ fun DemoScreen(initialPage: Int = 0) {
         "List" to LIST_RC_BYTES,
         "Pattern" to PATTERN_RC_BYTES,
         "Coffee" to COFFEE_RC_BYTES,
+        "Article" to ARTICLE_RC_BYTES,
     )
     var page by remember { mutableStateOf(initialPage.coerceIn(0, pages.lastIndex)) }
     val (label, bytes) = pages[page]
@@ -63,6 +65,12 @@ fun DemoScreen(initialPage: Int = 0) {
         // The document keeps the whole screen and stays centred in it, which is what the pixel
         // harness relies on to find it in a screenshot; the bar floats over the backdrop below.
         when (label) {
+            // Scrolls under the finger, so it goes through the interactive host like the others.
+            "Article" -> RemoteComposeCanvas(
+                bytes = bytes,
+                modifier = Modifier.fillMaxSize().background(Color(0xFFFFFBFE)).padding(bottom = BAR_SPACE),
+                onAction = { go(1) },
+            )
             "Coffee" -> RemoteComposeCanvas(
                 bytes = bytes,
                 modifier = Modifier.fillMaxSize().padding(bottom = BAR_SPACE),

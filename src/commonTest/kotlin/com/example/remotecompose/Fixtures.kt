@@ -2,6 +2,7 @@ package com.example.remotecompose
 
 import com.example.remotecompose.demo.ACTIONS_RC_BYTES
 import com.example.remotecompose.demo.ADVANCED_RC_BYTES
+import com.example.remotecompose.demo.ARTICLE_RC_BYTES
 import com.example.remotecompose.demo.ANIM_RC_BYTES
 import com.example.remotecompose.demo.COFFEE_RC_BYTES
 import com.example.remotecompose.demo.LIST_RC_BYTES
@@ -27,6 +28,7 @@ import com.example.remotecompose.demo.TEXTPATH_RC_BYTES
 val FIXTURES: Map<String, ByteArray> = mapOf(
     "actions" to ACTIONS_RC_BYTES,
     "advanced" to ADVANCED_RC_BYTES,
+    "article" to ARTICLE_RC_BYTES,
     "attributes" to ATTRIBUTES_RC_BYTES,
     "anim" to ANIM_RC_BYTES,
     "coffee" to COFFEE_RC_BYTES,
