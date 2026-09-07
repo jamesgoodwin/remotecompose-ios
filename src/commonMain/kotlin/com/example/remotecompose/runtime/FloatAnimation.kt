@@ -46,6 +46,44 @@ class ElasticOutCurve : Easing {
 }
 
 /**
+ * `StepCurve`: a curve through evenly spaced values rather than one named by control points.
+ *
+ * `genSpline` lays the values out at `i / (length - 1)` and then repeats them a period below and
+ * a period above, each copy offset by one in value, so that the spline running through the middle
+ * copy meets its neighbours smoothly instead of flattening at the ends.
+ */
+class StepCurve(values: FloatArray, offset: Int, length: Int) : Easing {
+
+    private val spline: MonotonicSpline
+
+    init {
+        val points = length * 3 - 2
+        val count = length - 1
+        val step = 1.0 / count
+        val y = DoubleArray(points)
+        val t = DoubleArray(points)
+        for (i in 0 until length) {
+            val v = values[i + offset].toDouble()
+            y[i + count] = v
+            t[i + count] = i * step
+            if (i > 0) {
+                y[i + count * 2] = v + 1.0
+                t[i + count * 2] = i * step + 1.0
+                y[i - 1] = v - 1.0
+                t[i - 1] = i * step - 1.0 - step
+            }
+        }
+        spline = MonotonicSpline(t, y)
+    }
+
+    override fun get(fraction: Float): Float {
+        if (fraction < 0f) return 0f
+        if (fraction > 1f) return 1f
+        return spline.position(fraction.toDouble()).toFloat()
+    }
+}
+
+/**
  * A cubic Bézier easing on `(0,0) .. (1,1)` with control points `(x1,y1)`, `(x2,y2)`:
  * `CubicEasing` from remote-core, including its preset curves and its bisection lookup.
  */
@@ -147,11 +185,21 @@ class FloatAnimation(description: FloatArray) {
             val hasWrap = (packed shr 8) and 1 != 0
             val hasInitial = (packed shr 8) and 2 != 0
             val specLength = (packed shr 16) and 0xFFFF
-            var index = 2
-            if (hasInitial) initialValue = description[index++]
+            // `create(mType, spec, 2, specLength)`: the curve spec sits at index 2, and the
+            // initial and wrap values follow it rather than coming first.
+            val spec = 2
+            var index = 2 + specLength
+            if (hasInitial && index < description.size) initialValue = description[index++]
             if (hasWrap) index++ // wrap value: decoded, not applied
-            if (easingType == CubicEasing.CUBIC_CUSTOM && specLength >= 4 && index + 3 < description.size) {
-                curve = CubicEasing(description[index], description[index + 1], description[index + 2], description[index + 3])
+            if (spec + specLength <= description.size) {
+                curve = when {
+                    easingType == CubicEasing.CUBIC_CUSTOM && specLength >= 4 -> CubicEasing(
+                        description[spec], description[spec + 1], description[spec + 2], description[spec + 3],
+                    )
+                    easingType == CubicEasing.SPLINE_CUSTOM && specLength >= 2 ->
+                        StepCurve(description, spec, specLength)
+                    else -> null
+                }
             }
         }
         type = easingType

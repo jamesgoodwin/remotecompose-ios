@@ -2532,23 +2532,27 @@ private fun buildVisibilitySample() {
  */
 private fun buildEasingSample() {
     val platform = JvmRcPlatformServices()
-    val writer = RemoteComposeWriter(300, 160, "easing", platform)
+    val writer = RemoteComposeWriter(300, 200, "easing", platform)
 
     // 0 for a second then 100 for a second, which is the change each curve eases.
     val target = floatArrayOf(
         Rc.Time.CONTINUOUS_SEC, Rc.FloatExpression.FLOOR, 2f, Rc.FloatExpression.MOD,
         100f, Rc.FloatExpression.MUL,
     )
+    // The spline is the one curve given its shape rather than named: the values are stepped
+    // through evenly, so this one rises, falls back and rises again.
+    val splineSpec = floatArrayOf(0f, 1f, 0.5f, 1f)
     val curves = listOf(
-        "standard" to androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
-        "bounce" to androidx.compose.remote.core.operations.utilities.easing.Easing.EASE_OUT_BOUNCE,
-        "elastic" to androidx.compose.remote.core.operations.utilities.easing.Easing.EASE_OUT_ELASTIC,
+        Triple("standard", androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD, null),
+        Triple("bounce", androidx.compose.remote.core.operations.utilities.easing.Easing.EASE_OUT_BOUNCE, null),
+        Triple("elastic", androidx.compose.remote.core.operations.utilities.easing.Easing.EASE_OUT_ELASTIC, null),
+        Triple("spline", androidx.compose.remote.core.operations.utilities.easing.Easing.SPLINE_CUSTOM, splineSpec),
     )
-    val colors = listOf(0xFF1E88E5.toInt(), 0xFF43A047.toInt(), 0xFFE53935.toInt())
+    val colors = listOf(0xFF1E88E5.toInt(), 0xFF43A047.toInt(), 0xFFE53935.toInt(), 0xFF8E24AA.toInt())
 
     for ((index, curve) in curves.withIndex()) {
         val animation = androidx.compose.remote.core.operations.utilities.easing.FloatAnimation.packToFloatArray(
-            1f, curve.second, null, Float.NaN, Float.NaN,
+            1f, curve.second, curve.third, Float.NaN, Float.NaN,
         )
         val eased = writer.floatExpression(target, animation)
         val right = writer.floatExpression(eased, 40f, Rc.FloatExpression.ADD)

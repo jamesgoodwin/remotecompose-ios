@@ -27,7 +27,10 @@ class EasingCurveTest {
         val types = OperationReader.readAll(bytes).filterIsInstance<Operation.FloatExpression>()
             .mapNotNull { it.animation }
             .map { FloatAnimation(it).type }
-        assertEquals(listOf(CubicEasing.EASE_OUT_BOUNCE, CubicEasing.EASE_OUT_ELASTIC), types)
+        assertEquals(
+            listOf(CubicEasing.EASE_OUT_BOUNCE, CubicEasing.EASE_OUT_ELASTIC, CubicEasing.SPLINE_CUSTOM),
+            types,
+        )
     }
 
     @Test
@@ -35,6 +38,47 @@ class EasingCurveTest {
         assertTrue(CubicEasing.preset(CubicEasing.EASE_OUT_BOUNCE) is BounceCurve)
         assertTrue(CubicEasing.preset(CubicEasing.EASE_OUT_ELASTIC) is ElasticOutCurve)
         assertTrue(CubicEasing.preset(CubicEasing.CUBIC_STANDARD) is CubicEasing)
+    }
+
+    @Test
+    fun theSplineIsBuiltFromTheSpecRatherThanTheTypeAlone() {
+        // A spline needs its shape, which lives in the description; `preset` has only the type,
+        // so it cannot build one and the animation does it instead.
+        val animation = OperationReader.readAll(bytes).filterIsInstance<Operation.FloatExpression>()
+            .mapNotNull { it.animation }
+            .single { FloatAnimation(it).type == CubicEasing.SPLINE_CUSTOM }
+        val curve = FloatAnimation(animation)
+        // The spec is 0, 1, 0.5, 1 evenly spaced, so the curve passes through each in turn.
+        curve.initialValue = 0f
+        curve.targetValue = 1f
+        assertEquals(0f, curve.get(0f), 0.02f)
+        assertEquals(1f, curve.get(1f / 3f), 0.02f, "up to the first")
+        assertEquals(0.5f, curve.get(2f / 3f), 0.02f, "back down to the second")
+        assertEquals(1f, curve.get(1f), 0.02f, "and up to the last")
+    }
+
+    @Test
+    fun aStepCurveGoesThroughEveryValueItWasGiven() {
+        val curve = StepCurve(floatArrayOf(0f, 0.25f, 0.75f, 1f), 0, 4)
+        assertEquals(0f, curve.get(0f), 0.02f)
+        assertEquals(0.25f, curve.get(1f / 3f), 0.02f)
+        assertEquals(0.75f, curve.get(2f / 3f), 0.02f)
+        assertEquals(1f, curve.get(1f), 0.02f)
+    }
+
+    @Test
+    fun aMonotonicSplineDoesNotOvershootBetweenItsPoints() {
+        // The tangent limiting is the whole point of the fit: a plain cubic through these would
+        // bulge above the flat run, and this must not.
+        val spline = MonotonicSpline(
+            doubleArrayOf(0.0, 1.0, 2.0, 3.0),
+            doubleArrayOf(0.0, 1.0, 1.0, 2.0),
+        )
+        for (step in 0..100) {
+            val x = 1.0 + step / 100.0
+            val v = spline.position(x)
+            assertTrue(v in 0.999..1.001, "flat between its ends at $x: $v")
+        }
     }
 
     @Test
@@ -92,6 +136,17 @@ class EasingCurveTest {
         assertTrue(stepped.zipWithNext().all { (a, b) -> b >= a - 0.01f }, "the step only climbs: $stepped")
         assertTrue(bounce.zipWithNext().any { (a, b) -> b < a - 0.01f }, "the bounce falls back: $bounce")
         assertTrue(bounce.last() > 95f, "and has nearly arrived: ${bounce.last()}")
+    }
+
+    @Test
+    fun aSplineFollowsTheShapeItWasGiven() {
+        // The fourth bar: up to the target, back to half of it, and up again, which is the spec.
+        val spline = barWidths().map { it[3] }
+        val third = spline[spline.size / 3]
+        val twoThirds = spline[spline.size * 2 / 3]
+        assertTrue(third > 90f, "up to the first control point: $third")
+        assertTrue(twoThirds < 60f, "and back down to the second: $twoThirds")
+        assertTrue(spline.last() > 85f, "and climbing to the last: ${spline.last()}")
     }
 
     @Test
