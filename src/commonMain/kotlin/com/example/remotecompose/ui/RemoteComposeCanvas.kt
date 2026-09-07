@@ -94,51 +94,12 @@ fun RemoteComposeCanvas(
     Canvas(
         modifier = modifier
             .onSizeChanged { canvasSize = it }
-            // One handler for the whole gesture rather than a drag detector beside a tap one:
-            // `detectTapGestures` consumes the press as soon as it arrives, and being the inner
-            // modifier it saw the event first, so the drag detector's `awaitFirstDown` never
-            // started and a scrolling component could not be moved on a device at all.
-            //
-            // A press goes to the document either way; whether it turns out to be a drag or a
-            // tap is only known once the pointer has moved past the touch slop, which is what
-            // separates scrolling a list from clicking the row under the finger.
-            .pointerInput(loaded, canvasSize) {
-                val fit = {
-                    fitDocumentToCanvas(
-                        canvasWidth = canvasSize.width.toFloat(),
-                        canvasHeight = canvasSize.height.toFloat(),
-                        header = loaded.header,
-                    )
-                }
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    val start = fit().toDocumentSpace(down.position)
-                    loaded.touchDown(start.x, start.y)
-                    var dragging = false
-                    var last = down
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        last = change
-                        if (!change.pressed) break
-                        if (!dragging &&
-                            (change.position - down.position).getDistance() > viewConfiguration.touchSlop
-                        ) {
-                            dragging = true
-                        }
-                        if (dragging) {
-                            val point = fit().toDocumentSpace(change.position)
-                            loaded.touchDrag(point.x, point.y)
-                            // Claim the gesture, so that whatever this canvas sits inside does
-                            // not take it over halfway through a scroll.
-                            change.consume()
-                        }
-                    }
-                    val end = fit().toDocumentSpace(last.position)
-                    loaded.touchUp(end.x, end.y)
-                    // A press that never moved is a click on whatever is under it.
-                    if (!dragging) loaded.click(end.x, end.y)
-                }
+            .documentGestures(loaded, canvasSize) {
+                fitDocumentToCanvas(
+                    canvasWidth = canvasSize.width.toFloat(),
+                    canvasHeight = canvasSize.height.toFloat(),
+                    header = loaded.header,
+                )
             },
     ) {
         val fit = fitDocumentToCanvas(canvasWidth = size.width, canvasHeight = size.height, header = document.header)
@@ -147,6 +108,56 @@ fun RemoteComposeCanvas(
         drawContext.transform.scale(fit.scale, fit.scale, pivot = Offset.Zero)
         OpcodeExecutor.render(this, document.opcodes, renderContext)
         drawContext.canvas.restore()
+    }
+}
+
+/**
+ * Feeds one pointer gesture at a time to [loaded], mapping screen points into document space with
+ * [fit]; [key] restarts the handler when the geometry it captured changes.
+ *
+ * One handler for the whole gesture rather than a drag detector beside a tap one:
+ * `detectTapGestures` consumes the press as soon as it arrives, so whichever of the two was the
+ * inner modifier took the gesture and the other never saw it. With a tap detector inside a drag
+ * detector that meant `awaitFirstDown` never returned and a scrolling component could not be
+ * moved on a device at all, while a document driven directly scrolled perfectly well.
+ *
+ * The press reaches the document either way. Whether it turns out to be a drag or a tap is only
+ * known once the pointer has moved past the touch slop, which is what separates scrolling a list
+ * from clicking the row under the finger.
+ */
+internal fun Modifier.documentGestures(
+    loaded: RemoteComposeDocument,
+    key: Any?,
+    fit: () -> FitTransform,
+): Modifier = pointerInput(loaded, key) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val start = fit().toDocumentSpace(down.position)
+        loaded.touchDown(start.x, start.y)
+        var dragging = false
+        var last = down
+        while (true) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            last = change
+            if (!change.pressed) break
+            if (!dragging &&
+                (change.position - down.position).getDistance() > viewConfiguration.touchSlop
+            ) {
+                dragging = true
+            }
+            if (dragging) {
+                val point = fit().toDocumentSpace(change.position)
+                loaded.touchDrag(point.x, point.y)
+                // Claim the gesture, so that whatever this canvas sits inside does not take it
+                // over halfway through a scroll.
+                change.consume()
+            }
+        }
+        val end = fit().toDocumentSpace(last.position)
+        loaded.touchUp(end.x, end.y)
+        // A press that never moved is a click on whatever is under it.
+        if (!dragging) loaded.click(end.x, end.y)
     }
 }
 
@@ -171,13 +182,13 @@ fun rememberDocumentFrames(loaded: RemoteComposeDocument): State<RemoteDocument>
  * The uniform scale + centering offset that fits a [Header.width] x [Header.height] document into
  * a `canvasWidth` x `canvasHeight` viewport without distortion (equivalent to `ContentScale.Fit`).
  */
-private data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float) {
+internal data class FitTransform(val scale: Float, val offsetX: Float, val offsetY: Float) {
     /** Maps a point in on-screen canvas coordinates back into the document's own coordinate space. */
     fun toDocumentSpace(canvasPoint: Offset): Offset =
         Offset((canvasPoint.x - offsetX) / scale, (canvasPoint.y - offsetY) / scale)
 }
 
-private fun fitDocumentToCanvas(canvasWidth: Float, canvasHeight: Float, header: Header): FitTransform {
+internal fun fitDocumentToCanvas(canvasWidth: Float, canvasHeight: Float, header: Header): FitTransform {
     val docWidth = header.width.toFloat()
     val docHeight = header.height.toFloat()
     if (docWidth <= 0f || docHeight <= 0f || canvasWidth <= 0f || canvasHeight <= 0f) {

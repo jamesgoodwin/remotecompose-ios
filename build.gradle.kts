@@ -74,6 +74,16 @@ kotlin {
             iosSimulatorArm64Main.dependsOn(this)
         }
 
+        // Drives the real composable through synthetic gestures, which is the only way to catch a
+        // press that never reaches the document: the parser tests scroll it by calling it
+        // directly, so they stayed green while nothing on a device could drag it.
+        val desktopTest by getting {
+            dependencies {
+                implementation(compose.desktop.uiTestJUnit4)
+                implementation(compose.desktop.currentOs)
+            }
+        }
+
         val desktopMain by getting {
             dependsOn(commonMain)
             dependencies {
