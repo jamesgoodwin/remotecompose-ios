@@ -724,6 +724,13 @@ private fun buildAdvancedSample() {
     val fontText = writer.addText("RC C! R")
     writer.drawBitmapFontTextRun(fontText, font, 0, -1, 12f, 50f, 1f)
 
+    // 6b. DRAW_BITMAP_TEXT_ANCHORED: the same run three times about one point, so which part of
+    //     it lands on that point is the only difference between them. panX -1 puts its left edge
+    //     there, 0 its centre, 1 its right edge.
+    for ((index, pan) in listOf(-1f, 0f, 1f).withIndex()) {
+        writer.drawBitmapTextAnchored(fontText, font, 0f, -1f, 150f, 86f + index * 20f, pan, 0f, 1f)
+    }
+
     // 6. BITMAP_TEXT_MEASURE: an underline exactly as wide as that run.
     val runWidth = writer.bitmapTextMeasure(fontText, font, 0, 1f) // MEASURE_WIDTH
     writer.getRcPaint().setColor(0xFF9E9E9E.toInt()).setStyle(0).commit()

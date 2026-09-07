@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 144 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 145 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -35,6 +35,7 @@ because the format has no generic length prefix to skip by.
 | Id | Opcode | Status | Notes |
 | --: | --- | --- | --- |
 | 170 | `ATTRIBUTE_TEXT` | partial | a measurement of the text, or its length; the monospace and max-height measuring flags are not applied |
+| 184 | `DRAW_BITMAP_TEXT_ANCHORED` | supported | a bitmap-font run placed by pan about a point, as `DRAW_TEXT_ANCHOR` places ordinary text |
 | 172 | `ATTRIBUTE_TIME` | partial | the clock and calendar parts of a moment, and the gap between two; in UTC, since the real clock's zone is not in the jars |
 | 171 | `ATTRIBUTE_IMAGE` | supported | the width or height `DATA_BITMAP` declared |
 | 210 | `HOST_NAMED_ACTION` | supported | an action named by a string, carrying a float, int, string or float list |
@@ -246,7 +247,6 @@ implements it.
 | 164 | `IMPULSE_START` |
 | 165 | `IMPULSE_PROCESS` |
 | 169 | `DATA_SOUND` |
-| 184 | `DRAW_BITMAP_TEXT_ANCHORED` |
 | 189 | `DATA_FONT` |
 | 190 | `DRAW_TO_BITMAP` |
 | 191 | `WAKE_IN` |

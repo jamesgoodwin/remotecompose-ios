@@ -303,6 +303,18 @@ internal object OperationReader {
                 x = r.readFloat32(), y = r.readFloat32(), glyphSpacing = glyphSpacing,
             )
         }
+        Operations.DRAW_BITMAP_TEXT_ANCHORED -> {
+            val tagged = r.readS32()
+            val textId = tagged and 0x7FFFFFFF
+            val glyphSpacing = if (tagged and GLYPH_SPACING_FLAG != 0) r.readFloat32() else 0f
+            Op.DrawBitmapTextAnchored(
+                textId = textId, fontId = r.readS32(),
+                start = r.readFloat32(), end = r.readFloat32(),
+                x = r.readFloat32(), y = r.readFloat32(),
+                panX = r.readFloat32(), panY = r.readFloat32(),
+                glyphSpacing = glyphSpacing,
+            )
+        }
         Operations.DRAW_BITMAP_FONT_TEXT_RUN_ON_PATH -> {
             val tagged = r.readS32()
             val textId = tagged and 0x7FFFFFFF

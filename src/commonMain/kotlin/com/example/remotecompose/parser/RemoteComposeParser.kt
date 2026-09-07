@@ -1167,6 +1167,42 @@ object RemoteComposeParser {
                         }
                     }
 
+                    is Op.DrawBitmapTextAnchored -> {
+                        // DrawBitmapTextAnchored.paint(): the run is laid out as usual, then
+                        // shifted so that (x, y) lands where panX/panY say inside its bounds.
+                        //
+                        //   dx = -width * (1 + panX) / 2 - left
+                        //   dy = -height * (1 - panY) / 2 - top
+                        //
+                        // which is `getHorizontalOffset`/`getVerticalOffset` with the box they
+                        // measure against being zero-sized, as it is for a bare draw.
+                        val text = textPool[op.textId]
+                        val font = context.bitmapFonts[op.fontId]
+                        if (text != null && font != null) {
+                            val from = resolveFloat(op.start).toInt()
+                            val to = resolveFloat(op.end).toInt()
+                            val run = font.layout(runOf(text, from, to), resolveFloat(op.glyphSpacing))
+                            val placements = run.placements
+                            val left = placements.minOfOrNull { it.left } ?: 0f
+                            val top = placements.minOfOrNull { it.top } ?: 0f
+                            val right = placements.maxOfOrNull { it.right } ?: 0f
+                            val bottom = placements.maxOfOrNull { it.bottom } ?: 0f
+                            val panX = resolveFloat(op.panX)
+                            val panY = resolveFloat(op.panY)
+                            val dx = -(right - left) * (1f + panX) / 2f - left
+                            val dy = -(bottom - top) * (1f - panY) / 2f - top
+                            val x = resolveFloat(op.x) + dx
+                            val y = resolveFloat(op.y) + dy
+                            for (placement in placements) {
+                                emit(Opcode.DrawBitmap(
+                                    placement.glyph.bitmapId,
+                                    x + placement.left, y + placement.top,
+                                    x + placement.right, y + placement.bottom,
+                                ))
+                            }
+                        }
+                    }
+
                     is Op.DrawBitmapFontTextOnPath -> {
                         // DrawBitmapFontTextOnPath.paint(): each glyph is centred on the point a
                         // fraction of the way along the path and rotated to the tangent there,

@@ -612,6 +612,17 @@ sealed interface Operation {
      * [timeId] when there is one and now otherwise; types 3..5 measure from the long at `args[0]`
      * instead of from now.
      */
+    /**
+     * `DrawBitmapTextAnchored` (opcode `DRAW_BITMAP_TEXT_ANCHORED`): the bitmap-font run
+     * `[start, end)` positioned by [panX]/[panY] about `(x, y)` rather than starting there, the
+     * way `DRAW_TEXT_ANCHOR` positions ordinary text. The text id carries the glyph-spacing flag
+     * in its top bit as the rest of the bitmap-font family does.
+     */
+    data class DrawBitmapTextAnchored(
+        val textId: Int, val fontId: Int, val start: Float, val end: Float,
+        val x: Float, val y: Float, val panX: Float, val panY: Float, val glyphSpacing: Float,
+    ) : Operation
+
     data class TimeAttribute(val id: Int, val timeId: Int, val type: Int, val args: List<Int>) : Operation
 
     data class HostNamedAction(val textId: Int, val type: Int, val valueId: Int) : Operation

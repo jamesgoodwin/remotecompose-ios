@@ -14,7 +14,8 @@ import kotlin.test.assertTrue
  */
 class AdvancedFixtureTest {
 
-    private val document by lazy { RemoteComposeParser.parse(fixture("advanced")) }
+    private val bytes = fixture("advanced")
+    private val document by lazy { RemoteComposeParser.parse(bytes) }
     private val rects by lazy { document.opcodes.filterIsInstance<Opcode.DrawRect>() }
     private val paths by lazy { document.opcodes.filterIsInstance<Opcode.DrawPath>() }
 
@@ -156,5 +157,35 @@ class AdvancedFixtureTest {
         // The spline's controls, by contrast, leave the chord.
         val spline = paths[0].commands.filterIsInstance<PathCommand.CubicTo>()
         assertTrue(spline.any { hypot(it.x2 - it.x3, it.y2 - it.y3) > 1f })
+    }
+
+    /**
+     * `DRAW_BITMAP_TEXT_ANCHORED`: the same run drawn three times about one point, differing
+     * only in which part of itself lands there.
+     *
+     * `getHorizontalOffset` is `-width * (1 + panX) / 2 - left`, so -1 puts the run's left edge
+     * on the point, 0 its centre and 1 its right edge.
+     */
+    @Test
+    fun anAnchoredBitmapRunIsPlacedByItsPan() {
+        val anchored = OperationReader.readAll(bytes).filterIsInstance<Operation.DrawBitmapTextAnchored>()
+        assertEquals(listOf(-1f, 0f, 1f), anchored.map { it.panX })
+        assertTrue(anchored.all { it.x == 150f }, "all three about the same point")
+
+        // The glyphs each run drew, grouped by the row they landed in.
+        val rows = document.opcodes.filterIsInstance<Opcode.DrawBitmap>()
+            .filter { it.top > 70f && it.top < 140f }
+            .groupBy { (it.top / 20f).toInt() }
+            .entries.sortedBy { it.key }
+        assertEquals(3, rows.size, "one row per anchoring")
+
+        val spans = rows.map { row -> row.value.minOf { it.left } to row.value.maxOf { it.right } }
+        val width = spans[0].second - spans[0].first
+        assertTrue(width > 0f, "the run has a width: $width")
+        assertTrue(spans.all { it.second - it.first == width }, "the same run each time: $spans")
+
+        assertEquals(150f, spans[0].first, 0.01f, "panX -1 puts its left edge on the point")
+        assertEquals(150f, (spans[1].first + spans[1].second) / 2f, 0.01f, "panX 0 its centre")
+        assertEquals(150f, spans[2].second, 0.01f, "panX 1 its right edge")
     }
 }
