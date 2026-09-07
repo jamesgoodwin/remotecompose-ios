@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 129 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 132 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -44,6 +44,8 @@ because the format has no generic length prefix to skip by.
 | 143 | `DATA_BOOLEAN` | supported |  |
 | 145 | `ID_MAP` | supported |  |
 | 146 | `ID_LIST` | supported |  |
+| 147 | `FLOAT_LIST` | supported | entries written as ids stay ids, as they do in the library |
+| 197 | `DYNAMIC_FLOAT_LIST` | supported |  |
 | 148 | `DATA_LONG` | supported |  |
 | 167 | `DATA_BITMAP_FONT` | supported |  |
 
@@ -51,7 +53,7 @@ because the format has no generic length prefix to skip by.
 
 | Id | Opcode | Status | Notes |
 | --: | --- | --- | --- |
-| 81 | `ANIMATED_FLOAT` | partial | cubic easing; bounce, elastic, spline and directional snap are decoded only |
+| 81 | `ANIMATED_FLOAT` | partial | cubic easing; bounce, elastic, spline and directional snap are decoded only. Collection operators read a list (`A_DEREF`, `A_MAX`, `A_MIN`, `A_SUM`, `A_AVG`, `A_LEN`); `A_SPLINE` and the rest are not run |
 | 134 | `COLOR_EXPRESSIONS` | supported |  |
 | 135 | `TEXT_FROM_FLOAT` | supported |  |
 | 136 | `TEXT_MERGE` | supported |  |
@@ -70,6 +72,7 @@ because the format has no generic length prefix to skip by.
 | 199 | `TEXT_TRANSFORM` | supported |  |
 | 214 | `CONTAINER_END` | supported |  |
 | 215 | `LOOP_START` | supported |  |
+| 198 | `UPDATE_DYNAMIC_FLOAT_LIST` | supported |  |
 | 244 | `MACRO_FOR_EACH` | supported | over an id list, which is the only kind that has entry ids |
 
 ### Paint
@@ -211,8 +214,8 @@ because the format has no generic length prefix to skip by.
 A document using any of these fails to parse. They fall into groups: sound (`PLAY_SOUND`,
 `DATA_SOUND`, `SOUND_EXPRESSION`), the loom macro system (`MACRO_DEFINE`, `MACRO_CALL`, `MACRO_ARGUMENT`,
 `MACRO_BLOCK`, `REFERENCED_OPERATIONS`, `INCLUDE_REFERENCED_OPERATIONS`), the attribute readers (`ATTRIBUTE_TEXT`, `ATTRIBUTE_IMAGE`,
-`ATTRIBUTE_TIME`, `ATTRIBUTE_COLOR`), dynamic float lists, host-named and metadata actions,
-accessibility semantics, and the extension range.
+`ATTRIBUTE_TIME`, `ATTRIBUTE_COLOR`), host-named and metadata actions, accessibility semantics,
+and the extension range.
 
 | Id | Opcode |
 | --: | --- |
@@ -223,7 +226,6 @@ accessibility semantics, and the extension range.
 | 139 | `DRAW_CONTENT` |
 | 141 | `PLAY_SOUND` |
 | 142 | `REFERENCED_OPERATIONS` |
-| 147 | `FLOAT_LIST` |
 | 150 | `COMPONENT_VALUE` |
 | 162 | `PARTICLE_PROCESS` |
 | 164 | `IMPULSE_START` |
@@ -239,8 +241,6 @@ accessibility semantics, and the extension range.
 | 191 | `WAKE_IN` |
 | 195 | `UPDATE` |
 | 196 | `COLOR_THEME` |
-| 197 | `DYNAMIC_FLOAT_LIST` |
-| 198 | `UPDATE_DYNAMIC_FLOAT_LIST` |
 | 206 | `SOUND_EXPRESSION` |
 | 210 | `HOST_NAMED_ACTION` |
 | 216 | `HOST_METADATA_ACTION` |

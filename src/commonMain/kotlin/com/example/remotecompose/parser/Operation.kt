@@ -256,6 +256,33 @@ sealed interface Operation {
     data class LoopStart(val indexVariableId: Int, val from: Float, val step: Float, val until: Float) : Operation
 
     /**
+     * `DataListFloat`: a fixed list of floats under [id], readable by the expression evaluator's
+     * collection operators.
+     *
+     * An entry may be written as a NaN-tagged id, and is left that way: nothing in the library
+     * resolves list entries — `getFloats` hands back the array as it was read — so a list whose
+     * entries are references reads back as those references. A list that follows other values is
+     * built with [DynamicFloatList] and [UpdateDynamicFloatList] instead.
+     */
+    data class FloatListData(val id: Int, val values: FloatArray) : Operation {
+        override fun equals(other: Any?): Boolean =
+            other is FloatListData && id == other.id && values.contentEquals(other.values)
+
+        override fun hashCode(): Int = id * 31 + values.size
+
+        override fun toString(): String = "FloatListData(id=$id, values=${values.toList()})"
+    }
+
+    /**
+     * `DataDynamicListFloat`: a list of [length] zeros under [id], where [length] may be a
+     * NaN-tagged id and so may change. Its entries are written by [UpdateDynamicFloatList].
+     */
+    data class DynamicFloatList(val id: Int, val length: Float) : Operation
+
+    /** `UpdateDynamicFloatList`: writes [value] into entry [index] of the list [arrayId]. */
+    data class UpdateDynamicFloatList(val arrayId: Int, val index: Float, val value: Float) : Operation
+
+    /**
      * `PatternForEach`: runs the block that follows once per entry of the id list [collectionId],
      * with [localItemId] standing for that entry. Closed by a `ContainerEnd`.
      *

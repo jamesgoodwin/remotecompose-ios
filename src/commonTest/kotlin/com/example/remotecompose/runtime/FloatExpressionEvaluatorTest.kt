@@ -114,13 +114,62 @@ class FloatExpressionEvaluatorTest {
         assertEquals(1f, eval(0.4f, 0f, 0.6f, 1f, 1f, "CUBIC"), 0.001f)
     }
 
+    @Test
+    fun theCollectionOperatorsReadAList() {
+        // A collection reference is a NaN id with 0x200000 set; it is an operand, not a value.
+        val list = Float.fromBits(0x200005 or 0xFF800000.toInt())
+        val collections = FloatCollections { id -> if (id == 0x200005) floatArrayOf(2f, 8f, 5f) else null }
+        fun eval(vararg items: Any) = FloatExpressionEvaluator.eval(
+            FloatArray(items.size) { i ->
+                when (val v = items[i]) {
+                    is Float -> v; is Int -> v.toFloat(); is String -> op(v); else -> error(v)
+                }
+            },
+            FloatArray(0),
+            collections,
+        )
+        assertEquals(8f, eval(list, 1, "A_DEREF"))
+        assertEquals(8f, eval(list, "A_MAX"))
+        assertEquals(2f, eval(list, "A_MIN"))
+        assertEquals(15f, eval(list, "A_SUM"))
+        assertEquals(5f, eval(list, "A_AVG"))
+        assertEquals(3f, eval(list, "A_LEN"))
+        // The result is an ordinary value, so it goes on with the rest of the expression.
+        assertEquals(30f, eval(list, "A_SUM", 2, "MUL"))
+    }
+
+    @Test
+    fun aMissingOrEmptyCollectionReadsAsZero() {
+        val absent = Float.fromBits(0x200009 or 0xFF800000.toInt())
+        val none = FloatCollections { null }
+        fun eval(vararg items: Any) = FloatExpressionEvaluator.eval(
+            FloatArray(items.size) { i ->
+                when (val v = items[i]) {
+                    is Float -> v; is Int -> v.toFloat(); is String -> op(v); else -> error(v)
+                }
+            },
+            FloatArray(0),
+            none,
+        )
+        assertEquals(0f, eval(absent, "A_MAX"))
+        assertEquals(0f, eval(absent, "A_LEN"))
+        assertEquals(0f, eval(absent, 0, "A_DEREF"))
+    }
+
+    @Test
+    fun aCollectionOperatorWithNowhereToReadFromGivesNothing() {
+        val list = Float.fromBits(0x200005 or 0xFF800000.toInt())
+        assertTrue(FloatExpressionEvaluator.eval(floatArrayOf(list, op("A_SUM"))).isNaN())
+    }
+
     companion object {
         val OPS = mapOf(
             "ADD" to 1, "SUB" to 2, "MUL" to 3, "DIV" to 4, "MOD" to 5, "MIN" to 6, "MAX" to 7, "POW" to 8,
             "SQRT" to 9, "ABS" to 10, "SIGN" to 11, "COPY_SIGN" to 12, "EXP" to 13, "FLOOR" to 14, "LOG" to 15,
             "LN" to 16, "ROUND" to 17, "SIN" to 18, "COS" to 19, "TAN" to 20, "ASIN" to 21, "ACOS" to 22,
             "ATAN" to 23, "ATAN2" to 24, "MAD" to 25, "IFELSE" to 26, "CLAMP" to 27, "CBRT" to 28, "DEG" to 29,
-            "RAD" to 30, "CEIL" to 31, "A_SUM" to 35, "RAND" to 39, "SQUARE_SUM" to 43, "STEP" to 44,
+            "RAD" to 30, "CEIL" to 31, "A_DEREF" to 32, "A_MAX" to 33, "A_MIN" to 34, "A_SUM" to 35,
+            "A_AVG" to 36, "A_LEN" to 37, "RAND" to 39, "SQUARE_SUM" to 43, "STEP" to 44,
             "SQUARE" to 45, "DUP" to 46, "HYPOT" to 47, "SWAP" to 48, "LERP" to 49, "SMOOTH_STEP" to 50,
             "LOG2" to 51, "INV" to 52, "FRACT" to 53, "PINGPONG" to 54, "NOP" to 55, "STORE_R0" to 56,
             "LOAD_R0" to 60, "VAR1" to 70, "VAR2" to 71, "VAR3" to 72, "CHANGE_SIGN" to 73, "CUBIC" to 74,

@@ -27,14 +27,22 @@ import kotlin.math.withSign
  *
  * An expression is a float array. A non-NaN entry is pushed. A NaN entry carries an id in its
  * low 23 bits (`AnimatedFloatExpression.fromNaN`): ids in `OFFSET + 1 .. LAST_OP` are operators
- * applied to the stack; ids with `(id & 0x700000) == 0x200000` are collection references; any
- * other id is a float-pool variable, which the caller resolves *before* evaluation (as
- * `FloatExpression.updateVariables` does) so that [eval] only ever sees literals and operators.
+ * applied to the stack; ids with `(id & 0x700000) == 0x200000` are collection references, pushed
+ * as they are for the `A_*` operators to read through [collections]; any other id is a
+ * float-pool variable, which the caller resolves *before* evaluation (as
+ * `FloatExpression.updateVariables` does) so that [eval] only ever sees literals, collection
+ * references and operators.
  *
  * Operator stack effects are transcribed from `opEval`; `sp` is the index of the stack top.
- * Collection, random, spline, noise and `CMD*` operators are not supported and make the whole
- * expression evaluate to NaN.
+ * Random, spline, noise and `CMD*` operators are not supported and make the whole expression
+ * evaluate to NaN.
  */
+/** Where the `A_*` operators read a collection from: see `CollectionsAccess`. */
+fun interface FloatCollections {
+    /** The entries of the collection [id], or null when there is no such collection. */
+    fun floats(id: Int): FloatArray?
+}
+
 object FloatExpressionEvaluator {
 
     const val OFFSET = 3211264
@@ -69,7 +77,11 @@ object FloatExpressionEvaluator {
      * returns the stack top, or NaN if the expression uses an unsupported operator or is
      * malformed.
      */
-    fun eval(expression: FloatArray, vars: FloatArray = EMPTY_VARS): Float {
+    fun eval(
+        expression: FloatArray,
+        vars: FloatArray = EMPTY_VARS,
+        collections: FloatCollections? = null,
+    ): Float {
         val stack = FloatArray(expression.size + 4)
         val regs = FloatArray(4)
         var sp = -1
@@ -79,13 +91,18 @@ object FloatExpressionEvaluator {
                 continue
             }
             val id = idOf(v)
-            if ((id and COLLECTION_MASK) == COLLECTION_TAG) return Float.NaN
+            if ((id and COLLECTION_MASK) == COLLECTION_TAG) {
+                // A collection reference is an operand, not a value: the A_* operator after it
+                // reads the id back out.
+                stack[++sp] = v
+                continue
+            }
             if (id <= OFFSET || id > LAST_OP) {
                 // An unresolved variable reached the evaluator; propagate as NaN.
                 stack[++sp] = v
                 continue
             }
-            sp = applyOperator(id - OFFSET, stack, sp, regs, vars)
+            sp = applyOperator(id - OFFSET, stack, sp, regs, vars, collections)
             // A store leaves the stack legitimately empty (sp == -1); only overflow or an
             // unsupported operator aborts.
             if (sp == UNSUPPORTED || sp >= stack.size) return Float.NaN
@@ -97,7 +114,14 @@ object FloatExpressionEvaluator {
 
     private val EMPTY_VARS = FloatArray(0)
 
-    private fun applyOperator(op: Int, s: FloatArray, sp: Int, regs: FloatArray, vars: FloatArray): Int {
+    private fun applyOperator(
+        op: Int,
+        s: FloatArray,
+        sp: Int,
+        regs: FloatArray,
+        vars: FloatArray,
+        collections: FloatCollections?,
+    ): Int {
         fun binary(f: (Float, Float) -> Float): Int {
             if (sp < 1) return UNSUPPORTED
             s[sp - 1] = f(s[sp - 1], s[sp])
@@ -207,6 +231,33 @@ object FloatExpressionEvaluator {
                 s[sp + 1] = regs[op - 60]
                 sp + 1
             }
+            32 -> { // A_DEREF: (collection, index) -> that entry
+                if (sp < 1 || collections == null) return UNSUPPORTED
+                val list = collections.floats(idOf(s[sp - 1]))
+                val index = s[sp].toInt()
+                s[sp - 1] = if (list != null && index >= 0 && index < list.size) list[index] else 0f
+                sp - 1
+            }
+            33, 34, 35, 36 -> { // A_MAX, A_MIN, A_SUM, A_AVG over a collection
+                if (sp < 0 || collections == null) return UNSUPPORTED
+                val list = collections.floats(idOf(s[sp]))
+                s[sp] = if (list == null || list.isEmpty()) {
+                    0f
+                } else {
+                    when (op) {
+                        33 -> list.max()
+                        34 -> list.min()
+                        35 -> list.sum()
+                        else -> list.sum() / list.size
+                    }
+                }
+                sp
+            }
+            37 -> { // A_LEN
+                if (sp < 0 || collections == null) return UNSUPPORTED
+                s[sp] = (collections.floats(idOf(s[sp]))?.size ?: 0).toFloat()
+                sp
+            }
             70, 71, 72 -> { // VAR1..3: push a caller-supplied variable
                 val slot = op - 70
                 if (slot >= vars.size) return UNSUPPORTED
@@ -219,7 +270,8 @@ object FloatExpressionEvaluator {
                 s[sp - 4] = CubicEasing(s[sp - 4], s[sp - 3], s[sp - 2], s[sp - 1]).get(s[sp])
                 sp - 4
             }
-            // A_* collection ops (32..38, 75..79), RAND family (39..42) and CMD* (64..67).
+            // A_SPLINE (38) and the rest of the collection family (75..79), the RAND
+            // family (39..42) and CMD* (64..67).
             else -> UNSUPPORTED
         }
     }

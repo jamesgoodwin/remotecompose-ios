@@ -117,6 +117,6 @@ class RemoteComposeDocument internal constructor(
             val v = expression.expression[i]
             if (FloatExpressionEvaluator.isVariable(v)) context.resolveFloat(v) else v
         }
-        return FloatExpressionEvaluator.eval(resolved).takeUnless { it.isNaN() }
+        return FloatExpressionEvaluator.eval(resolved, collections = context).takeUnless { it.isNaN() }
     }
 }

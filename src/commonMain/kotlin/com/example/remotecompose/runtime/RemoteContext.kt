@@ -17,7 +17,7 @@ import com.example.remotecompose.parser.Operation.TouchExpression
  * One context lives as long as its document. [beginFrame] advances time; the parser's per-frame
  * evaluation then re-applies every non-constant operation against it.
  */
-class RemoteContext {
+class RemoteContext : FloatCollections {
     val texts = mutableMapOf<Int, String>()
     val floats = mutableMapOf<Int, Float>()
     val ints = mutableMapOf<Int, Int>()
@@ -26,6 +26,12 @@ class RemoteContext {
     val colors = mutableMapOf<Int, Color>()
     val paths = mutableMapOf<Int, List<PathCommand>>()
     val idLists = mutableMapOf<Int, List<Int>>()
+
+    /** Float collections, readable by the expression evaluator's `A_*` operators. */
+    val floatLists = mutableMapOf<Int, FloatArray>()
+
+    /** `CollectionsAccess.getFloats`: the entries of a collection, for those operators. */
+    override fun floats(id: Int): FloatArray? = floatLists[id]
     val dataMaps = mutableMapOf<Int, List<Operation.DataMapEntry>>()
     val bitmaps = mutableMapOf<Int, ByteArray>()
     val bitmapFonts = mutableMapOf<Int, BitmapFont>()
@@ -191,7 +197,7 @@ class RemoteContext {
             val v = op.srcExp[i]
             if (FloatExpressionEvaluator.isVariable(v)) resolveFloat(v) else v
         }
-        return FloatExpressionEvaluator.eval(resolved)
+        return FloatExpressionEvaluator.eval(resolved, collections = this)
     }
 
     /** Records the pointer press for every touch expression, as `TouchExpression.touchDown` does. */
@@ -255,7 +261,7 @@ class RemoteContext {
             val v = op.expression[i]
             if (FloatExpressionEvaluator.isVariable(v)) resolveFloat(v) else v
         }
-        val value = FloatExpressionEvaluator.eval(resolved)
+        val value = FloatExpressionEvaluator.eval(resolved, collections = this)
         val animation = state.animation
         if (animation == null) {
             loadFloat(op.id, value)

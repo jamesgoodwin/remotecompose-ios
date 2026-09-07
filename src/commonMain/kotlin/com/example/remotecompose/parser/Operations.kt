@@ -61,6 +61,7 @@ internal object Operations {
     const val INTEGER_EXPRESSION = 144
     const val ID_MAP = 145
     const val ID_LIST = 146
+    const val FLOAT_LIST = 147
     const val DATA_LONG = 148
     const val DRAW_BITMAP_SCALED = 149
     const val TEXT_LOOKUP = 151
@@ -95,6 +96,8 @@ internal object Operations {
     const val ID_LOOKUP = 192
     const val PATH_EXPRESSION = 193
     const val PARTICLE_COMPARE = 194
+    const val DYNAMIC_FLOAT_LIST = 197
+    const val UPDATE_DYNAMIC_FLOAT_LIST = 198
     const val TEXT_TRANSFORM = 199
     const val LAYOUT_ROOT = 200
     const val LAYOUT_CONTENT = 201

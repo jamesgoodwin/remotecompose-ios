@@ -1,6 +1,7 @@
 package com.example.remotecompose.geometry
 
 import com.example.remotecompose.model.PathCommand
+import com.example.remotecompose.runtime.FloatCollections
 import com.example.remotecompose.runtime.FloatExpressionEvaluator
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -41,6 +42,7 @@ object PathGenerator {
         count: Int,
         kind: Kind,
         loop: Boolean,
+        collections: FloatCollections? = null,
     ): List<PathCommand> {
         if (count <= 0) return emptyList()
         val step = (max - min) / (if (loop) count else count - 1).toFloat()
@@ -48,8 +50,8 @@ object PathGenerator {
         val y = FloatArray(count)
         for (i in 0 until count) {
             val t = min + i * step
-            x[i] = FloatExpressionEvaluator.eval(expressionX, floatArrayOf(t))
-            y[i] = FloatExpressionEvaluator.eval(expressionY, floatArrayOf(t))
+            x[i] = FloatExpressionEvaluator.eval(expressionX, floatArrayOf(t), collections)
+            y[i] = FloatExpressionEvaluator.eval(expressionY, floatArrayOf(t), collections)
         }
         return join(x, y, kind, loop)
     }
@@ -67,6 +69,7 @@ object PathGenerator {
         count: Int,
         kind: Kind,
         loop: Boolean,
+        collections: FloatCollections? = null,
     ): List<PathCommand> {
         if (count <= 0 || center.size < 2) return emptyList()
         val step = (max - min) / (if (loop) count else count - 1).toFloat()
@@ -74,7 +77,7 @@ object PathGenerator {
         val y = FloatArray(count)
         for (i in 0 until count) {
             val t = min + i * step
-            val r = FloatExpressionEvaluator.eval(expressionRadius, floatArrayOf(t))
+            val r = FloatExpressionEvaluator.eval(expressionRadius, floatArrayOf(t), collections)
             x[i] = center[0] + r * cos(t)
             y[i] = center[1] + r * sin(t)
         }

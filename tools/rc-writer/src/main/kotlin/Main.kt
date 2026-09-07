@@ -88,13 +88,16 @@ fun main(args: Array<String>) {
 }
 
 /**
- * A list written once and expanded per item: `MACRO_FOR_EACH` over an id list of strings, with
- * the body naming the loop's local item where the row's label goes. The document holds one copy
- * of the body, not one per row.
+ * Lists, both kinds. `MACRO_FOR_EACH` over an id list of strings expands one row body per entry,
+ * so the document holds one copy of it rather than four. A `FLOAT_LIST` underneath is read by the
+ * expression operators: each bar's height is one entry through `A_DEREF`, and the caption's
+ * count and average come from `A_LEN` and `A_AVG` without the document naming an entry twice. A
+ * `DYNAMIC_FLOAT_LIST` under that carries nothing on the wire — its three entries are written by
+ * `UPDATE_DYNAMIC_FLOAT_LIST` and read back with `A_SUM`.
  */
 private fun buildListSample() {
     val platform = JvmRcPlatformServices()
-    val writer = RemoteComposeWriter(240, 200, "list", platform)
+    val writer = RemoteComposeWriter(240, 280, "list", platform)
 
     val names = writer.addStringList("Espresso", "Cortado", "Flat white", "Filter")
     val collection = androidx.compose.remote.core.operations.Utils.idFromNan(names)
@@ -114,6 +117,45 @@ private fun buildListSample() {
     writer.endTextComponent()
     writer.endRow()
     writer.endPatternForEach()
+
+    // A float list read by the expression operators: the bars below are sized from it, and the
+    // caption reads its length, total and average without the document naming any entry twice.
+    val prices = writer.addFloatArray(floatArrayOf(2.4f, 2.8f, 3.4f, 3.0f))
+    fun listExpression(vararg ops: Float) = writer.floatExpression(*ops)
+
+    writer.startRow(RecordingModifier().fillMaxWidth().height(40f).spacedBy(4f), 1, 5)
+    for (index in 0 until 4) {
+        // Each bar's height is that entry, scaled: deref(prices, index) * 9.
+        val entry = listExpression(prices, index.toFloat(), Rc.FloatExpression.A_DEREF, 9f, Rc.FloatExpression.MUL)
+        writer.startBox(RecordingModifier().width(20f).height(entry).background(0xFF5C6BC0.toInt()), 1, 5)
+        writer.endBox()
+    }
+    writer.endRow()
+
+    // Length, sum and average, each straight out of the list.
+    val summary = writer.textMerge(
+        writer.textMerge(
+            writer.addText("n="),
+            writer.createTextFromFloat(listExpression(prices, Rc.FloatExpression.A_LEN), 1, 0, 4 or 1),
+        ),
+        writer.textMerge(
+            writer.addText("  avg="),
+            writer.createTextFromFloat(listExpression(prices, Rc.FloatExpression.A_AVG), 1, 2, 4 or 3),
+        ),
+    )
+    writer.startTextComponent(RecordingModifier(), summary, 0xFF37474F.toInt(), 12f, 0, 400f, "", 0.toShort(), 1.toShort(), 1, 1)
+    writer.endTextComponent()
+
+    // A dynamic list: three entries with nothing on the wire, written from expressions and read
+    // straight back. Its total is 1 + 2 + 4 = 7, so the last bar is 70 wide.
+    val running = writer.addDynamicFloatArray(3f)
+    val runningId = androidx.compose.remote.core.operations.Utils.idFromNan(running)
+    writer.setArrayValue(runningId, 0f, 1f)
+    writer.setArrayValue(runningId, 1f, 2f)
+    writer.setArrayValue(runningId, 2f, writer.floatExpression(2f, 2f, Rc.FloatExpression.MUL))
+    val total = writer.floatExpression(running, Rc.FloatExpression.A_SUM, 10f, Rc.FloatExpression.MUL)
+    writer.startBox(RecordingModifier().width(total).height(12f).background(0xFF00897B.toInt()), 1, 5)
+    writer.endBox()
 
     writer.endColumn()
 

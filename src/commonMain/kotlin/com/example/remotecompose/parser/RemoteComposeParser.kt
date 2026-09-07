@@ -1051,9 +1051,9 @@ object RemoteComposeParser {
                             val kind = PathGenerator.kindOf(op.flags)
                             val loop = (op.flags and 1) == 1
                             val commands = if ((op.flags and 8) == 8) {
-                                PathGenerator.generatePolar(x, y, min, max, count.toInt(), kind, loop)
+                                PathGenerator.generatePolar(x, y, min, max, count.toInt(), kind, loop, context)
                             } else {
-                                PathGenerator.generate(x, y, min, max, count.toInt(), kind, loop)
+                                PathGenerator.generate(x, y, min, max, count.toInt(), kind, loop, context)
                             }
                             // An unsupported operator anywhere in either expression samples to
                             // NaN; storing that would draw nothing but hide the reason.
@@ -1130,11 +1130,13 @@ object RemoteComposeParser {
                                 val restart = resolveExpression(op.restart)
                                 for (v in system.values[p].indices) {
                                     val equation = equations.getOrNull(v) ?: continue
-                                    val value = FloatExpressionEvaluator.eval(equation)
+                                    val value = FloatExpressionEvaluator.eval(equation, collections = context)
                                     system.values[p][v] = value
                                     context.loadFloat(system.varIds[v], value)
                                 }
-                                if (restart.isNotEmpty() && FloatExpressionEvaluator.eval(restart) > 0f && create != null) {
+                                if (restart.isNotEmpty() &&
+                                    FloatExpressionEvaluator.eval(restart, collections = context) > 0f && create != null
+                                ) {
                                     system.initialize(p, create.map { resolveExpression(it) })
                                     system.load(context, p)
                                 }
@@ -1159,12 +1161,13 @@ object RemoteComposeParser {
                             var matched = false
                             for (p in from until to) {
                                 system.load(context, p)
-                                if (FloatExpressionEvaluator.eval(resolveExpression(op.expression)) <= 0f) continue
+                                val test = resolveExpression(op.expression)
+                                if (FloatExpressionEvaluator.eval(test, collections = context) <= 0f) continue
                                 matched = true
                                 val equations = op.equations1.map { resolveExpression(it) }
                                 for (v in system.values[p].indices) {
                                     val equation = equations.getOrNull(v) ?: continue
-                                    val value = FloatExpressionEvaluator.eval(equation)
+                                    val value = FloatExpressionEvaluator.eval(equation, collections = context)
                                     system.values[p][v] = value
                                     context.loadFloat(system.varIds[v], value)
                                 }
@@ -1189,6 +1192,32 @@ object RemoteComposeParser {
                             }
                             walk(body.first, body.last + 1)
                             executing.remove(op.id)
+                        }
+                    }
+
+                    is Op.FloatListData -> {
+                        // DataListFloat.apply(): registered as it was read. Entries written as
+                        // ids stay ids, which is what the library hands back too.
+                        context.floatLists[op.id] = op.values.copyOf()
+                    }
+
+                    is Op.DynamicFloatList -> {
+                        // DataDynamicListFloat.updateVariables(): a new list of zeros whenever
+                        // its length changes, so that what UpdateDynamicFloatList wrote survives
+                        // a frame in which the length did not.
+                        val length = resolveFloat(op.length)
+                        if (!length.isNaN() && length >= 0f && length <= MAX_LIST_LENGTH) {
+                            val size = length.toInt()
+                            if (context.floatLists[op.id]?.size != size) context.floatLists[op.id] = FloatArray(size)
+                        }
+                    }
+
+                    is Op.UpdateDynamicFloatList -> {
+                        val list = context.floatLists[op.arrayId]
+                        val index = resolveFloat(op.index)
+                        val value = resolveFloat(op.value)
+                        if (list != null && !index.isNaN() && index >= 0f && index < list.size) {
+                            list[index.toInt()] = value
                         }
                     }
 
@@ -1314,6 +1343,9 @@ object RemoteComposeParser {
     }
 
     private const val DEFAULT_LAYOUT_TEXT_SIZE = 16f
+    /** `DataDynamicListFloat`'s own cap on how long a list it will allocate. */
+    private const val MAX_LIST_LENGTH = 2000f
+
     private const val MAX_LOOP_ITERATIONS = 1000
 
     /**
@@ -1348,7 +1380,8 @@ object RemoteComposeParser {
     private fun Op.isConstant(): Boolean = when (this) {
         is Op.TextData, is Op.FloatConstant, is Op.IntegerConstant, is Op.BooleanConstant,
         is Op.LongConstant, is Op.ColorConstant, is Op.BitmapData, is Op.PathData,
-        is Op.PathCreate, is Op.PathAdd, is Op.IdList, is Op.DataMapIds, is Op.BitmapFontData, is Op.ShaderData -> true
+        is Op.PathCreate, is Op.PathAdd, is Op.IdList, is Op.DataMapIds, is Op.BitmapFontData, is Op.ShaderData,
+        is Op.FloatListData -> true
         else -> false
     }
 
