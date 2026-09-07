@@ -62,8 +62,13 @@ DrawRect(left=105.0, top=2.0, right=120.0, bottom=12.0, paint=PaintStyle(color=C
 MatrixRestore
 MatrixSave
 Translate(dx=0.0, dy=0.0)
-ClipRect(left=0.0, top=0.0, right=0.0, bottom=0.0)
+ClipRect(left=0.0, top=0.0, right=15.0, bottom=9.0)
 Translate(dx=0.0, dy=0.0)
+MatrixSave
+ClipRect(left=0.0, top=0.0, right=15.0, bottom=9.0)
+Translate(dx=0.0, dy=-0.0)
+DrawRect(left=0.0, top=0.0, right=15.0, bottom=15.0, paint=PaintStyle(color=Color(0.2, 0.4117647, 0.11764706, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
 MatrixRestore
 MatrixSave
 Translate(dx=0.0, dy=0.0)

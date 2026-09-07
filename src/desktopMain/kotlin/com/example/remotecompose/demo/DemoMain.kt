@@ -46,9 +46,23 @@ fun main(args: Array<String>) {
     if (args.getOrNull(4) == "dark") loaded.paintTheme = RemoteContext.THEME_DARK
     loaded.frame(0L)
     // Optional fourth argument: taps to deliver before rendering, as "x:y,x:y".
-    args.getOrNull(3)?.split(',')?.filter { it.isNotBlank() }?.forEach { point ->
-        val (x, y) = point.split(':').map { it.trim().toFloat() }
-        println("Tap at $x, $y ${if (loaded.click(x, y)) "handled" else "ignored"}")
+    args.getOrNull(3)?.split(',')?.filter { it.isNotBlank() }?.forEach { gesture ->
+        val points = gesture.split('>')
+        val (x, y) = points.first().split(':').map { it.trim().toFloat() }
+        if (points.size == 1) {
+            println("Tap at $x, $y ${if (loaded.click(x, y)) "handled" else "ignored"}")
+        } else {
+            // "x:y>x:y" is a drag, which is how a scrolling component is moved.
+            val (toX, toY) = points[1].split(':').map { it.trim().toFloat() }
+            // A frame between each step, since a touch expression only follows the pointer while
+            // the document is being evaluated — which on a device is what the next frame does.
+            loaded.touchDown(x, y)
+            loaded.frame(timeMillis)
+            loaded.touchDrag(toX, toY)
+            loaded.frame(timeMillis)
+            loaded.touchUp(toX, toY)
+            println("Drag from $x, $y to $toX, $toY")
+        }
     }
     val document = loaded.frame(timeMillis)
     println("Parsed real payload: ${document.header.width}x${document.header.height}, ${document.opcodes.size} opcode(s): ${document.opcodes}")

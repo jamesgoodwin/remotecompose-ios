@@ -247,7 +247,7 @@ object RemoteComposeParser {
 
                     is Op.Skip, is Op.Rem, is Op.RootContentDescription, is Op.DebugMessage,
                     is Op.AnimationSpec, is Op.HapticFeedback, is Op.RootContentBehavior,
-                    is Op.ModifierAlignBy, is Op.ModifierMarquee, is Op.ModifierScroll,
+                    is Op.ModifierAlignBy, is Op.ModifierMarquee,
                     is Op.ModifierRipple, is Op.ModifierDrawContent -> Unit
 
                     // Action-list entries: collected onto the enclosing component's trigger, and
@@ -1408,6 +1408,18 @@ object RemoteComposeParser {
 
                     is Op.ModifierOffset -> tree.current?.modifiers?.add(Modifier.Offset(resolveFloat(op.x), resolveFloat(op.y)))
 
+                    is Op.ModifierScroll -> {
+                        // The position is a NaN-tagged reference to the float the modifier's own
+                        // touch expression writes, so the id is what matters rather than a value.
+                        tree.current?.modifiers?.add(
+                            Modifier.Scroll(op.direction, FloatExpressionEvaluator.idOf(op.positionExpression)),
+                        )
+                        // The modifier is a container holding that touch expression: opening a
+                        // frame keeps the component current while it is walked, and lets the
+                        // ContainerEnd after it close this rather than the component.
+                        tree.openContent(paint)
+                    }
+
                     is Op.ModifierClipRect -> tree.current?.modifiers?.add(Modifier.ClipRect())
 
                     is Op.ModifierRoundedClipRect -> tree.current?.modifiers?.add(
@@ -1535,7 +1547,7 @@ object RemoteComposeParser {
                 is Op.LayoutText, is Op.LayoutImage, is Op.LayoutCanvas, is Op.LayoutCustom, is Op.LayoutState,
                 is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations, is Op.LoopStart, is Op.ConditionalOperations,
                 is Op.ModifierClick, is Op.ModifierMultiClick, is Op.ModifierTouchDown, is Op.ModifierTouchUp,
-                is Op.ModifierTouchCancel, is Op.FloatFunctionDefine, is Op.ParticlesLoop,
+                is Op.ModifierTouchCancel, is Op.ModifierScroll, is Op.FloatFunctionDefine, is Op.ParticlesLoop,
                 is Op.ParticlesCompare, is Op.PatternForEach, is Op.PatternDefine, is Op.PatternCall,
                 is Op.PatternBlock -> open.addLast(i)
                 is Op.ContainerEnd -> open.removeLastOrNull()?.let { ends[it] = i }

@@ -178,6 +178,10 @@ class RemoteContext : FloatCollections {
         var down: Boolean = false
         var valueAtDown: Float = 0f
         var expressionAtDown: Float = 0f
+        /** `TouchExpression.mUnmodified`, inverted: false until a drag has moved this. */
+        var moved: Boolean = false
+        /** `mCurrentValue`: what the last drag left, which outlives the finger. */
+        var value: Float = Float.NaN
     }
 
     internal val touchStates = mutableMapOf<Int, TouchState>()
@@ -196,13 +200,19 @@ class RemoteContext : FloatCollections {
         val min = resolveFloat(op.min)
         val max = resolveFloat(op.max)
         if (!state.down) {
-            val default = resolveFloat(op.defValue)
-            if (!default.isNaN()) loadFloat(op.id, clampTo(default, min, max))
+            // `TouchExpression.apply` only shows the default while nothing has moved it; what a
+            // drag left stays after the finger goes, which is what makes a list stay scrolled.
+            // It is clamped again in case the bounds have changed since.
+            val value = if (state.moved) state.value else resolveFloat(op.defValue)
+            if (!value.isNaN()) loadFloat(op.id, clampTo(value, min, max))
             return
         }
         val current = evaluateTouchExpression(op)
         if (current.isNaN()) return
-        loadFloat(op.id, clampTo(state.valueAtDown + current - state.expressionAtDown, min, max))
+        val value = clampTo(state.valueAtDown + current - state.expressionAtDown, min, max)
+        state.value = value
+        state.moved = true
+        loadFloat(op.id, value)
         needsRepaint = true
     }
 

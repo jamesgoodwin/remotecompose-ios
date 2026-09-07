@@ -116,11 +116,24 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
         if (minW == maxW) w = maxW
         if (minH == maxH) h = maxH
 
+        val scroll = node.modifiers.filterIsInstance<Modifier.Scroll>().firstOrNull()
         if (hasWrapW || hasWrapH) {
             val size = Size()
             computeWrapSize(node, minW, insetMaxW, minH, insetMaxH, wd.isWrap, hd.isWrap, size)
             if (hasWrapW) w = max(size.width + node.paddingLeft + node.paddingRight, minW)
             if (hasWrapH) h = max(size.height + node.paddingTop + node.paddingBottom, minH)
+        } else if (scroll != null) {
+            // A scrolling component measures its content as if it had all the room it wants, so
+            // that the content can be larger than the window it is shown through; how much
+            // larger is what there is to scroll.
+            val contentW = w - node.paddingLeft - node.paddingRight
+            val contentH = h - node.paddingTop - node.paddingBottom
+            val vertical = scroll.direction == 0
+            computeSize(
+                node,
+                0f, if (vertical) contentW else unbounded,
+                0f, if (vertical) unbounded else contentH,
+            )
         } else {
             computeSize(
                 node, 0f, w - node.paddingLeft - node.paddingRight,
@@ -132,6 +145,16 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
         node.width = w
         node.height = h
         internalLayout(node)
+        if (scroll != null) {
+            // How far the content runs past the window, which is only known once the children
+            // have been placed: measuring them says how big each is, not where it ends up.
+            val vertical = scroll.direction == 0
+            val extent = node.children.filterNot { it.isGone }.maxOfOrNull {
+                if (vertical) it.y + it.height else it.x + it.width
+            } ?: 0f
+            val window = if (vertical) h - node.paddingTop - node.paddingBottom else w - node.paddingLeft - node.paddingRight
+            scroll.maxScroll = max(0f, extent - window)
+        }
     }
 
     /** `LayoutComponent.computeModifierDefinedWidth(context, false)`: paddings plus the exact width, or MAX for fill. */
@@ -543,6 +566,20 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
         }
         if (px != 0f || py != 0f) out += Opcode.Translate(-px, -py)
         out += Opcode.Translate(node.paddingLeft, node.paddingTop)
+        // ScrollModifierOperation.paint(): the offset is the position variable its touch
+        // expression drives, clamped to what there is to scroll, and applied the other way —
+        // scrolling down moves the content up. The window clips what falls outside it.
+        var scrollRestores = 0
+        node.modifiers.filterIsInstance<Modifier.Scroll>().firstOrNull()?.let { scroll ->
+            val contentW = node.width - node.paddingLeft - node.paddingRight
+            val contentH = node.height - node.paddingTop - node.paddingBottom
+            val position = context.getFloat(scroll.positionExpressionId).takeUnless { it.isNaN() } ?: 0f
+            val offset = min(max(position, 0f), scroll.maxScroll)
+            out += Opcode.MatrixSave
+            out += Opcode.ClipRect(0f, 0f, contentW, contentH)
+            if (scroll.direction == 0) out += Opcode.Translate(0f, -offset) else out += Opcode.Translate(-offset, 0f)
+            scrollRestores = 1
+        }
         when (node.kind) {
             LayoutNode.Kind.TEXT -> paintText(node, out)
             LayoutNode.Kind.IMAGE -> paintImage(node, out)
@@ -552,6 +589,7 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
         out.addAll(node.cleanup)
         val ordered = if (node.children.any { it.zIndex != 0f }) node.children.sortedBy { it.zIndex } else node.children
         for (child in ordered) paint(child, out)
+        repeat(scrollRestores) { out += Opcode.MatrixRestore }
         repeat(layerRestores) { out += Opcode.MatrixRestore }
         out += Opcode.MatrixRestore
     }

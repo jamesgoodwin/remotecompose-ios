@@ -103,7 +103,7 @@ fun main(args: Array<String>) {
  */
 private fun buildCoffeeSample() {
     val platform = JvmRcPlatformServices()
-    val writer = RemoteComposeWriter(300, 420, "coffee", platform)
+    val writer = RemoteComposeWriter(300, 380, "coffee", platform)
 
     // A colour with a value for each mode. The pair is written once and read by id after that,
     // so the rest of the document says nothing about which mode it is in.
@@ -133,16 +133,40 @@ private fun buildCoffeeSample() {
     text(writer.addText("Bean & Bone"), onSurface, 22f, 700f)
     text(writer.addText("Cotham Hill, Bristol"), muted, 12f)
 
-    writer.startBox(
-        RecordingModifier().fillMaxWidth().height(70f)
-            .clip(RoundedRectShape(12f, 12f, 12f, 12f))
-            .backgroundId(card.toShort())
-            .dynamicBorder(1f, 12f, outline.toShort(), 2)
-            .padding(12f),
-        1, 2,
+    // The menu: taller than the window it is shown through, so it scrolls. The scroll position
+    // is a document value the modifier's own touch expression drives, and dragging moves it.
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth().height(240f).verticalScroll(0f).spacedBy(8f),
+        1, 4,
     )
-    text(writer.addText("Flat white · £3.40"), accent, 15f, 700f)
-    writer.endBox()
+    data class Item(val name: String, val note: String, val price: String)
+    val menu = listOf(
+        Item("Flat white", "Silky, two shots", "£3.40"),
+        Item("Filter", "Ethiopia, washed", "£3.00"),
+        Item("Cortado", "Short and sweet", "£3.20"),
+        Item("Mocha", "Dark chocolate", "£3.80"),
+        Item("Cold brew", "18 hour steep", "£3.60"),
+        Item("Espresso", "One shot", "£2.40"),
+    )
+    for (item in menu) {
+        writer.startRow(
+            RecordingModifier().fillMaxWidth().height(56f)
+                .clip(RoundedRectShape(12f, 12f, 12f, 12f))
+                .backgroundId(card.toShort())
+                .dynamicBorder(1f, 12f, outline.toShort(), 2)
+                .padding(12f),
+            6, 2,
+        )
+        writer.startColumn(RecordingModifier().spacedBy(2f), 1, 4)
+        text(writer.addText(item.name), onSurface, 14f, 700f)
+        text(writer.addText(item.note), muted, 11f)
+        writer.endColumn()
+        writer.startBox(RecordingModifier().width(60f).height(20f), 3, 2)
+        text(writer.addText(item.price), accent, 14f, 700f)
+        writer.endBox()
+        writer.endRow()
+    }
+    writer.endColumn()
 
     writer.endColumn()
 
@@ -1226,17 +1250,18 @@ private fun buildCoverageSample() {
     writer.drawRect(105f, 2f, 120f, 12f)
     writer.endBox()
 
-    // MODIFIER_SCROLL: real-bytes hex-diff of verticalScroll(50f) decoded to exactly
-    // [direction=0, positionExpression=50.0, max=NaN, notchMax=NaN] — max/notchMax are NaN-tagged
-    // runtime variable references (reserved via the real writer's own reserveFloatVariable())
-    // even in this simplest convenience overload. Every public call path to verticalScroll/
-    // horizontalScroll also emits a TOUCH_EXPRESSION record right after (a length-prefixed,
-    // otherwise self-describing touch-gesture expression tree) — both represent a live
-    // interaction this parser has no runtime state or expression evaluator to give real effect
-    // to, so this child renders at its own plain position, unaffected by the scroll modifier.
-    writer.startBox(RecordingModifier().verticalScroll(50f), 0, 0)
+    // MODIFIER_SCROLL: verticalScroll(50f) decodes to [direction=0, positionExpression=50.0,
+    // max=NaN, notchMax=NaN] — max and notchMax are NaN-tagged references the writer reserves
+    // even in this simplest overload. It is a container: a TOUCH_EXPRESSION follows it and a
+    // CONTAINER_END closes it, which is what drives the position it names.
+    //
+    // The window is given a size here, since a scrolling component with none is a window onto
+    // nothing and clips its content away. The green square is taller than the window, so what
+    // shows is the top of it. Scrolling something is demonstrated by coffee.rc, which has child
+    // components to scroll rather than canvas draws.
+    writer.startBox(RecordingModifier().width(15f).height(9f).verticalScroll(50f), 0, 0)
     writer.getRcPaint().setColor(0xFF33691E.toInt()).commit()
-    writer.drawRect(178f, 65f, 193f, 80f)
+    writer.drawRect(0f, 0f, 15f, 15f)
     writer.endBox()
 
     // COLOR_CONSTANT + MODIFIER_BORDER's colorId-ref path: addColor(...) registers a real color

@@ -57,6 +57,17 @@ sealed class Modifier {
     class ZIndex(val zIndex: Float) : Modifier()
     class GraphicsLayer(val attributes: Map<Int, Int>) : Modifier()
     class CollapsiblePriority(val orientation: Int, val priority: Float) : Modifier()
+
+    /**
+     * `ScrollModifierOperation`: the component shows a window onto content taller or wider than
+     * itself. [direction] 0 scrolls vertically, anything else horizontally, and
+     * [positionExpressionId] names the float the offset is read from — the one the modifier's own
+     * touch expression drives.
+     */
+    class Scroll(val direction: Int, val positionExpressionId: Int) : Modifier() {
+        /** How far the content overflows the window, worked out while measuring. */
+        var maxScroll: Float = 0f
+    }
 }
 
 /** `Component.Visibility` values. */

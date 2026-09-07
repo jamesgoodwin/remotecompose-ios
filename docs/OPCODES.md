@@ -186,7 +186,7 @@ because the format has no generic length prefix to skip by.
 | 221 | `MODIFIER_OFFSET` | supported |  |
 | 223 | `MODIFIER_ZINDEX` | supported |  |
 | 224 | `MODIFIER_GRAPHICS_LAYER` | partial | alpha, rotation, scale and translation; the rest of the attributes are ignored |
-| 226 | `MODIFIER_SCROLL` | decoded only | no scrolling |
+| 226 | `MODIFIER_SCROLL` | partial | the window, the offset and dragging; velocity easing and notch stops are not applied |
 | 228 | `MODIFIER_MARQUEE` | decoded only | no scrolling text |
 | 229 | `MODIFIER_RIPPLE` | decoded only | no press feedback |
 | 231 | `MODIFIER_WIDTH_IN` | supported |  |

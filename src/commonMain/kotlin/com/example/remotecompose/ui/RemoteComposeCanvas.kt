@@ -1,6 +1,7 @@
 package com.example.remotecompose.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -86,6 +87,29 @@ fun RemoteComposeCanvas(
     Canvas(
         modifier = modifier
             .onSizeChanged { canvasSize = it }
+            // Drags before taps: a drag that starts inside a scrolling component moves it, and
+            // the tap detector below never sees the gesture. A press that does not move is a tap.
+            .pointerInput(loaded, canvasSize) {
+                val fit = {
+                    fitDocumentToCanvas(
+                        canvasWidth = canvasSize.width.toFloat(),
+                        canvasHeight = canvasSize.height.toFloat(),
+                        header = loaded.header,
+                    )
+                }
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        val point = fit().toDocumentSpace(offset)
+                        loaded.touchDown(point.x, point.y)
+                    },
+                    onDrag = { change, _ ->
+                        val point = fit().toDocumentSpace(change.position)
+                        loaded.touchDrag(point.x, point.y)
+                    },
+                    onDragEnd = { loaded.touchUp(Float.NaN, Float.NaN) },
+                    onDragCancel = { loaded.touchCancel(Float.NaN, Float.NaN) },
+                )
+            }
             .pointerInput(loaded, canvasSize) {
                 val fit = {
                     fitDocumentToCanvas(
