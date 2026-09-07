@@ -1467,7 +1467,12 @@ object RemoteComposeParser {
                         // The position is a NaN-tagged reference to the float the modifier's own
                         // touch expression writes, so the id is what matters rather than a value.
                         tree.current?.modifiers?.add(
-                            Modifier.Scroll(op.direction, FloatExpressionEvaluator.idOf(op.positionExpression)),
+                            Modifier.Scroll(
+                                op.direction,
+                                FloatExpressionEvaluator.idOf(op.positionExpression),
+                                FloatExpressionEvaluator.idOf(op.max),
+                                FloatExpressionEvaluator.idOf(op.notchMax),
+                            ),
                         )
                         // The modifier is a container holding that touch expression: opening a
                         // frame keeps the component current while it is walked, and lets the

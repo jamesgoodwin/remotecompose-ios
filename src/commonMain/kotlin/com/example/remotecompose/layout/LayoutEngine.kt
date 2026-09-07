@@ -158,7 +158,17 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
                 if (vertical) it.y + it.height else it.x + it.width
             } ?: 0f
             val window = if (vertical) h - node.paddingTop - node.paddingBottom else w - node.paddingLeft - node.paddingRight
+            // setVerticalScrollDimension(host, content): max(0, content - host).
             scroll.maxScroll = max(0f, extent - window)
+            // ScrollModifierOperation.layout(): the bound the touch expression clamps its drag
+            // to, which is what stops the list at its ends, and the content size beside it. The
+            // last child's own position is the other bound, so a tall last item can still be
+            // scrolled to its top rather than past it (getMaxScrollPosition).
+            val lastChildPosition = node.children.lastOrNull()?.let { if (vertical) it.y else it.x } ?: 0f
+            val limit =
+                if (lastChildPosition > 0f) min(lastChildPosition, scroll.maxScroll) else scroll.maxScroll
+            context.loadFloat(scroll.maxId, limit)
+            context.loadFloat(scroll.notchMaxId, extent)
         }
     }
 
@@ -580,7 +590,9 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
             val contentW = node.width - node.paddingLeft - node.paddingRight
             val contentH = node.height - node.paddingTop - node.paddingBottom
             val position = context.getFloat(scroll.positionExpressionId).takeUnless { it.isNaN() } ?: 0f
-            val offset = min(max(position, 0f), scroll.maxScroll)
+            // `mScrollY = -min(mMaxScrollY, position)`: only the upper bound here, the lower one
+            // being the touch expression's own `min`, which it clamps the value to as it drags.
+            val offset = min(position, scroll.maxScroll)
             out += Opcode.MatrixSave
             out += Opcode.ClipRect(0f, 0f, contentW, contentH)
             if (scroll.direction == 0) out += Opcode.Translate(0f, -offset) else out += Opcode.Translate(-offset, 0f)

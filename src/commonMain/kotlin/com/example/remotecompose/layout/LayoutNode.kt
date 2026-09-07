@@ -69,8 +69,17 @@ sealed class Modifier {
      * itself. [direction] 0 scrolls vertically, anything else horizontally, and
      * [positionExpressionId] names the float the offset is read from — the one the modifier's own
      * touch expression drives.
+     *
+     * [maxId] and [notchMaxId] name floats the other way round: `layout()` writes how far there
+     * is to scroll and how big the content is into them, and the touch expression reads [maxId]
+     * as its upper bound. Without that write a drag has nothing to stop it.
      */
-    class Scroll(val direction: Int, val positionExpressionId: Int) : Modifier() {
+    class Scroll(
+        val direction: Int,
+        val positionExpressionId: Int,
+        val maxId: Int,
+        val notchMaxId: Int,
+    ) : Modifier() {
         /** How far the content overflows the window, worked out while measuring. */
         var maxScroll: Float = 0f
     }

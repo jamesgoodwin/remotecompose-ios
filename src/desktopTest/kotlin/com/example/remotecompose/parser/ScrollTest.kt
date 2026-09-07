@@ -90,6 +90,60 @@ class ScrollTest {
         assertEquals(CONTENT - WINDOW, scrollOffset(document), 0.01f)
     }
 
+    /** The value the drag actually writes, as opposed to the offset the paint clamps it to. */
+    private fun scrollValue(document: RemoteComposeDocument): Float {
+        val scroll = operations.filterIsInstance<Operation.ModifierScroll>().single()
+        return document.context.floats[FloatExpressionEvaluator.idOf(scroll.positionExpression)] ?: Float.NaN
+    }
+
+    @Test
+    fun theExtentIsPublishedForTheTouchExpressionToStopAt() {
+        // `ScrollModifierOperation.layout()` writes how far there is to scroll into the float the
+        // touch expression reads as its `max`, and the content size into the notch one.
+        val document = loaded()
+        val scroll = operations.filterIsInstance<Operation.ModifierScroll>().single()
+        val floats = document.context.floats
+        assertEquals(CONTENT - WINDOW, floats[FloatExpressionEvaluator.idOf(scroll.max)]!!, 0.01f)
+        assertEquals(CONTENT, floats[FloatExpressionEvaluator.idOf(scroll.notchMax)]!!, 0.01f)
+    }
+
+    @Test
+    fun anOverDragStopsAtTheEndRatherThanRunningOn() {
+        // Without the bound the drag keeps accumulating out of sight: the list looks stopped
+        // because the paint clamps it, then will not move until the excess is dragged back.
+        val document = loaded()
+        document.touchDown(150f, 300f)
+        document.frame(0L)
+        document.touchDrag(150f, -500f)
+        document.frame(0L)
+        document.touchUp(150f, -500f)
+        assertEquals(CONTENT - WINDOW, scrollValue(document), 0.01f, "the value itself stops")
+        // So dragging back moves on the first pixel rather than after a dead zone.
+        document.touchDown(150f, 100f)
+        document.frame(0L)
+        document.touchDrag(150f, 140f)
+        document.frame(0L)
+        assertEquals(CONTENT - WINDOW - 40f, scrollOffset(document), 0.01f)
+    }
+
+    @Test
+    fun growingAnItemDoesNotShiftAListThatIsAlreadyAtItsEnd() {
+        // Tapping an item makes its card taller, so there is more to scroll than a moment ago.
+        // The list has to stay where it was put: it moved with nothing touching it while the
+        // value was past the end and the new end caught up with it.
+        val document = loaded()
+        document.touchDown(150f, 300f)
+        document.frame(0L)
+        document.touchDrag(150f, -500f)
+        document.frame(0L)
+        document.touchUp(150f, -500f)
+        val before = scrollOffset(document)
+        document.click(150f, 130f)
+        document.frame(0L)
+        document.frame(2000L)
+        assertEquals(before, scrollOffset(document), 0.01f)
+    }
+
     @Test
     fun aScrollingComponentKeepsItsOwnSize() {
         // The window is the size the document asked for, whatever the content adds up to.
