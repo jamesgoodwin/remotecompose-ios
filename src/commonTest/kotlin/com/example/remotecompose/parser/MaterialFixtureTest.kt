@@ -1,9 +1,9 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.runtime.ActionTrigger
 import com.example.remotecompose.runtime.HitRegion
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 class MaterialFixtureTest {
 
     private fun load(): RemoteComposeDocument =
-        RemoteComposeParser.load(File("tools/rc-writer/material.rc").readBytes()).also { it.frame(0L) }
+        RemoteComposeParser.load(fixture("material")).also { it.frame(0L) }
 
     /** Every laid-out string of the current frame, in draw order. */
     private fun texts(doc: RemoteComposeDocument): List<String> {

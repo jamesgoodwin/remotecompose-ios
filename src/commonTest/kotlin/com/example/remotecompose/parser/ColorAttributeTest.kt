@@ -1,8 +1,8 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.runtime.RemoteContext
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
  */
 class ColorAttributeTest {
 
-    private val bytes by lazy { File("tools/rc-writer/coffee.rc").readBytes() }
+    private val bytes by lazy { fixture("coffee") }
 
     /** The filled part of the brightness bar, which is 3 tall and the accent's colour. */
     private fun barWidth(theme: Int): Float {

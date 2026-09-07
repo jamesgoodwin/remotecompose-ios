@@ -107,6 +107,15 @@ kotlin {
 // plugin assumes a single non-multiplatform `main` source set and doesn't compose cleanly with
 // Kotlin Multiplatform's per-target compilations.
 // Compares device screenshots against a headless render of the same document; see HarnessMain.
+// `PayloadDriftTest` and `GoldenOpcodeTest` read the writer's fixtures, which are not on the test
+// classpath: without this the desktop suite stays up-to-date across a regenerated one and the
+// drift check passes against bytes nobody compared.
+tasks.named<Test>("desktopTest") {
+    inputs.files(fileTree("tools/rc-writer") { include("*.rc") })
+        .withPropertyName("fixtures")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 tasks.register<JavaExec>("pixelHarness") {
     dependsOn("desktopMainClasses")
     val compilation = kotlin.targets.getByName("desktop").compilations.getByName("main")

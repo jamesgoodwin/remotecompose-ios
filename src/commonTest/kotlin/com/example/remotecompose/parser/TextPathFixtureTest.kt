@@ -1,7 +1,7 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
-import java.io.File
 import kotlin.math.hypot
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
  */
 class TextPathFixtureTest {
 
-    private val document by lazy { RemoteComposeParser.parse(File("tools/rc-writer/textpath.rc").readBytes()) }
+    private val document by lazy { RemoteComposeParser.parse(fixture("textpath")) }
     private val texts by lazy { document.opcodes.filterIsInstance<Opcode.DrawText>() }
 
     /** Draws of the substring `[i, i+1)` are per-glyph placements. */

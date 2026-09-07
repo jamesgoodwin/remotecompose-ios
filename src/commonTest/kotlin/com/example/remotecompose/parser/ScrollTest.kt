@@ -1,8 +1,8 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.runtime.FloatExpressionEvaluator
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -17,7 +17,7 @@ class ScrollTest {
     private val WINDOW = 240f
     private val CONTENT = 6 * (56f + 24f) + 5 * 8f
 
-    private val bytes by lazy { File("tools/rc-writer/coffee.rc").readBytes() }
+    private val bytes by lazy { fixture("coffee") }
     private val operations by lazy { OperationReader.readAll(bytes) }
 
     private fun loaded(): RemoteComposeDocument =

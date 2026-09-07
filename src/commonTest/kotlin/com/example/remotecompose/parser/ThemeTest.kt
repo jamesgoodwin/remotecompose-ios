@@ -1,10 +1,10 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import androidx.compose.ui.graphics.Color
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.EstimatedTextMetrics
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
  */
 class ThemeTest {
 
-    private val bytes by lazy { File("tools/rc-writer/coffee.rc").readBytes() }
+    private val bytes by lazy { fixture("coffee") }
 
     private fun load(theme: Int): RemoteComposeDocument =
         RemoteComposeParser.load(bytes).also {

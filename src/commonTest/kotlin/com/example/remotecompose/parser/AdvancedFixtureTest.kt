@@ -1,8 +1,8 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PathCommand
-import java.io.File
 import kotlin.math.hypot
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  */
 class AdvancedFixtureTest {
 
-    private val document by lazy { RemoteComposeParser.parse(File("tools/rc-writer/advanced.rc").readBytes()) }
+    private val document by lazy { RemoteComposeParser.parse(fixture("advanced")) }
     private val rects by lazy { document.opcodes.filterIsInstance<Opcode.DrawRect>() }
     private val paths by lazy { document.opcodes.filterIsInstance<Opcode.DrawPath>() }
 

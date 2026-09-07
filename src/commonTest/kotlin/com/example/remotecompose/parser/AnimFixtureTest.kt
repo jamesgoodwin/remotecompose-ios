@@ -1,7 +1,7 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
-import java.io.File
 import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  */
 class AnimFixtureTest {
 
-    private fun load() = RemoteComposeParser.load(File("tools/rc-writer/anim.rc").readBytes())
+    private fun load() = RemoteComposeParser.load(fixture("anim"))
 
     @Test
     fun readerDecodesFloatExpressions() {

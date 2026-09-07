@@ -1,8 +1,8 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.runtime.ActionTrigger
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 class ActionsFixtureTest {
 
     private fun load(): RemoteComposeDocument =
-        RemoteComposeParser.load(File("tools/rc-writer/actions.rc").readBytes()).also { it.frame(0L) }
+        RemoteComposeParser.load(fixture("actions")).also { it.frame(0L) }
 
     /** The dark panel whose width the buttons change. */
     private fun panelWidth(doc: RemoteComposeDocument): Float {

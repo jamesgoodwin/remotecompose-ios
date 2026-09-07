@@ -10,13 +10,13 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.parser.Operation
 import com.example.remotecompose.parser.OperationReader
 import com.example.remotecompose.parser.RemoteComposeDocument
 import com.example.remotecompose.parser.RemoteComposeParser
 import com.example.remotecompose.runtime.FloatExpressionEvaluator
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
  */
 class CanvasGestureTest {
 
-    private val bytes = File("tools/rc-writer/coffee.rc").readBytes()
+    private val bytes = fixture("coffee")
 
     /** The float the scroll offset is read from, which a drag is supposed to move. */
     private fun scrollValueId(): Int =

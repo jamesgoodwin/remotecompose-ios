@@ -1,7 +1,7 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
  */
 class RippleTest {
 
-    private val bytes by lazy { File("tools/rc-writer/material.rc").readBytes() }
+    private val bytes by lazy { fixture("material") }
 
     private fun loaded(): RemoteComposeDocument =
         RemoteComposeParser.load(bytes).also { it.frame(0L) }

@@ -1,9 +1,9 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.EstimatedTextMetrics
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  */
 class PatternFixtureTest {
 
-    private val bytes by lazy { File("tools/rc-writer/pattern.rc").readBytes() }
+    private val bytes by lazy { fixture("pattern") }
     private val operations by lazy { OperationReader.readAll(bytes) }
     private val document by lazy { RemoteComposeParser.parse(bytes) }
 

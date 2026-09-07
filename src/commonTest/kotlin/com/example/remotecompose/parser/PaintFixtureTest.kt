@@ -1,5 +1,6 @@
 package com.example.remotecompose.parser
 
+import com.example.remotecompose.fixture
 import androidx.compose.ui.graphics.Color
 import com.example.remotecompose.model.FontFamilyKind
 import com.example.remotecompose.model.GradientSpec
@@ -8,7 +9,6 @@ import com.example.remotecompose.model.PaintStyle
 import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.StrokeCapKind
 import com.example.remotecompose.model.StrokeJoinKind
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -22,7 +22,7 @@ import kotlin.test.assertNull
 class PaintFixtureTest {
 
     private val document by lazy {
-        RemoteComposeParser.parse(File("tools/rc-writer/paint.rc").readBytes())
+        RemoteComposeParser.parse(fixture("paint"))
     }
 
     /** The draw opcodes only; layout wrappers (save/translate/restore) around the Box are skipped. */
