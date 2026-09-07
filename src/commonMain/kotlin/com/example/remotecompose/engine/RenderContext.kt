@@ -1,7 +1,13 @@
 package com.example.remotecompose.engine
 
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import com.example.remotecompose.model.RemoteDocument
 
 /**
@@ -54,7 +60,39 @@ class RenderContext(
     fun recordInteractiveRegion(region: InteractiveRegion) {
         _interactiveRegions += region
     }
+
+    private val crops = mutableMapOf<CropKey, ImageBitmap>()
+
+    /**
+     * The [size] region of [bitmap] at [offset], as an image of its own, kept for as long as this
+     * context lives — a document redraws the same crop every frame.
+     *
+     * Copying it out is what keeps a scaled draw from sampling the pixels around it; the copy
+     * itself is done unfiltered at one to one, where there is nothing to interpolate. Returns
+     * null for an empty or out-of-bounds region, which draws nothing.
+     */
+    fun croppedBitmap(id: Int, bitmap: ImageBitmap, offset: IntOffset, size: IntSize): ImageBitmap? {
+        if (size.width <= 0 || size.height <= 0) return null
+        if (offset.x < 0 || offset.y < 0) return null
+        if (offset.x + size.width > bitmap.width || offset.y + size.height > bitmap.height) return null
+        if (offset == IntOffset.Zero && size.width == bitmap.width && size.height == bitmap.height) return bitmap
+        return crops.getOrPut(CropKey(id, offset.x, offset.y, size.width, size.height)) {
+            val cropped = ImageBitmap(size.width, size.height)
+            val paint = Paint().apply { filterQuality = FilterQuality.None }
+            Canvas(cropped).drawImageRect(
+                image = bitmap,
+                srcOffset = offset,
+                srcSize = size,
+                dstOffset = IntOffset.Zero,
+                dstSize = size,
+                paint = paint,
+            )
+            cropped
+        }
+    }
 }
+
+private data class CropKey(val id: Int, val x: Int, val y: Int, val width: Int, val height: Int)
 
 /**
  * A single tap target produced by an `OP_ACTION_CLICK` opcode.

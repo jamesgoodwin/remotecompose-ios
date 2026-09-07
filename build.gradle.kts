@@ -96,6 +96,14 @@ kotlin {
 // runtime classpath. Kept as a manual JavaExec rather than the `application` plugin, since that
 // plugin assumes a single non-multiplatform `main` source set and doesn't compose cleanly with
 // Kotlin Multiplatform's per-target compilations.
+// Compares device screenshots against a headless render of the same document; see HarnessMain.
+tasks.register<JavaExec>("pixelHarness") {
+    dependsOn("desktopMainClasses")
+    val compilation = kotlin.targets.getByName("desktop").compilations.getByName("main")
+    classpath = compilation.output.allOutputs + compilation.runtimeDependencyFiles!!
+    mainClass.set("com.example.remotecompose.harness.HarnessMainKt")
+}
+
 tasks.register<JavaExec>("runDesktopDemo") {
     dependsOn("desktopMainClasses")
     val compilation = kotlin.targets.getByName("desktop").compilations.getByName("main")

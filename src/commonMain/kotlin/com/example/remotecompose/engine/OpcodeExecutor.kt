@@ -234,21 +234,28 @@ object OpcodeExecutor {
                                 (opcode.right - opcode.left).roundToInt().coerceAtLeast(0),
                                 (opcode.bottom - opcode.top).roundToInt().coerceAtLeast(0),
                             )
-                            if (opcode.srcLeft != null && opcode.srcTop != null &&
+                            // A source rectangle is cut out before it is scaled rather than
+                            // handed to the scaling draw. Filtering a magnified sub-rectangle
+                            // samples the pixels just outside it, and the platforms disagree
+                            // about what those are: a one-pixel source stretched across forty
+                            // came out as a smear on Android and flat on the other two.
+                            val source = if (
+                                opcode.srcLeft != null && opcode.srcTop != null &&
                                 opcode.srcRight != null && opcode.srcBottom != null
                             ) {
-                                drawScope.drawImage(
-                                    image = bitmap,
-                                    srcOffset = IntOffset(opcode.srcLeft.roundToInt(), opcode.srcTop.roundToInt()),
-                                    srcSize = IntSize(
+                                context.croppedBitmap(
+                                    opcode.bitmapIndex, bitmap,
+                                    IntOffset(opcode.srcLeft.roundToInt(), opcode.srcTop.roundToInt()),
+                                    IntSize(
                                         (opcode.srcRight - opcode.srcLeft).roundToInt().coerceAtLeast(0),
                                         (opcode.srcBottom - opcode.srcTop).roundToInt().coerceAtLeast(0),
                                     ),
-                                    dstOffset = dstOffset,
-                                    dstSize = dstSize,
                                 )
                             } else {
-                                drawScope.drawImage(image = bitmap, dstOffset = dstOffset, dstSize = dstSize)
+                                bitmap
+                            }
+                            if (source != null) {
+                                drawScope.drawImage(image = source, dstOffset = dstOffset, dstSize = dstSize)
                             }
                         }
                     }
