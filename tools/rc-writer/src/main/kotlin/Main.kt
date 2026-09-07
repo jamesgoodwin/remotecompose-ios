@@ -3212,52 +3212,42 @@ private fun buildWatchSample() {
 }
 
 /**
- * A scene that comes apart as it scrolls: sky, far hills, near hills and the ground each move at
- * their own rate behind the text.
+ * A photograph that scrolls slower than the words over it.
  *
- * All four rates are the same float. `MODIFIER_SCROLL` moves everything inside it by the scroll
- * position, so a layer is pulled *back* by `scroll * (1 - rate)` to make it lag — a layer at rate
- * 0 stays put in the window and one at rate 1 travels with the text. That subtraction is the
- * whole of the effect, and the document does it.
+ * `MODIFIER_SCROLL` moves everything inside it by the scroll position, so the picture is pulled
+ * back again by `scroll * (1 - rate)` and travels at that rate instead. It is drawn taller than
+ * the frame it is clipped to, which is what gives it room to move without either edge coming
+ * into view. One subtraction, and the document does it — the host hands over the finger.
  */
 private fun buildParallaxSample() {
     val platform = JvmRcPlatformServices()
     val writer = RemoteComposeWriter(300, 420, "parallax", platform)
 
-    /**
-     * A layer, straight in as the file on disk. The ridges are PNGs with the sky cut away, so
-     * each one can sit in front of the last; the sky itself is a JPEG, since nothing shows
-     * through it. See `tools/rc-writer/photos/CREDITS.md`.
-     */
-    fun layer(name: String): Triple<Int, Int, Int> {
-        val file = File("photos/layer-$name.${if (name == "sky") "jpg" else "png"}")
-        val bytes = file.readBytes()
-        val image = javax.imageio.ImageIO.read(file)
-        val id = writer.nextId()
-        writer.getBuffer().storeBitmap(id, image.width, image.height, bytes)
-        return Triple(id, image.width, image.height)
-    }
-
-    val skyLayer = layer("sky")
-    val farLayer = layer("far")
-    val midLayer = layer("mid")
-    val nearLayer = layer("near")
+    // The photograph, straight in as the JPEG on disk. CC0; see photos/CREDITS.md.
+    val heroFile = File("photos/hero.jpg")
+    val heroImage = javax.imageio.ImageIO.read(heroFile)
+    val hero = writer.nextId()
+    writer.getBuffer().storeBitmap(hero, heroImage.width, heroImage.height, heroFile.readBytes())
 
     val lines = listOf(
         "" to 0f,
-        "Four layers, one number" to 15f,
-        "The sky, the far hills, the near" to 13f,
-        "hills and the ground are moving" to 13f,
-        "at four different speeds, and all" to 13f,
-        "four are the scroll position." to 13f,
+        "The picture is going slower" to 15f,
+        "than these words are. It moves" to 13f,
+        "at two fifths of the scroll," to 13f,
+        "which is the whole of the trick." to 13f,
         "" to 0f,
-        "How a layer lags" to 15f,
-        "Everything inside a scrolling" to 13f,
-        "component is moved by the scroll." to 13f,
-        "A layer is pulled back again by" to 13f,
-        "scroll times one minus its rate," to 13f,
-        "so a rate of nothing stays put" to 13f,
-        "and a rate of one travels along." to 13f,
+        "How it lags" to 15f,
+        "A scrolling component moves" to 13f,
+        "everything inside it by the" to 13f,
+        "scroll position. The picture is" to 13f,
+        "pulled back again by that same" to 13f,
+        "number times three fifths, so" to 13f,
+        "what is left is two fifths." to 13f,
+        "" to 0f,
+        "Why it does not run out" to 15f,
+        "It is drawn taller than the" to 13f,
+        "frame that clips it, so there" to 13f,
+        "is somewhere for it to go." to 13f,
         "" to 0f,
         "Nobody is told any of this" to 15f,
         "The host hands over the finger." to 13f,
@@ -3267,17 +3257,17 @@ private fun buildParallaxSample() {
 
     val lineHeight = 18f
     val headingHeight = 22f
-    val heroHeight = 250f
+    val heroHeight = 260f
     val window = 400f
+    val rate = 0.4f
+
     val textHeight = lines.sumOf { (t, size) ->
         (if (t.isEmpty()) 10.0 else if (size > 13f) headingHeight.toDouble() else lineHeight.toDouble())
     }.toFloat()
-    val content = heroHeight + textHeight
 
     val scroll = writer.addFloatConstant(0f)
-
-    /** How far to pull a layer back so that it travels at [rate] of the scroll. */
-    fun lag(rate: Float) = writer.floatExpression(scroll, 1f - rate, Rc.FloatExpression.MUL)
+    // How far to pull the picture back so that it travels at `rate` of the scroll.
+    val lag = writer.floatExpression(scroll, 1f - rate, Rc.FloatExpression.MUL)
 
     fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
         writer.startTextComponent(modifier, value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
@@ -3285,31 +3275,18 @@ private fun buildParallaxSample() {
     }
 
     writer.startColumn(RecordingModifier().fillMaxSize().background(0xFF0E1220.toInt()), 1, 4)
-    writer.startColumn(
-        RecordingModifier().fillMaxWidth().height(window).verticalScroll(scroll),
-        1, 4,
-    )
+    writer.startColumn(RecordingModifier().fillMaxWidth().height(window).verticalScroll(scroll), 1, 4)
 
-    // The scene, clipped to its own box so the layers can overhang it.
+    // The picture, clipped to a frame shorter than itself.
     writer.startBox(
         RecordingModifier().fillMaxWidth().height(heroHeight).clip(RectShape(0f, 0f, 0f, 0f)),
         1, 2,
     )
-    // Furthest first, each drawn taller than the box so that lagging never shows its lower edge.
-    for ((layerData, rate, top) in listOf(
-        Triple(skyLayer, 0.10f, -36f),
-        Triple(farLayer, 0.35f, 86f),
-        Triple(midLayer, 0.60f, 122f),
-        Triple(nearLayer, 0.85f, 152f),
-    )) {
-        val (id, imageWidth, imageHeight) = layerData
-        writer.save()
-        writer.translate(0f, lag(rate))
-        val drawWidth = 300f
-        val drawHeight = drawWidth * imageHeight / imageWidth
-        writer.drawBitmap(id, 0f, top, drawWidth, top + drawHeight, "layer")
-        writer.restore()
-    }
+    writer.save()
+    writer.translate(0f, lag)
+    val drawHeight = 300f * heroImage.height / heroImage.width
+    writer.drawBitmap(hero, 0f, -(drawHeight - heroHeight) / 2f, 300f, (drawHeight + heroHeight) / 2f, "hero")
+    writer.restore()
     writer.endBox()
 
     // The words, which travel with the scroll like anything else.
@@ -3335,7 +3312,7 @@ private fun buildParallaxSample() {
 
     val bytes = writer.encodeToByteArray()
     File("parallax.rc").writeBytes(bytes)
-    println("wrote ${bytes.size} bytes to parallax.rc; content $content, overflow ${content - window}")
+    println("wrote ${bytes.size} bytes to parallax.rc; content ${heroHeight + textHeight}, overflow ${heroHeight + textHeight - window}")
 }
 
 /**

@@ -28,20 +28,10 @@ which keeps all five inside about 75 kB.
 
 ## Parallax scene (page 14)
 
-A parallax needs layers that can sit in front of each other, and a photograph is one flat plane.
-The three ridges are therefore cut out of photographs of mountains against a bright sky: for each
-column the skyline is the first pixel darker than halfway between the sky and the rock, that edge
-is run through a median filter so a dark patch in the sky cannot turn a column into a stripe, and
-everything above it is made transparent. Each ridge is then tinted towards the colour of the air
-in proportion to its distance, which is what makes the far one read as far, and its lowest row is
-carried down so that no hard bottom edge appears as it lags.
+One photograph behind the text, moving at two fifths of the scroll. It is cropped to 300x400 and
+drawn taller than the 260-tall frame that clips it, so there is room for it to lag without either
+edge coming into view.
 
-They are saved as 64-colour PNGs. A near-silhouette has few colours in it, so that costs nothing
-visible and takes the three of them from 103 kB to under 3 kB.
-
-| Layer | Photographer | Licence | Source |
-| --- | --- | --- | --- |
-| Sky | Jeremy Bishop tidesinourveins | CC0 | [Purple and pink cloudy sky (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Purple_and_pink_cloudy_sky_(Unsplash).jpg) |
-| Far ridge | Pacific Austin _pacifist | CC0 | [Silhouette mountain range and yellow sky (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Silhouette_mountain_range_and_yellow_sky_(Unsplash).jpg) |
-| Middle ridge | Blake Richard Verdoorn blakeverdoorn | CC0 | [Sunset over mountain silhouettes (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Sunset_over_mountain_silhouettes_(Unsplash).jpg) |
-| Near ridge | arvin febry arvinfebry | CC0 | [Mountain silhouette at dusk (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Mountain_silhouette_at_dusk_(Unsplash).jpg) |
+| Photographer | Licence | Source |
+| --- | --- | --- |
+| Unsplash | CC0 | [Cairngorms-national-park-1209824.jpg](https://commons.wikimedia.org/wiki/File:Cairngorms-national-park-1209824.jpg) |

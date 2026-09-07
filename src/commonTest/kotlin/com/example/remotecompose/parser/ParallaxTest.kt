@@ -10,9 +10,10 @@ import kotlin.test.assertTrue
  * `tools/rc-writer/parallax.rc` and `tools/rc-writer/carousel.rc`: two ways of moving one thing
  * slower than another off a single scroll position.
  *
- * A scrolling component moves everything inside it by that position, so a layer is pulled back
- * again by `scroll * (1 - rate)` to make it lag. Nothing is measured while running and nothing is
- * asked of the host — the subtraction is in the file.
+ * A scrolling component moves everything inside it by that position, so something is pulled back
+ * again by `scroll * (1 - rate)` to make it lag. The scene does it to a photograph behind its
+ * text; the carousel does it to each picture inside its own card. Nothing is measured while
+ * running and nothing is asked of the host — the subtraction is in the file.
  */
 class ParallaxTest {
 
@@ -20,8 +21,8 @@ class ParallaxTest {
     private val carousel = fixture("carousel")
 
     /**
-     * The translate that precedes each drawn picture, which is that layer's lag. Read from a
-     * frame already drawn so the clock is left where the caller put it.
+     * The translate that precedes each drawn picture, which is how far that picture has been
+     * pulled back. Read from a frame already drawn, so the clock is left where the caller put it.
      */
     private fun lags(bytes: ByteArray, dragBy: Float, vertical: Boolean = true): List<Float> {
         val document = RemoteComposeParser.load(bytes)
@@ -44,38 +45,34 @@ class ParallaxTest {
     }
 
     @Test
-    fun everyLayerStartsWhereItWasDrawn() {
+    fun thePictureStartsWhereItWasDrawn() {
         assertTrue(lags(scene, 0f).all { it == 0f }, "nothing lags before anything has moved")
     }
 
     @Test
-    fun eachLayerLagsByItsOwnShareOfTheScroll() {
-        // Rates of 0.10, 0.35, 0.60 and 0.85, so the lags are 0.90, 0.65, 0.40 and 0.15 of it.
+    fun thePictureTravelsAtItsOwnFractionOfTheScroll() {
+        // Drawn at a rate of 0.4, so it is pulled back by the other 0.6 and what is left is 0.4.
         val moved = lags(scene, 100f)
-        for ((expected, actual) in listOf(90f, 65f, 40f, 15f).zip(moved)) {
-            assertEquals(expected, actual, 0.01f, "lags for a scroll of 100: $moved")
-        }
+        assertEquals(1, moved.size, "one photograph, not a stack of layers")
+        assertEquals(60f, moved[0], 0.01f, "pulled back by three fifths")
     }
 
     @Test
-    fun theFurthestLayerMovesLeastAndTheNearestMost() {
-        // What the eye is actually being shown: the sky barely shifts against the window while
-        // the ground travels nearly with the text.
-        val moved = lags(scene, 100f)
-        val travel = moved.map { 100f - it } // how far each went in the window
-        for ((expected, actual) in listOf(10f, 35f, 60f, 85f).zip(travel)) {
-            assertEquals(expected, actual, 0.01f, "travel: $travel")
-        }
-        assertTrue(travel.zipWithNext().all { (near, far) -> far > near }, "each nearer than the last")
+    fun thePictureIsSlowerThanTheWordsOverIt() {
+        // What the eye is shown: a hundred of scroll moves the text by a hundred and the picture
+        // by forty, and the difference between those two is the whole effect.
+        val lag = lags(scene, 100f)[0]
+        val travelled = 100f - lag
+        assertEquals(40f, travelled, 0.01f)
+        assertTrue(travelled < 100f, "slower than the text, which travels the full scroll")
     }
 
     @Test
-    fun aLayerAtRestWouldNotMoveAtAll() {
-        // The relationship, rather than the numbers: doubling the scroll doubles every lag.
+    fun theLagIsProportionalToTheScroll() {
+        // The relationship rather than the numbers: twice as far scrolled, twice as far pulled.
         val once = lags(scene, 60f)
         val twice = lags(scene, 120f)
-        assertTrue(once.isNotEmpty())
-        for ((a, b) in once.zip(twice)) assertEquals(a * 2f, b, 0.5f)
+        assertEquals(once[0] * 2f, twice[0], 0.5f)
     }
 
     @Test
