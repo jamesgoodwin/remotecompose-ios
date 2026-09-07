@@ -54,6 +54,9 @@ import com.example.remotecompose.runtime.RemoteContext
  * @param dark Which of the document's palettes to paint; see `THEME` and `COLOR_THEME`. A
  *   document with one palette looks the same either way.
  * @param onAction Invoked when the document runs a `HOST_ACTION`. Defaults to a no-op.
+ * @param onDocument Handed the parsed document once, when it is first loaded. A document whose
+ *   contents come from the host — one that names its values with `NAMED_VARIABLE` — needs a
+ *   handle to be filled in through; this is it.
  * @param fallback Optional composable shown instead of the canvas when [bytes] fails to parse
  *   (a truncated record, or an opcode this parser does not handle). When `null` and parsing
  *   fails, nothing is emitted.
@@ -64,6 +67,7 @@ fun RemoteComposeCanvas(
     modifier: Modifier = Modifier,
     dark: Boolean = false,
     onAction: (RemoteAction) -> Unit = {},
+    onDocument: ((RemoteComposeDocument) -> Unit)? = null,
     fallback: (@Composable () -> Unit)? = null,
 ) {
     val textMeasurer = rememberTextMeasurer()
@@ -83,6 +87,11 @@ fun RemoteComposeCanvas(
     val renderContext = remember(loaded, textMeasurer) { RenderContext(document, textMeasurer) }
     renderContext.document = document
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+
+    DisposableEffect(loaded, onDocument) {
+        onDocument?.invoke(loaded)
+        onDispose { }
+    }
 
     // HOST_ACTION reaches the caller; every other action writes a document value and shows up in
     // the next frame on its own.

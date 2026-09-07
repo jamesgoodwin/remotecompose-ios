@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.remotecompose.parser.RemoteComposeDocument
+import kotlinx.coroutines.delay
 import com.example.remotecompose.ui.RemoteComposeCanvas
 
 /**
@@ -56,6 +59,7 @@ fun DemoScreen(initialPage: Int = 0) {
         "Pattern" to PATTERN_RC_BYTES,
         "Coffee" to COFFEE_RC_BYTES,
         "Article" to ARTICLE_RC_BYTES,
+        "Flight" to FLIGHT_RC_BYTES,
     )
     var page by remember { mutableStateOf(initialPage.coerceIn(0, pages.lastIndex)) }
     val (label, bytes) = pages[page]
@@ -65,6 +69,18 @@ fun DemoScreen(initialPage: Int = 0) {
         // The document keeps the whole screen and stays centred in it, which is what the pixel
         // harness relies on to find it in a screenshot; the bar floats over the backdrop below.
         when (label) {
+            // The one page where the host has something to say: the document names its values
+            // and this feeds them, the way a real one would from a network.
+            "Flight" -> {
+                var document by remember { mutableStateOf<RemoteComposeDocument?>(null) }
+                LaunchedEffect(document) { document?.let { runFlightFeed(it) } }
+                RemoteComposeCanvas(
+                    bytes = bytes,
+                    modifier = Modifier.fillMaxSize().background(Color(0xFFFFFBFE)).padding(bottom = BAR_SPACE),
+                    onDocument = { document = it },
+                    onAction = { go(1) },
+                )
+            }
             // Scrolls under the finger, so it goes through the interactive host like the others.
             "Article" -> RemoteComposeCanvas(
                 bytes = bytes,
@@ -142,4 +158,42 @@ private fun Arrow(glyph: String, onClick: () -> Unit) {
             style = TextStyle(color = Color.White, fontSize = 22.sp, textAlign = TextAlign.Center),
         )
     }
+}
+
+/**
+ * Stands in for whatever would really be telling this document about the flight: a feed that
+ * pushes values by name and lets the document decide what they look like.
+ *
+ * Everything here is a `setNamed*` call. The panel eases its countdown, moves its bar and opens
+ * its delay line on its own — none of that is arranged from out here.
+ */
+private suspend fun runFlightFeed(document: RemoteComposeDocument) {
+    document.setNamedString("flight", "BA 2490")
+    document.setNamedString("route", "Bristol to Palma")
+    document.setNamedString("status", "Scheduled")
+    document.setNamedColor("statusColor", 0xFF5F5A66.toInt())
+    document.setNamedString("gate", "—")
+    document.setNamedFloat("minutes", 48f)
+    delay(2000)
+
+    document.setNamedString("status", "Gate open")
+    document.setNamedColor("statusColor", 0xFF2E7D32.toInt())
+    document.setNamedString("gate", "B12")
+    document.setNamedFloat("minutes", 32f)
+    delay(2500)
+
+    // Boarding, and the bar fills as it goes.
+    document.setNamedString("status", "Boarding")
+    for (step in 1..6) {
+        document.setNamedFloat("boarded", step / 6f)
+        document.setNamedFloat("minutes", (24 - step * 4).toFloat())
+        delay(1200)
+    }
+
+    delay(1500)
+    document.setNamedString("status", "Delayed")
+    document.setNamedColor("statusColor", 0xFFB3261E.toInt())
+    document.setNamedFloat("delayed", 1f)
+    document.setNamedString("delayNote", "Delayed 25 min · new gate B31")
+    document.setNamedString("gate", "B31")
 }

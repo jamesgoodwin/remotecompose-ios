@@ -130,6 +130,10 @@ fun main(args: Array<String>) {
         buildArticleSample()
         return
     }
+    if (args.getOrNull(0) == "flight") {
+        buildFlightSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2915,4 +2919,148 @@ private fun buildArticleSample() {
     val bytes = writer.encodeToByteArray()
     File("article.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to article.rc; content ${content}, overflow ${overflow}")
+}
+
+/**
+ * A flight panel whose every value the host fills in by name.
+ *
+ * Nothing here is drawn from a literal: the route, the gate, the countdown, the status colour and
+ * whether the delay line shows are all `NAMED_VARIABLE`s, so a host with no idea what this
+ * document looks like can keep it current with `setNamedString("gate", "B12")`. The countdown is
+ * read through an `ANIMATED_FLOAT`, so a new number eases rather than jumping, and the delay line
+ * is inside a `CONDITIONAL_OPERATIONS` block that a named int opens.
+ */
+private fun buildFlightSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "flight", platform)
+
+    val ink = 0xFF1B1B1F.toInt()
+    val muted = 0xFF5F5A66.toInt()
+    val faint = 0xFFE7E0EC.toInt()
+
+    // The first short of TextLayout's flags: 1 says the colour field is the id of a colour rather
+    // than an ARGB, which is how a text follows a named one.
+    fun text(
+        value: Int,
+        color: Int,
+        size: Float,
+        weight: Float = 400f,
+        modifier: RecordingModifier = RecordingModifier(),
+        colorIsId: Boolean = false,
+    ) {
+        writer.startTextComponent(
+            modifier, value, color, size, 0, weight, "",
+            (if (colorIsId) 1 else 0).toShort(), 1.toShort(), 1, 1,
+        )
+        writer.endTextComponent()
+    }
+
+    // Everything the host may set. Each writes a NAMED_VARIABLE and the value behind it.
+    val route = writer.addNamedString("route", "—")
+    val flightNo = writer.addNamedString("flight", "—")
+    val gate = writer.addNamedString("gate", "—")
+    val statusText = writer.addNamedString("status", "Waiting for feed")
+    val statusColor = writer.addNamedColor("statusColor", 0xFF9E9E9E.toInt())
+    val minutes = writer.addNamedFloat("minutes", 0f)
+    val boarded = writer.addNamedFloat("boarded", 0f)
+    // A float rather than an int: a conditional compares floats, and the two pools are
+    // separate — an int id resolved as a float finds nothing.
+    val delayed = writer.addNamedFloat("delayed", 0f)
+    val delayNote = writer.addNamedString("delayNote", "")
+
+    // The countdown eased rather than stepped: an expression that is just the named float, with a
+    // FloatAnimation attached, so each value the host pushes is travelled to.
+    val easedMinutes = writer.floatExpression(
+        floatArrayOf(minutes),
+        androidx.compose.remote.core.operations.utilities.easing.FloatAnimation.packToFloatArray(
+            0.6f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+            null, Float.NaN, Float.NaN,
+        ),
+    )
+    val easedBoarded = writer.floatExpression(
+        floatArrayOf(boarded),
+        androidx.compose.remote.core.operations.utilities.easing.FloatAnimation.packToFloatArray(
+            0.6f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+            null, Float.NaN, Float.NaN,
+        ),
+    )
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFFFFFBFE.toInt()).padding(16f).spacedBy(10f),
+        1, 4,
+    )
+
+    text(writer.addText("Departures"), muted, 11f, 700f)
+
+    // Flight number, and a dot in the status colour beside it.
+    writer.startRow(RecordingModifier().fillMaxWidth().height(30f).spacedBy(8f), 1, 2)
+    text(flightNo, ink, 24f, 700f)
+    writer.startBox(RecordingModifier().width(12f).height(30f), 1, 2)
+    writer.getRcPaint().setColorId(statusColor).commit()
+    writer.drawCircle(6f, 15f, 5f)
+    writer.endBox()
+    writer.endRow()
+
+    text(route, ink, 15f)
+    text(statusText, statusColor, 13f, 700f, colorIsId = true)
+
+    // Gate, in a box of its own so it reads as a label.
+    writer.startBox(
+        RecordingModifier().fillMaxWidth().height(44f)
+            .clip(RoundedRectShape(10f, 10f, 10f, 10f))
+            .background(0xFFF3EDF7.toInt())
+            .padding(10f),
+        1, 2,
+    )
+    writer.startRow(RecordingModifier().fillMaxWidth().spacedBy(6f), 1, 2)
+    text(writer.addText("Gate"), muted, 13f)
+    text(gate, ink, 16f, 700f)
+    writer.endRow()
+    writer.endBox()
+
+    // Boarding progress: a track and a fill the host's number drives, eased on its way.
+    writer.startBox(RecordingModifier().fillMaxWidth().height(6f), 1, 2)
+    writer.getRcPaint().setColor(faint).commit()
+    writer.drawRect(0f, 0f, 268f, 6f)
+    writer.getRcPaint().setColorId(statusColor).commit()
+    writer.drawRect(0f, 0f, writer.floatExpression(easedBoarded, 268f, Rc.FloatExpression.MUL), 6f)
+    writer.endBox()
+
+    // The countdown, written out of the eased float.
+    val countdown = writer.textMerge(
+        writer.createTextFromFloat(easedMinutes, 2, 0, 4 or 1),
+        writer.addText(" min to boarding"),
+    )
+    text(countdown, muted, 13f)
+
+    // The delay line, which only exists while the host says there is one.
+    writer.conditionalOperations(4.toByte(), delayed, 0.5f) // TYPE_GT
+    writer.startBox(
+        RecordingModifier().fillMaxWidth().height(34f)
+            .clip(RoundedRectShape(8f, 8f, 8f, 8f))
+            .background(0xFFFFDAD6.toInt())
+            .padding(8f),
+        1, 2,
+    )
+    text(delayNote, 0xFF410002.toInt(), 12f, 700f)
+    writer.endBox()
+    writer.endConditionalOperations()
+
+    // An action carrying the flight it is about, by name rather than by number.
+    writer.startBox(
+        RecordingModifier().fillMaxWidth().height(40f)
+            .clip(RoundedRectShape(20f, 20f, 20f, 20f))
+            .background(0xFF6750A4.toInt())
+            .then(RippleElement())
+            .onClick(HostAction("notify", 2, flightNo)),
+        1, 2,
+    )
+    text(writer.addText("Notify me"), 0xFFFFFFFF.toInt(), 14f, 700f)
+    writer.endBox()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("flight.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to flight.rc")
 }

@@ -71,6 +71,24 @@ fun main(args: Array<String>) {
             println("Drag from $x, $y to $toX, $toY")
         }
     }
+    // Optional sixth argument: "flight" pushes a feed of named values before rendering, which is
+    // how a document whose contents come from the host is screenshotted at all.
+    if (args.getOrNull(5) == "flight") {
+        loaded.setNamedString("flight", "BA 2490")
+        loaded.setNamedString("route", "Bristol to Palma")
+        loaded.setNamedString("gate", "B12")
+        loaded.setNamedString("status", "Boarding")
+        loaded.setNamedColor("statusColor", 0xFF2E7D32.toInt())
+        loaded.setNamedFloat("minutes", 23f)
+        loaded.setNamedFloat("boarded", 0.4f)
+        if (args.getOrNull(6) == "delayed") {
+            loaded.setNamedFloat("delayed", 1f)
+            loaded.setNamedString("delayNote", "Delayed 25 min · new gate B31")
+            loaded.setNamedString("status", "Delayed")
+            loaded.setNamedColor("statusColor", 0xFFB3261E.toInt())
+        }
+        loaded.frame(0L)
+    }
     val document = loaded.frame(timeMillis)
     println("Parsed real payload: ${document.header.width}x${document.header.height}, ${document.opcodes.size} opcode(s): ${document.opcodes}")
 

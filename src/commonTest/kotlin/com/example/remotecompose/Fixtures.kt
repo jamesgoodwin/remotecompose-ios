@@ -5,6 +5,7 @@ import com.example.remotecompose.demo.ADVANCED_RC_BYTES
 import com.example.remotecompose.demo.ARTICLE_RC_BYTES
 import com.example.remotecompose.demo.ANIM_RC_BYTES
 import com.example.remotecompose.demo.COFFEE_RC_BYTES
+import com.example.remotecompose.demo.FLIGHT_RC_BYTES
 import com.example.remotecompose.demo.LIST_RC_BYTES
 import com.example.remotecompose.demo.MATERIAL_RC_BYTES
 import com.example.remotecompose.demo.PAINT_RC_BYTES
@@ -34,6 +35,7 @@ val FIXTURES: Map<String, ByteArray> = mapOf(
     "coffee" to COFFEE_RC_BYTES,
     "coretext" to CORETEXT_RC_BYTES,
     "easing" to EASING_RC_BYTES,
+    "flight" to FLIGHT_RC_BYTES,
     "hostactions" to HOSTACTIONS_RC_BYTES,
     "list" to LIST_RC_BYTES,
     "material" to MATERIAL_RC_BYTES,
