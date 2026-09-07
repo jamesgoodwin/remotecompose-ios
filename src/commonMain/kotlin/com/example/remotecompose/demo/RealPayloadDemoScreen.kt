@@ -27,15 +27,14 @@ import androidx.compose.runtime.getValue
  * [com.example.remotecompose.ui.RemoteComposeCanvas] uses.
  *
  * Draws directly rather than through `RemoteComposeCanvas` because the screenshot pipeline needs
- * the document at exactly 1:1 physical pixels at a known offset (no fit-scaling), and because
- * the canvas's own tap handling would swallow the page-switching tap in [DemoScreen].
+ * the document at exactly 1:1 physical pixels at a known offset, with no fit-scaling.
  *
  * The document's own [Header] canvas is centered on a neutral backdrop, rather than pinned to the
  * top-left of a full-screen canvas, so it doesn't sit under the status bar/notch in screenshots —
  * that's purely a demo-host presentation choice and has no bearing on the parser/renderer.
  */
 @Composable
-fun RealPayloadDemoScreen(bytes: ByteArray, onUnhandledTap: () -> Unit = {}) {
+fun RealPayloadDemoScreen(bytes: ByteArray) {
     val textMeasurer = rememberTextMeasurer()
     val loaded = remember(bytes, textMeasurer) {
         RemoteComposeParser.load(bytes, ComposeTextMetrics(textMeasurer))
@@ -76,7 +75,7 @@ fun RealPayloadDemoScreen(bytes: ByteArray, onUnhandledTap: () -> Unit = {}) {
                             val released = tryAwaitRelease()
                             if (released) loaded.touchUp(offset.x, offset.y) else loaded.touchCancel(offset.x, offset.y)
                         },
-                        onTap = { offset -> if (!loaded.click(offset.x, offset.y)) onUnhandledTap() },
+                        onTap = { offset -> loaded.click(offset.x, offset.y) },
                     )
                 },
         ) {
