@@ -102,6 +102,10 @@ object RemoteComposeParser {
      */
     internal fun build(operations: List<Op>, context: RemoteContext, textMetrics: TextMetricsProvider): List<Opcode> {
         hitRegions = emptyList()
+        // Ids generated for a pattern's declarations start again each frame: the walk is the
+        // same every time, so the same declaration keeps the same id rather than the document
+        // growing a new one per frame.
+        context.resetGeneratedIds()
         // Cumulative paint, exactly as the real player's PaintContext keeps it: each PAINT_VALUES
         // bundle is a delta applied on top of the previous state, and every draw opcode captures
         // a snapshot of it. Saved on scope push and restored on CONTAINER_END, mirroring
@@ -162,7 +166,8 @@ object RemoteComposeParser {
         fun deferRestore() {
             if (!tree.addCleanup(Opcode.MatrixRestore)) trailing += Opcode.MatrixRestore
         }
-        val scopeEnds = matchScopes(operations)
+        val scopeCache = HashMap<List<Op>, Map<Int, Int>>()
+        fun scopesOf(list: List<Op>): Map<Int, Int> = scopeCache.getOrPut(list) { matchScopes(list) }
         // FloatFunctionDefine only names a body; a call runs it. Collected before the walk so a
         // call is not order-dependent on where its define sits in the stream.
         val functions = HashMap<Int, Op.FloatFunctionDefine>()
@@ -170,11 +175,17 @@ object RemoteComposeParser {
         for ((i, op) in operations.withIndex()) {
             if (op is Op.FloatFunctionDefine) {
                 functions[op.id] = op
-                functionBodies[op.id] = (i + 1) until (scopeEnds[i] ?: operations.size)
+                functionBodies[op.id] = (i + 1) until (scopesOf(operations)[i] ?: operations.size)
             }
         }
         // Guards FloatFunctionDefine's "Recursion not allowed".
         val executing = HashSet<Int>()
+        // Patterns, by id, and the block arguments of the call being expanded. A pattern may be
+        // defined after it is called, so they are collected before the walk starts.
+        val patterns = operations.filterIsInstance<Op.PatternDefine>().associateBy { it.id }
+        val activeCalls = ArrayDeque<ActiveCall>()
+        var expansionDepth = 0
+
         // What `PatternForEach` has bound its local item to while its body is being walked.
         val itemBindings = HashMap<Int, Int>()
 
@@ -194,10 +205,13 @@ object RemoteComposeParser {
         // ConditionalOperations TYPE_CHANGED compares against the previous frame's operands.
         val conditionalPrevious = context.conditionalPrevious
 
-        fun walk(from: Int, to: Int) {
+        // A macro's body is a list of its own, so the walk names the list it is walking; every
+        // range below is an index into `ops`, which is `operations` outside a macro.
+        fun walk(ops: List<Op>, from: Int, to: Int) {
+            val scopeEnds = scopesOf(ops)
             var i = from
             while (i < to) {
-                val op = operations[i]
+                val op = ops[i]
                 if (context.inflated && op.isConstant()) {
                     i++
                     continue
@@ -940,7 +954,7 @@ object RemoteComposeParser {
                         // ConditionalOperations: its block runs only when the comparison holds.
                         // TYPE_EQ(0)/NEQ(1)/LT(2)/LTE(3)/GT(4)/GTE(5), plus CHANGED(6) which the
                         // real operation tracks across frames.
-                        val end = scopeEnds[i] ?: operations.size
+                        val end = scopeEnds[i] ?: to
                         val a = resolveFloat(op.varA)
                         val b = resolveFloat(op.varB)
                         val previous = conditionalPrevious[i]
@@ -955,7 +969,7 @@ object RemoteComposeParser {
                             else -> false
                         }
                         conditionalPrevious[i] = floatArrayOf(a, b)
-                        if (holds) walk(i + 1, end)
+                        if (holds) walk(ops, i + 1, end)
                         i = end // the block's own CONTAINER_END
                     }
 
@@ -1118,7 +1132,7 @@ object RemoteComposeParser {
                     is Op.ParticlesLoop -> {
                         // ParticlesLoop.paint(): advance each particle, then run the block once
                         // with that particle's variables in the pool.
-                        val end = scopeEnds[i] ?: operations.size
+                        val end = scopeEnds[i] ?: to
                         val system = context.particles[op.id]
                         val create = particleCreators[op.id]
                         if (system != null) {
@@ -1140,7 +1154,7 @@ object RemoteComposeParser {
                                     system.initialize(p, create.map { resolveExpression(it) })
                                     system.load(context, p)
                                 }
-                                walk(i + 1, end)
+                                walk(ops, i + 1, end)
                             }
                             context.needsRepaint = true
                         }
@@ -1151,7 +1165,7 @@ object RemoteComposeParser {
                         // ParticlesCompare.condition1Body(): the block runs for the particles in
                         // range whose expression comes out above zero, after equations1 has
                         // advanced them. The two-body form is decoded but not run.
-                        val end = scopeEnds[i] ?: operations.size
+                        val end = scopeEnds[i] ?: to
                         val system = context.particles[op.id]
                         if (system != null && op.equations2.isEmpty()) {
                             val min = resolveFloat(op.min)
@@ -1171,14 +1185,14 @@ object RemoteComposeParser {
                                     system.values[p][v] = value
                                     context.loadFloat(system.varIds[v], value)
                                 }
-                                walk(i + 1, end)
+                                walk(ops, i + 1, end)
                             }
                             if (matched) context.needsRepaint = true
                         }
                         i = end // the block's own CONTAINER_END
                     }
 
-                    is Op.FloatFunctionDefine -> i = scopeEnds[i] ?: operations.size
+                    is Op.FloatFunctionDefine -> i = scopeEnds[i] ?: to
 
                     is Op.FloatFunctionCall -> {
                         // FloatFunctionCall.paint(): each argument is written into the function's
@@ -1190,7 +1204,7 @@ object RemoteComposeParser {
                                 val target = function.argIds.getOrNull(k) ?: break
                                 context.loadFloat(target, resolveFloat(arg))
                             }
-                            walk(body.first, body.last + 1)
+                            walk(operations, body.first, body.last + 1)
                             executing.remove(op.id)
                         }
                     }
@@ -1221,16 +1235,69 @@ object RemoteComposeParser {
                         }
                     }
 
+                    is Op.PatternDefine -> i = scopeEnds[i] ?: to
+
+                    is Op.PatternCall -> {
+                        // PatternInflation.materialize(): bind the arguments to the pattern's
+                        // parameters, collect the blocks this call supplies, and walk the body.
+                        val end = scopeEnds[i] ?: to
+                        val pattern = patterns[op.id]
+                        if (pattern != null && expansionDepth < MAX_EXPANSION_DEPTH) {
+                            val outerBindings = HashMap(itemBindings)
+                            for ((k, paramId) in pattern.paramIds.withIndex()) {
+                                val argument = op.argIds.getOrNull(k) ?: break
+                                // The argument is named in the caller's terms, which inside
+                                // another pattern may itself be a binding.
+                                val bound = itemId(argument)
+                                context.aliasId(paramId, bound)
+                                itemBindings[paramId] = bound
+                            }
+                            activeCalls.addLast(ActiveCall(collectBlocks(ops, i + 1, end, scopeEnds), outerBindings))
+                            expansionDepth++
+                            walk(pattern.body, 0, pattern.body.size)
+                            expansionDepth--
+                            activeCalls.removeLast()
+                            itemBindings.clear()
+                            itemBindings.putAll(outerBindings)
+                        }
+                        i = end // the call's own CONTAINER_END
+                    }
+
+                    is Op.PatternArgument -> {
+                        // The block the call supplied for this slot, or nothing. A block was
+                        // written where the call is, so it is walked as the caller: with the
+                        // caller's bindings, and with the caller's own slots to fill rather than
+                        // this pattern's, which is what makes a pattern that passes a block on
+                        // to another one work.
+                        val call = activeCalls.lastOrNull()
+                        val block = call?.blocks?.get(op.paramIndex)
+                        if (call != null && block != null) {
+                            val insideBindings = HashMap(itemBindings)
+                            itemBindings.clear()
+                            itemBindings.putAll(call.callerBindings)
+                            activeCalls.removeLast()
+                            expansionDepth--
+                            walk(block.first, block.second, block.third)
+                            expansionDepth++
+                            activeCalls.addLast(call)
+                            itemBindings.clear()
+                            itemBindings.putAll(insideBindings)
+                        }
+                    }
+
+                    // A block is walked where the pattern's body asks for it, not where it sits.
+                    is Op.PatternBlock -> i = scopeEnds[i] ?: to
+
                     is Op.PatternForEach -> {
                         // PatternForEach.materialize(): once per entry of the list, with the
                         // local item standing for that entry.
-                        val end = scopeEnds[i] ?: operations.size
+                        val end = scopeEnds[i] ?: to
                         val entries = idListPool[op.collectionId]
                         if (entries != null) {
                             for (entryId in entries.take(MAX_LOOP_ITERATIONS)) {
                                 context.aliasId(op.localItemId, entryId)
                                 itemBindings[op.localItemId] = entryId
-                                walk(i + 1, end)
+                                walk(ops, i + 1, end)
                             }
                             itemBindings.remove(op.localItemId)
                         }
@@ -1239,7 +1306,7 @@ object RemoteComposeParser {
 
                     is Op.LoopStart -> {
                         // LoopOperation: re-apply the body once per index with the loop variable set.
-                        val end = scopeEnds[i] ?: operations.size
+                        val end = scopeEnds[i] ?: to
                         val from = resolveFloat(op.from)
                         val step = resolveFloat(op.step)
                         val until = resolveFloat(op.until)
@@ -1248,7 +1315,7 @@ object RemoteComposeParser {
                             var iterations = 0
                             while (value < until && iterations < MAX_LOOP_ITERATIONS) {
                                 context.loadFloat(op.indexVariableId, value)
-                                walk(i + 1, end)
+                                walk(ops, i + 1, end)
                                 value += step
                                 iterations++
                             }
@@ -1331,10 +1398,21 @@ object RemoteComposeParser {
                         Modifier.GraphicsLayer(op.attributes.associate { it.tag to it.rawValue }),
                     )
                 }
+                // Inside a pattern, what the body just declared belongs to this expansion alone:
+                // it keeps the value under an id of its own, so that an id kept for later — a
+                // text component resolves its string long after the call has returned — reads
+                // this copy rather than whichever call ran last.
+                if (expansionDepth > 0) {
+                    declaredIdOf(op)?.let { declared ->
+                        val fresh = context.nextGeneratedId()
+                        context.aliasId(fresh, declared)
+                        itemBindings[declared] = fresh
+                    }
+                }
                 i++
             }
         }
-        walk(0, operations.size)
+        walk(operations, 0, operations.size)
         opcodes += tree.flush(paint)
         hitRegions = tree.hitRegions
         opcodes += trailing
@@ -1343,6 +1421,72 @@ object RemoteComposeParser {
     }
 
     private const val DEFAULT_LAYOUT_TEXT_SIZE = 16f
+    /**
+     * The id an operation defines, for the operations that define one.
+     *
+     * `RemapContext.declareId` is the library's version of this: inside a pattern it gives every
+     * declaration a fresh id, so that two calls of the same pattern do not write to one slot.
+     * Component ids are left out on purpose — this renderer keys nothing on them, so renaming
+     * them would change nothing — as is anything a pattern body cannot declare.
+     */
+    private fun declaredIdOf(op: Op): Int? = when (op) {
+        is Op.TextData -> op.id
+        is Op.FloatConstant -> op.id
+        is Op.ColorConstant -> op.colorId
+        is Op.IdList -> op.id
+        is Op.FloatListData -> op.id
+        is Op.DynamicFloatList -> op.id
+        is Op.DataMapIds -> op.mapId
+        is Op.PathCreate -> op.pathId
+        is Op.TextSubtext -> op.textId
+        is Op.TextTransform -> op.textId
+        is Op.TextLength -> op.lengthId
+        is Op.TextMeasure -> op.id
+        is Op.TextLookup -> op.textId
+        is Op.TextLookupInt -> op.textId
+        is Op.TextMerge -> op.textId
+        is Op.TextFromFloat -> op.textId
+        is Op.ColorExpression -> op.id
+        is Op.IntegerExpression -> op.id
+        is Op.FloatExpression -> op.id
+        is Op.ShaderData -> op.id
+        else -> null
+    }
+
+    /** A `PatternCall` being expanded: the blocks it passed, and the scope it was written in. */
+    private class ActiveCall(
+        val blocks: Map<Int, Triple<List<Op>, Int, Int>>,
+        val callerBindings: Map<Int, Int>,
+    )
+
+    /** `ExpansionContext.MAX_EXPANSION_DEPTH`: how deep patterns may call one another. */
+    private const val MAX_EXPANSION_DEPTH = 64
+
+    /**
+     * `ExpansionContext.recordBlocks`: the blocks a call supplies, by the slot each fills. A
+     * block is kept as the range it occupies rather than copied out, since it is walked in place.
+     */
+    private fun collectBlocks(
+        ops: List<Op>,
+        from: Int,
+        to: Int,
+        scopeEnds: Map<Int, Int>,
+    ): Map<Int, Triple<List<Op>, Int, Int>> {
+        val blocks = HashMap<Int, Triple<List<Op>, Int, Int>>()
+        var i = from
+        while (i < to) {
+            val op = ops[i]
+            if (op is Op.PatternBlock) {
+                val end = scopeEnds[i] ?: to
+                blocks[op.paramIndex] = Triple(ops, i + 1, end)
+                i = end + 1
+            } else {
+                i++
+            }
+        }
+        return blocks
+    }
+
     /** `DataDynamicListFloat`'s own cap on how long a list it will allocate. */
     private const val MAX_LIST_LENGTH = 2000f
 
@@ -1363,7 +1507,8 @@ object RemoteComposeParser {
                 is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations, is Op.LoopStart, is Op.ConditionalOperations,
                 is Op.ModifierClick, is Op.ModifierMultiClick, is Op.ModifierTouchDown, is Op.ModifierTouchUp,
                 is Op.ModifierTouchCancel, is Op.FloatFunctionDefine, is Op.ParticlesLoop,
-                is Op.ParticlesCompare, is Op.PatternForEach -> open.addLast(i)
+                is Op.ParticlesCompare, is Op.PatternForEach, is Op.PatternDefine, is Op.PatternCall,
+                is Op.PatternBlock -> open.addLast(i)
                 is Op.ContainerEnd -> open.removeLastOrNull()?.let { ends[it] = i }
                 else -> Unit
             }

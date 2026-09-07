@@ -136,5 +136,9 @@ internal object Operations {
     const val LAYOUT_FLOW = 240
     const val SKIP = 241
     const val MACRO_FOR_EACH = 244
+    const val MACRO_DEFINE = 246
+    const val MACRO_CALL = 247
+    const val MACRO_ARGUMENT = 248
+    const val MACRO_BLOCK = 249
     const val MODIFIER_DIMENSION_CONSTRAINTS = 243
 }

@@ -283,6 +283,35 @@ sealed interface Operation {
     data class UpdateDynamicFloatList(val arrayId: Int, val index: Float, val value: Float) : Operation
 
     /**
+     * `PatternDefine`: a named block of operations with parameters, the format's component.
+     *
+     * [paramIds] are the ids a call binds its arguments to, so the [body] is written in terms of
+     * them. Where the body should hold something the caller supplies instead of something it
+     * draws itself, it carries a [PatternArgument]. Unlike every other container, the body is a
+     * length-prefixed blob rather than operations in the stream, so it is decoded on its own; a
+     * `ContainerEnd` follows the blob.
+     */
+    data class PatternDefine(val id: Int, val paramIds: List<Int>, val body: List<Operation>) : Operation
+
+    /**
+     * `PatternInflation`: runs the pattern [id] with [argIds] bound to its parameters. The block
+     * arguments it supplies are the [PatternBlock]s between it and its `ContainerEnd`.
+     */
+    data class PatternCall(val id: Int, val argIds: List<Int>) : Operation
+
+    /**
+     * `PatternArgument`: inside a pattern's body, where the caller's block [paramIndex] goes.
+     * Nothing is drawn if the call supplied no such block.
+     */
+    data class PatternArgument(val paramIndex: Int) : Operation
+
+    /**
+     * `PatternBlock`: inside a call, the operations to put where the pattern's body asks for
+     * block [paramIndex]. Closed by a `ContainerEnd`.
+     */
+    data class PatternBlock(val paramIndex: Int) : Operation
+
+    /**
      * `PatternForEach`: runs the block that follows once per entry of the id list [collectionId],
      * with [localItemId] standing for that entry. Closed by a `ContainerEnd`.
      *

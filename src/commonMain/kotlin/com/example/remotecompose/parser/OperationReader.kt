@@ -347,6 +347,23 @@ internal object OperationReader {
         Operations.UPDATE_DYNAMIC_FLOAT_LIST ->
             Op.UpdateDynamicFloatList(r.readS32(), r.readFloat32(), r.readFloat32())
         Operations.MACRO_FOR_EACH -> Op.PatternForEach(r.readS32(), r.readS32())
+        Operations.MACRO_DEFINE -> {
+            val id = r.readS32()
+            val paramCount = r.readS32()
+            if (paramCount > r.remaining / 4) throw RemoteComposeParseException("Pattern $id declares $paramCount parameters")
+            val paramIds = List(paramCount) { r.readS32() }
+            val bodyLength = r.readS32()
+            if (bodyLength < 0 || bodyLength > r.remaining) throw RemoteComposeParseException("Pattern $id has a $bodyLength byte body")
+            Op.PatternDefine(id, paramIds, readAll(r.readBytes(bodyLength)))
+        }
+        Operations.MACRO_CALL -> {
+            val id = r.readS32()
+            val argCount = r.readS32()
+            if (argCount > r.remaining / 4) throw RemoteComposeParseException("Pattern call $id passes $argCount arguments")
+            Op.PatternCall(id, List(argCount) { r.readS32() })
+        }
+        Operations.MACRO_ARGUMENT -> Op.PatternArgument(r.readS32())
+        Operations.MACRO_BLOCK -> Op.PatternBlock(r.readS32())
         Operations.LOOP_START -> Op.LoopStart(r.readS32(), r.readFloat32(), r.readFloat32(), r.readFloat32())
         Operations.LAYOUT_STATE -> Op.LayoutState(r.readS32(), r.readS32(), r.readS32(), r.readS32(), r.readS32())
         Operations.LAYOUT_CONTENT -> Op.LayoutContent(r.readS32())

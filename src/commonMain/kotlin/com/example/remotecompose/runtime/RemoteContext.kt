@@ -89,6 +89,20 @@ class RemoteContext : FloatCollections {
         needsRepaint = false
     }
 
+    private var generatedIds = FIRST_GENERATED_ID
+
+    /**
+     * An id no document uses, for a value a pattern's body declares: each expansion of a body
+     * needs its own, or the copies share one slot and the last one written is the one every
+     * copy shows. `RemapContext.allocateNewId` does the same from the document's own counter.
+     */
+    fun nextGeneratedId(): Int = generatedIds++
+
+    /** Starts the generated ids again, so that a frame reuses the previous frame's. */
+    fun resetGeneratedIds() {
+        generatedIds = FIRST_GENERATED_ID
+    }
+
     /**
      * Makes [alias] read as whatever [source] holds, across every pool.
      *
@@ -281,6 +295,9 @@ class RemoteContext : FloatCollections {
     }
 
     companion object {
+        /** Above anything a writer allocates, so a generated id cannot land on a real one. */
+        private const val FIRST_GENERATED_ID = 1 shl 24
+
         const val ID_CONTINUOUS_SEC = 1
         const val ID_TIME_IN_SEC = 2
         const val ID_TIME_IN_MIN = 3

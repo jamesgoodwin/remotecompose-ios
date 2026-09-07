@@ -84,7 +84,86 @@ fun main(args: Array<String>) {
         buildListSample()
         return
     }
+    if (args.getOrNull(0) == "pattern") {
+        buildPatternSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * A pattern: the format's component. `MACRO_DEFINE` writes a card once — a bordered box with a
+ * title and a slot — and `MACRO_CALL` uses it three times, each with its own title through a
+ * value parameter and its own contents through a `MACRO_BLOCK` filling the slot the body marked
+ * with `MACRO_ARGUMENT`.
+ */
+private fun buildPatternSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(240, 344, "pattern", platform)
+
+    // The card: one parameter for its title, one slot for whatever the caller puts inside.
+    val title = writer.definePatternParameter("title")
+    val card = writer.definePattern("card", intArrayOf(title))
+    // A fixed height rather than one that wraps: a card that grows with its text is a
+    // different height on every platform, which moves everything under it and leaves the page
+    // impossible to compare pixel for pixel. The padding adds to it, so each card is 100 tall.
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth().height(80f)
+            .clip(RoundedRectShape(8f, 8f, 8f, 8f))
+            .background(0xFFF3F4F8.toInt())
+            .border(1f, 8f, 0xFFC5CAE9.toInt(), 2)
+            .padding(10f)
+            .spacedBy(6f),
+        1, 4,
+    )
+    writer.startTextComponent(RecordingModifier(), title, 0xFF283593.toInt(), 14f, 0, 700f, "", 0.toShort(), 1.toShort(), 1, 1)
+    writer.endTextComponent()
+    // A value the body derives from its parameter, rather than one the caller passes ready-made:
+    // each call has to end up with its own, or every card shows the last one's.
+    val caption = writer.textMerge(title, writer.addText(" \u00b7 tap for detail"))
+    writer.startTextComponent(RecordingModifier(), caption, 0xFF9FA8DA.toInt(), 10f, 0, 400f, "", 0.toShort(), 1.toShort(), 1, 1)
+    writer.endTextComponent()
+    writer.addPatternArgument(0) // the caller's contents go here
+    writer.endColumn()
+    writer.endPatternDefine()
+
+    fun card(name: String, block: () -> Unit) {
+        writer.patternInflation(card, intArrayOf(writer.textCreateId(name)))
+        writer.addPatternBlock(0)
+        block()
+        writer.endPatternBlock()
+        writer.endPatternInflation()
+    }
+
+    fun label(text: String, color: Int) {
+        val id = writer.addText(text)
+        writer.startTextComponent(RecordingModifier(), id, color, 12f, 0, 400f, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    writer.startColumn(RecordingModifier().fillMaxSize().padding(12f).spacedBy(10f), 1, 4)
+
+    card("Today") { label("3 orders, 2 collected", 0xFF546E7A.toInt()) }
+    card("Stock") {
+        label("Beans: 4 kg", 0xFF546E7A.toInt())
+        label("Oat milk: 9 l", 0xFF546E7A.toInt())
+    }
+    // The same card again with a drawing inside instead of text, to show the slot takes whatever
+    // the caller writes rather than a fixed shape.
+    card("Level") {
+        writer.startBox(RecordingModifier().fillMaxWidth().height(10f), 1, 2)
+        writer.getRcPaint().setColor(0xFFE0E0E0.toInt()).commit()
+        writer.drawRoundRect(0f, 0f, 196f, 10f, 5f, 5f)
+        writer.getRcPaint().setColor(0xFF00897B.toInt()).commit()
+        writer.drawRoundRect(0f, 0f, 130f, 10f, 5f, 5f)
+        writer.endBox()
+    }
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("pattern.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to pattern.rc")
 }
 
 /**
