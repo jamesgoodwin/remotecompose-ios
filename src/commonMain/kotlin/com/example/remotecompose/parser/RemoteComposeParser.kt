@@ -26,6 +26,7 @@ import com.example.remotecompose.runtime.FloatExpressionEvaluator
 import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.ParticleSystem
 import com.example.remotecompose.runtime.RemoteContext
+import com.example.remotecompose.runtime.TimeSnapshot
 import com.example.remotecompose.text.BitmapFont
 import com.example.remotecompose.text.EstimatedTextMetrics
 import com.example.remotecompose.text.FloatFormat
@@ -712,6 +713,44 @@ object RemoteComposeParser {
                             4 -> -measured.ascent
                             5 -> measured.descent
                             6 -> text.length.toFloat()
+                            else -> Float.NaN
+                        }
+                        if (!value.isNaN()) floatPool[op.id] = value
+                    }
+
+                    is Op.TimeAttribute -> {
+                        // TimeAttribute.paint(): the moment is the long at timeId when the
+                        // document names one, and now otherwise. Types 0..2 measure from now and
+                        // 3..5 from the long at args[0]; the rest read a part off the moment.
+                        //
+                        // The real operation calls `wakeIn` so the host redraws when the value
+                        // would next change. This renderer redraws whenever the document asks,
+                        // so asking is the whole of it.
+                        val now = context.frameTimeMillis
+                        val moment = context.longs[op.timeId] ?: now
+                        val snapshot = TimeSnapshot(moment)
+                        val type = op.type and 0xFF
+                        val from = when (type) {
+                            3, 4, 5 -> context.longs[op.args.firstOrNull() ?: -1] ?: now
+                            else -> now
+                        }
+                        val delta = moment - from
+                        val value = when (type) {
+                            0, 3 -> { context.needsRepaint = true; delta * 0.001f }
+                            1, 4 -> { context.needsRepaint = true; (delta * 0.001 / 60.0).toFloat() }
+                            2, 5 -> (delta * 0.001 / 3600.0).toFloat()
+                            6 -> snapshot.second.toFloat()
+                            7 -> snapshot.minute.toFloat()
+                            8 -> snapshot.hour.toFloat()
+                            9 -> snapshot.dayOfMonth.toFloat()
+                            10 -> (snapshot.month - 1).toFloat()
+                            11 -> (snapshot.dayOfWeek - 1).toFloat()
+                            12 -> snapshot.year.toFloat()
+                            14 -> {
+                                context.needsRepaint = true
+                                (snapshot.millis - context.documentLoadTime) * 0.001f
+                            }
+                            15 -> snapshot.dayOfYear.toFloat()
                             else -> Float.NaN
                         }
                         if (!value.isNaN()) floatPool[op.id] = value

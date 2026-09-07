@@ -606,6 +606,14 @@ sealed interface Operation {
      * host action named by the text at [textId], carrying the value at [valueId] read as [type]:
      * `FLOAT_TYPE` 0, `INT_TYPE` 1, `STRING_TYPE` 2, `FLOAT_ARRAY_TYPE` 3, `NONE_TYPE` -1.
      */
+    /**
+     * `TimeAttribute` (opcode `ATTRIBUTE_TIME`): `[id][timeId][short type][short argCount]` then
+     * [args] ids. Stores one part of a moment as the float [id]. The moment is the long at
+     * [timeId] when there is one and now otherwise; types 3..5 measure from the long at `args[0]`
+     * instead of from now.
+     */
+    data class TimeAttribute(val id: Int, val timeId: Int, val type: Int, val args: List<Int>) : Operation
+
     data class HostNamedAction(val textId: Int, val type: Int, val valueId: Int) : Operation
 
     /**

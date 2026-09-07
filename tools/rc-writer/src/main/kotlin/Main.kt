@@ -118,6 +118,10 @@ fun main(args: Array<String>) {
         buildHostActionsSample()
         return
     }
+    if (args.getOrNull(0) == "timeattr") {
+        buildTimeAttributeSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2704,4 +2708,45 @@ private fun buildHostActionsSample() {
     val bytes = writer.encodeToByteArray()
     File("hostactions.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to hostactions.rc")
+}
+
+/**
+ * `ATTRIBUTE_TIME`: parts read off a fixed moment. The moment is a long the document carries, so
+ * every value here is the same on every run — a document reading "now" could not be tested.
+ *
+ * The moment is 2024-03-07T14:30:45Z, a Thursday, which is day 67 of a leap year.
+ */
+private fun buildTimeAttributeSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 240, "timeattr", platform)
+
+    val moment = writer.addLong(1_709_821_845_000L)
+    // An earlier moment to measure from: one hour before.
+    val earlier = writer.addLong(1_709_818_245_000L)
+
+    // Each part drives a bar, so the number it read is what is drawn.
+    val parts = listOf(
+        6 to 1f,    // TIME_IN_SEC     45
+        7 to 1f,    // TIME_IN_MIN     30
+        8 to 1f,    // TIME_IN_HR      14
+        9 to 1f,    // TIME_DAY_OF_MONTH 7
+        10 to 1f,   // TIME_MONTH_VALUE  2 (March, less one)
+        11 to 1f,   // TIME_DAY_OF_WEEK  3 (Thursday, less one)
+        15 to 1f,   // TIME_DAY_OF_YEAR 67
+    )
+    for ((index, part) in parts.withIndex()) {
+        val value = writer.timeAttribute(moment, part.first.toShort())
+        val top = 8f + index * 20f
+        writer.getRcPaint().setColor(0xFF1E88E5.toInt()).commit()
+        writer.drawRect(10f, top, writer.floatExpression(value, 10f, Rc.FloatExpression.ADD), top + 14f)
+    }
+
+    // And one measured from the argument rather than from now: an hour, in minutes.
+    val sinceEarlier = writer.timeAttribute(moment, 4.toShort(), earlier)
+    writer.getRcPaint().setColor(0xFFE53935.toInt()).commit()
+    writer.drawRect(10f, 150f, writer.floatExpression(sinceEarlier, 10f, Rc.FloatExpression.ADD), 164f)
+
+    val bytes = writer.encodeToByteArray()
+    File("timeattr.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to timeattr.rc")
 }

@@ -120,6 +120,9 @@ class RemoteContext : FloatCollections {
         private set
     private var loadTimeMillis: Long = -1L
 
+    /** `getDocLoadTime()`: when this document was first evaluated, which `TIME_FROM_LOAD_SEC` counts from. */
+    val documentLoadTime: Long get() = if (loadTimeMillis < 0L) frameTimeMillis else loadTimeMillis
+
     /** Seconds since the document was first drawn (`ID_CONTINUOUS_SEC`, `ID_ANIMATION_TIME`). */
     var animationTime: Float = 0f
         private set

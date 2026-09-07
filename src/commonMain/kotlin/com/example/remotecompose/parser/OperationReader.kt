@@ -403,6 +403,13 @@ internal object OperationReader {
             val args = List(r.readS16()) { r.readS32() }
             Op.ImageAttribute(id, imageId, type, args)
         }
+        Operations.ATTRIBUTE_TIME -> {
+            val id = r.readS32()
+            val timeId = r.readS32()
+            val type = r.readS16()
+            val args = List(r.readS16()) { r.readS32() }
+            Op.TimeAttribute(id, timeId, type, args)
+        }
         Operations.ATTRIBUTE_COLOR -> Op.ColorAttribute(r.readS32(), r.readS32(), r.readS16())
         Operations.COLOR_THEME -> Op.ColorTheme(
             id = r.readS32(), colorGroupId = r.readS32(),
