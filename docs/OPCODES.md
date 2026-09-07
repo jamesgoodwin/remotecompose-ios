@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 146 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 148 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -35,6 +35,8 @@ because the format has no generic length prefix to skip by.
 | Id | Opcode | Status | Notes |
 | --: | --- | --- | --- |
 | 170 | `ATTRIBUTE_TEXT` | partial | a measurement of the text, or its length; the monospace and max-height measuring flags are not applied |
+| 239 | `CORE_TEXT` | partial | drawn with its text, colour, size, weight and alignment, taking from a `TEXT_STYLE` what it did not state; line breaking, overflow and ellipsis, justification, hyphenation, max lines, letter spacing and line height are not applied |
+| 242 | `TEXT_STYLE` | supported | a bundle of text parameters under an id, for a `CORE_TEXT` to point at |
 | 184 | `DRAW_BITMAP_TEXT_ANCHORED` | supported | a bitmap-font run placed by pan about a point, as `DRAW_TEXT_ANCHOR` places ordinary text |
 | 172 | `ATTRIBUTE_TIME` | partial | the clock and calendar parts of a moment, and the gap between two; in UTC, since the real clock's zone is not in the jars |
 | 171 | `ATTRIBUTE_IMAGE` | supported | the width or height `DATA_BITMAP` declared |
@@ -254,8 +256,6 @@ implements it.
 | 206 | `SOUND_EXPRESSION` |
 | 236 | `RUN_ACTION` |
 | 238 | `LAYOUT_COMPUTE` |
-| 239 | `CORE_TEXT` |
-| 242 | `TEXT_STYLE` |
 | 245 | `INCLUDE_REFERENCED_OPERATIONS` |
 | 250 | `ACCESSIBILITY_SEMANTICS` |
 | 251 | `EXTENSION_RANGE_RESERVED_4` |

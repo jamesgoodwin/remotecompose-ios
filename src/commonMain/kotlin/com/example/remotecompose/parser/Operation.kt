@@ -627,6 +627,61 @@ sealed interface Operation {
      * string, and the concrete `loadFont` that would register these bytes under such a name is
      * not in the extracted jars. See `docs/OPCODES.md`.
      */
+    /**
+     * The parameters of a `TEXT_STYLE` or `CORE_TEXT`, by their `TextStyle.P_*` key.
+     *
+     * Both records are a run of `CommandParameters` entries: a key byte, then a value whose type
+     * comes from `TextStyle.PARAMETERS` rather than the wire — `CoreText` reads against that same
+     * table. Values are `Int`, `Float`, `Boolean`, `IntArray`, `FloatArray` or `String`.
+     */
+    data class StyleParameters(val values: Map<Int, Any>) {
+        fun int(key: Int): Int? = values[key] as? Int
+        fun float(key: Int): Float? = values[key] as? Float
+        fun boolean(key: Int): Boolean? = values[key] as? Boolean
+
+        companion object {
+            const val P_ID = 1
+            const val P_ANIMATION_ID = 2
+            const val P_COLOR = 3
+            const val P_COLOR_ID = 4
+            const val P_FONT_SIZE = 5
+            const val P_FONT_STYLE = 6
+            const val P_FONT_WEIGHT = 7
+            const val P_FONT_FAMILY = 8
+            const val P_TEXT_ALIGN = 9
+            const val P_OVERFLOW = 10
+            const val P_MAX_LINES = 11
+            const val P_LETTER_SPACING = 12
+            const val P_LINE_HEIGHT_ADD = 13
+            const val P_LINE_HEIGHT_MULTIPLIER = 14
+            const val P_BREAK_STRATEGY = 15
+            const val P_HYPHENATION_FREQUENCY = 16
+            const val P_JUSTIFICATION_MODE = 17
+            const val P_UNDERLINE = 18
+            const val P_STRIKETHROUGH = 19
+            const val P_FONT_AXIS = 20
+            const val P_FONT_AXIS_VALUES = 21
+            const val P_AUTOSIZE = 22
+            const val P_FLAGS = 23
+            const val P_PARENT_ID = 24
+            const val P_MIN_FONT_SIZE = 25
+            const val P_MAX_FONT_SIZE = 26
+        }
+    }
+
+    /** `TextStyle` (opcode `TEXT_STYLE`): a named bundle of text parameters, `[short count]` then them. */
+    data class TextStyleData(val parameters: StyleParameters) : Operation
+
+    /**
+     * `CoreText` (opcode `CORE_TEXT`): the richer text component, `[textId][short count]` then
+     * the parameters. `RemoteComposeBuffer.addTextComponentStart` writes this one or `TextLayout`
+     * depending on which overload the caller used.
+     *
+     * The component's own id is the `P_ID` parameter rather than the leading int, which is the
+     * text — checked against the bytes the writer produces.
+     */
+    data class CoreText(val textId: Int, val parameters: StyleParameters) : Operation
+
     data class FontData(val fontId: Int, val type: Int, val bytes: ByteArray) : Operation {
         override fun toString(): String = "FontData(fontId=$fontId, type=$type, bytes=${bytes.size})"
     }

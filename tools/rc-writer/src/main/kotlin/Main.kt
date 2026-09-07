@@ -122,6 +122,10 @@ fun main(args: Array<String>) {
         buildTimeAttributeSample()
         return
     }
+    if (args.getOrNull(0) == "coretext") {
+        buildCoreTextSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2760,4 +2764,39 @@ private fun buildTimeAttributeSample() {
     val bytes = writer.encodeToByteArray()
     File("timeattr.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to timeattr.rc")
+}
+
+/**
+ * `CORE_TEXT` and `TEXT_STYLE`: the richer text component. `addTextComponentStart` writes this
+ * one rather than `TextLayout` when the caller uses the overload that carries a style.
+ */
+private fun buildCoreTextSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 200, "coretext", platform)
+
+    val heading = writer.addText("Core text")
+    val body = writer.addText("styled through TEXT_STYLE")
+
+    // A named style: 22pt, bold, centred.
+    // (id, animationId, color, colorId?, fontSize, fontStyle, fontWeight, fontFamily, textAlign,
+    //  overflow, maxLines, letterSpacing, lineHeightAdd, lineHeightMultiplier, breakStrategy,
+    //  hyphenation, justification, underline, strikethrough, fontAxis, fontAxisValues, autosize,
+    //  parentId) — 22pt, bold, centred, and nothing else stated.
+    // Positions checked against the bytes it writes: the 3rd argument lands on P_FONT_SIZE, the
+    // 9th on P_TEXT_ALIGN, and the 5th on P_MAX_FONT_SIZE rather than the weight.
+    val style = writer.addTextStyle(
+        null, null, 22f, null, null, null, 700f, null, 2, null,
+        null, null, null, null, null, null, null, null, null, null, null, null, -1,
+    )
+
+    writer.startColumn(RecordingModifier().fillMaxSize().background(0xFFFFFFFF.toInt()).padding(16f).spacedBy(8f), 1, 4)
+    writer.startTextComponent(RecordingModifier(), heading, 0xFF1B1B1F.toInt(), style)
+    writer.endTextComponent()
+    writer.startTextComponent(RecordingModifier(), body, 0xFF5F5A66.toInt(), -1)
+    writer.endTextComponent()
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("coretext.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to coretext.rc")
 }

@@ -303,6 +303,11 @@ internal object OperationReader {
                 x = r.readFloat32(), y = r.readFloat32(), glyphSpacing = glyphSpacing,
             )
         }
+        Operations.TEXT_STYLE -> Op.TextStyleData(readStyleParameters(r, r.readU16()))
+        Operations.CORE_TEXT -> {
+            val textId = r.readS32()
+            Op.CoreText(textId, readStyleParameters(r, r.readU16()))
+        }
         Operations.DATA_FONT -> {
             val fontId = r.readS32()
             val type = r.readS32()
@@ -527,6 +532,56 @@ internal object OperationReader {
             "Opcode $opId at byte ${r.position - 1} is not handled by this reader",
         )
     }
+
+
+    /**
+     * `CommandParameters.read`, [count] times: a key byte, then a value whose type is looked up
+     * in `TextStyle.PARAMETERS` rather than being on the wire. `CoreText` reads against that same
+     * table, which is why one routine serves both.
+     */
+    private fun readStyleParameters(r: BufferReader, count: Int): Op.StyleParameters {
+        val values = mutableMapOf<Int, Any>()
+        repeat(count) {
+            val key = r.readS8() and 0xFF
+            val value: Any? = when (STYLE_PARAMETER_TYPES[key]) {
+                P_INT -> r.readS32()
+                P_FLOAT -> r.readFloat32()
+                P_SHORT -> r.readS16()
+                P_BYTE -> r.readS8()
+                P_BOOLEAN -> r.readS8() != 0
+                PA_INT -> IntArray(r.readU16()) { r.readS32() }
+                PA_FLOAT -> FloatArray(r.readU16()) { r.readFloat32() }
+                PA_STRING -> r.readUtf8(r.readS32())
+                else -> throw RemoteComposeParseException(
+                    "Style parameter key $key at byte ${r.position - 1} is not one this table knows",
+                )
+            }
+            if (value != null) values[key] = value
+        }
+        return Op.StyleParameters(values)
+    }
+
+    private const val P_INT = 1
+    private const val P_FLOAT = 2
+    private const val P_SHORT = 3
+    private const val P_BYTE = 4
+    private const val P_BOOLEAN = 5
+    private const val PA_INT = 6
+    private const val PA_FLOAT = 7
+    private const val PA_STRING = 8
+
+    /**
+     * `TextStyle.PARAMETERS` by key: which of the eight kinds each parameter's value is written
+     * as. The declared default's own type is what picks it, except the two arrays, which name
+     * their kind outright.
+     */
+    private val STYLE_PARAMETER_TYPES = mapOf(
+        1 to P_INT, 2 to P_INT, 3 to P_INT, 4 to P_INT, 5 to P_FLOAT, 6 to P_INT, 7 to P_FLOAT,
+        8 to P_INT, 9 to P_INT, 10 to P_INT, 11 to P_INT, 12 to P_FLOAT, 13 to P_FLOAT,
+        14 to P_FLOAT, 15 to P_INT, 16 to P_INT, 17 to P_INT, 18 to P_BOOLEAN, 19 to P_BOOLEAN,
+        20 to PA_INT, 21 to PA_FLOAT, 22 to P_BOOLEAN, 23 to P_INT, 24 to P_INT, 25 to P_FLOAT,
+        26 to P_FLOAT,
+    )
 
     /** One length-prefixed float expression, as the particle operations write theirs. */
     private fun readEquation(r: BufferReader, maxLength: Int): FloatArray {

@@ -61,6 +61,8 @@ internal object Operations {
     const val ATTRIBUTE_TIME = 172
     const val DRAW_BITMAP_TEXT_ANCHORED = 184
     const val DATA_FONT = 189
+    const val CORE_TEXT = 239
+    const val TEXT_STYLE = 242
     const val HOST_NAMED_ACTION = 210
     const val HOST_METADATA_ACTION = 216
     const val COLOR_CONSTANT = 138
