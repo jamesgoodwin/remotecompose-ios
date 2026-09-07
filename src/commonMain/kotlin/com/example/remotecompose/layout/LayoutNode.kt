@@ -52,6 +52,12 @@ sealed class Modifier {
     class Background(val color: Color, val shapeType: Int) : Decorator()
     class Border(val color: Color, val borderWidth: Float, val roundedCorner: Float, val shapeType: Int) : Decorator()
     class ClipRect : Decorator()
+
+    /**
+     * `RippleModifierOperation`: a circle spreading from where the component was pressed. It is
+     * a decorator, so it paints where it sits among the modifiers and knows the component's size.
+     */
+    class Ripple : Decorator()
     class RoundedClipRect(val topStart: Float, val topEnd: Float, val bottomStart: Float, val bottomEnd: Float) : Decorator()
     class Offset(val x: Float, val y: Float) : Modifier()
     class ZIndex(val zIndex: Float) : Modifier()

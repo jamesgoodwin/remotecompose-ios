@@ -189,7 +189,7 @@ because the format has no generic length prefix to skip by.
 | 224 | `MODIFIER_GRAPHICS_LAYER` | partial | alpha, rotation, scale and translation; the rest of the attributes are ignored |
 | 226 | `MODIFIER_SCROLL` | partial | the window, the offset and dragging; velocity easing and notch stops are not applied |
 | 228 | `MODIFIER_MARQUEE` | decoded only | no scrolling text |
-| 229 | `MODIFIER_RIPPLE` | decoded only | no press feedback |
+| 229 | `MODIFIER_RIPPLE` | supported | the library's own near-white circle, which shows on a coloured surface and barely on a white one |
 | 231 | `MODIFIER_WIDTH_IN` | supported |  |
 | 232 | `MODIFIER_HEIGHT_IN` | supported |  |
 | 235 | `MODIFIER_COLLAPSIBLE_PRIORITY` | supported |  |

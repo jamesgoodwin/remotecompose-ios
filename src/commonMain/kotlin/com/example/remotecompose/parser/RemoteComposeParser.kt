@@ -95,6 +95,10 @@ object RemoteComposeParser {
     internal var hitRegions: List<HitRegion> = emptyList()
         private set
 
+    /** Where the components that ripple when pressed ended up, from the same build. */
+    internal var rippleTargets: List<LayoutEngine.RippleTarget> = emptyList()
+        private set
+
     /**
      * Evaluates [operations] against [context] and flattens the result into draw opcodes; see the
      * class KDoc. Constants are applied only the first time (`context.inflated`), so a later
@@ -102,6 +106,7 @@ object RemoteComposeParser {
      */
     internal fun build(operations: List<Op>, context: RemoteContext, textMetrics: TextMetricsProvider): List<Opcode> {
         hitRegions = emptyList()
+        rippleTargets = emptyList()
         // Ids generated for a pattern's declarations start again each frame: the walk is the
         // same every time, so the same declaration keeps the same id rather than the document
         // growing a new one per frame.
@@ -290,8 +295,9 @@ object RemoteComposeParser {
 
                     is Op.Skip, is Op.Rem, is Op.RootContentDescription, is Op.DebugMessage,
                     is Op.HapticFeedback, is Op.RootContentBehavior,
-                    is Op.ModifierAlignBy, is Op.ModifierMarquee,
-                    is Op.ModifierRipple, is Op.ModifierDrawContent -> Unit
+                    is Op.ModifierAlignBy, is Op.ModifierMarquee, is Op.ModifierDrawContent -> Unit
+
+                    is Op.ModifierRipple -> tree.current?.modifiers?.add(Modifier.Ripple())
 
                     // Action-list entries: collected onto the enclosing component's trigger, and
                     // run on gesture rather than while evaluating (each operation's runAction).
@@ -1505,6 +1511,7 @@ object RemoteComposeParser {
         walk(operations, 0, operations.size)
         opcodes += tree.flush(paint)
         hitRegions = tree.hitRegions
+        rippleTargets = tree.rippleTargets
         opcodes += trailing
         context.inflated = true
         return opcodes

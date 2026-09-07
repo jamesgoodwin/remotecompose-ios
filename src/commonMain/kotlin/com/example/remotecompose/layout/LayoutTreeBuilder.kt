@@ -40,6 +40,10 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
     var hitRegions: List<HitRegion> = emptyList()
         private set
 
+    /** The components of that tree that ripple when pressed, in window coordinates. */
+    var rippleTargets: List<LayoutEngine.RippleTarget> = emptyList()
+        private set
+
     val isOpen: Boolean get() = stack.isNotEmpty()
 
     fun openNode(node: LayoutNode, paint: PaintState) {
@@ -117,6 +121,7 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
         animateMeasures(root)
         engine.paint(root, out)
         hitRegions = engine.collectHitRegions(root)
+        rippleTargets = engine.collectRippleTargets(root)
         return out
     }
 

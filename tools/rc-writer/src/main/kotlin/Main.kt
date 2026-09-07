@@ -43,6 +43,16 @@ class CircleBackgroundElement(
     }
 }
 
+/**
+ * `MODIFIER_RIPPLE` has no fluent wrapper on `RecordingModifier`, so this element calls the
+ * writer method from inside `.then(...)`. The bytes are the real writer's, as everywhere else.
+ */
+class RippleElement : RecordingModifier.Element {
+    override fun write(writer: RemoteComposeWriter) {
+        writer.addModifierRipple()
+    }
+}
+
 fun main(args: Array<String>) {
     if (args.getOrNull(0) == "showcase") {
         buildShowcase()
@@ -192,6 +202,8 @@ private fun buildCoffeeSample() {
                 .onClick(ValueFloatChange(expandedId, (index + 1).toFloat()))
                 .clip(RoundedRectShape(12f, 12f, 12f, 12f))
                 .backgroundId(card.toShort())
+                // After the background, so the ripple washes over it rather than under it.
+                .then(RippleElement())
                 .dynamicBorder(1f, 12f, outline.toShort(), 2)
                 .padding(12f),
             6, 2,
@@ -212,6 +224,7 @@ private fun buildCoffeeSample() {
     writer.startBox(
         RecordingModifier().fillMaxWidth().height(36f)
             .clip(RoundedRectShape(18f, 18f, 18f, 18f))
+            .then(RippleElement())
             .dynamicBorder(1f, 18f, outline.toShort(), 2)
             .onClick(HostAction(11)),
         1, 2,
@@ -450,6 +463,9 @@ private fun buildMaterialSample() {
     ) {
         var modifier = RecordingModifier().height(40f).clip(RoundedRectShape(20f, 20f, 20f, 20f))
         if (container != null) modifier = modifier.background(container)
+        // After the container so the press washes over it, and inside the clip so it keeps the
+        // button's shape.
+        modifier = modifier.then(RippleElement())
         if (borderColor != null) modifier = modifier.border(1f, 20f, borderColor, 2)
         modifier = modifier.padding(horizontalPadding, 0f, horizontalPadding, 0f).onClick(*actions)
         writer.startBox(modifier, 2, 2)

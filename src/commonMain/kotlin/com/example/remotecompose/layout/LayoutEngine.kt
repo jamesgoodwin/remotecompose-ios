@@ -5,6 +5,7 @@ import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PaintStyle
 import com.example.remotecompose.model.PaintStyleKind
 import com.example.remotecompose.model.PathCommand
+import com.example.remotecompose.runtime.CubicEasing
 import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.TextMetricsProvider
@@ -26,6 +27,10 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
     private class Size(var width: Float = 0f, var height: Float = 0f)
 
     private val unbounded = Float.MAX_VALUE
+
+    /** `mAnimateRippleDuration`, in the seconds this renderer counts animation time in. */
+    private val RIPPLE_SECONDS = 1f
+    private val RIPPLE_EASING = CubicEasing.preset(CubicEasing.CUBIC_STANDARD)
 
     // ---------------------------------------------------------------- measure
 
@@ -556,6 +561,7 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
                     }
                 }
                 is Modifier.Border -> paintBorder(m, out)
+                is Modifier.Ripple -> paintRipple(node, m, out)
                 is Modifier.ClipRect -> out += Opcode.ClipRect(0f, 0f, m.width, m.height)
                 is Modifier.RoundedClipRect -> out += Opcode.ClipPath(
                     roundedRectPath(0f, 0f, m.width, m.height, m.topStart, m.topEnd, m.bottomStart, m.bottomEnd),
@@ -617,6 +623,38 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
                 out += Opcode.DrawRoundRect(inset, inset, m.width - inset, m.height - inset, r, r, paint)
             }
         }
+    }
+
+    /**
+     * `RippleModifierOperation.paint`: a circle spreading from where the component was pressed,
+     * out to its longest side over a second, fading from a near-white to nothing over the first
+     * half of that. It is clipped to the component, so a press near a corner shows an arc.
+     */
+    private fun paintRipple(node: LayoutNode, m: Modifier.Ripple, out: MutableList<Opcode>) {
+        val ripple = context.ripples[node.componentId] ?: return
+        val elapsed = context.animationTime - ripple.startedAt
+        if (elapsed < 0f || elapsed > RIPPLE_SECONDS) {
+            context.ripples.remove(node.componentId)
+            return
+        }
+        context.needsRepaint = true
+        val progress = elapsed / RIPPLE_SECONDS
+        val spread = RIPPLE_EASING.get(progress)
+        // The fade runs at twice the speed, so it is gone by the time the circle is half way.
+        val fade = RIPPLE_EASING.get(min(1f, progress * 2f))
+        val colour = Color(
+            red = (250f + (200f - 250f) * fade) / 255f,
+            green = (250f + (200f - 250f) * fade) / 255f,
+            blue = (250f + (200f - 250f) * fade) / 255f,
+            alpha = (180f + (0f - 180f) * fade) / 255f,
+        )
+        out += Opcode.MatrixSave
+        out += Opcode.ClipRect(0f, 0f, m.width, m.height)
+        out += Opcode.DrawCircle(
+            ripple.x, ripple.y, max(m.width, m.height) * spread,
+            PaintStyle(colour, PaintStyleKind.FILL),
+        )
+        out += Opcode.MatrixRestore
     }
 
     /**
@@ -701,6 +739,29 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
             out += HitRegion(x, y, x + node.width, y + node.height, node.actions.mapValues { it.value.toList() })
         }
         for (child in node.children) collectHitRegions(child, x + node.paddingLeft, y + node.paddingTop, out)
+        return out
+    }
+
+    /** A component that ripples when pressed, and where it is in the window. */
+    class RippleTarget(val componentId: Int, val left: Float, val top: Float, val right: Float, val bottom: Float)
+
+    /**
+     * The components with a ripple modifier, in paint order, so that the last one containing a
+     * press is the one on top.
+     */
+    fun collectRippleTargets(
+        node: LayoutNode,
+        originX: Float = 0f,
+        originY: Float = 0f,
+        out: MutableList<RippleTarget> = mutableListOf(),
+    ): List<RippleTarget> {
+        if (node.isGone) return out
+        val x = originX + node.x
+        val y = originY + node.y
+        if (node.componentId != 0 && node.modifiers.any { it is Modifier.Ripple }) {
+            out += RippleTarget(node.componentId, x, y, x + node.width, y + node.height)
+        }
+        for (child in node.children) collectRippleTargets(child, x + node.paddingLeft, y + node.paddingTop, out)
         return out
     }
 

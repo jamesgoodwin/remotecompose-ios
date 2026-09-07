@@ -50,7 +50,11 @@ fun main(args: Array<String>) {
         val points = gesture.split('>')
         val (x, y) = points.first().split(':').map { it.trim().toFloat() }
         if (points.size == 1) {
+            // A press as well as the click, so that anything reacting to the press — a ripple —
+            // is under way in the frame that follows.
+            loaded.touchDown(x, y)
             println("Tap at $x, $y ${if (loaded.click(x, y)) "handled" else "ignored"}")
+            loaded.touchUp(x, y)
             // A frame at time zero, so that anything the tap set in motion starts there and the
             // frame rendered at `timeSeconds` is that far into it.
             loaded.frame(0L)

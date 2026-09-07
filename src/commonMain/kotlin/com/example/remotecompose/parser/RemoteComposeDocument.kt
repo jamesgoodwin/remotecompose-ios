@@ -30,6 +30,8 @@ class RemoteComposeDocument internal constructor(
     var hitRegions: List<HitRegion> = emptyList()
         private set
 
+    private var rippleTargets: List<com.example.remotecompose.layout.LayoutEngine.RippleTarget> = emptyList()
+
     /**
      * True after a [frame] that read a time variable, advanced an animation, or followed a
      * gesture that changed a value: the host should schedule another frame.
@@ -66,6 +68,7 @@ class RemoteComposeDocument internal constructor(
         context.beginFrame(nowMillis)
         val opcodes = RemoteComposeParser.build(operations, context, textMetrics)
         hitRegions = RemoteComposeParser.hitRegions
+        rippleTargets = RemoteComposeParser.rippleTargets
         return RemoteDocument(header, context.texts.toMap(), bitmaps, opcodes)
     }
 
@@ -79,7 +82,20 @@ class RemoteComposeDocument internal constructor(
     /** `CoreDocument.touchDown`: arms every touch expression and runs any touch-down actions. */
     fun touchDown(x: Float, y: Float): Boolean {
         context.touchDown(x, y, touchExpressions)
+        startRipple(x, y)
         return dispatch(ActionTrigger.TOUCH_DOWN, x, y)
+    }
+
+    /**
+     * `RippleModifierOperation.onTouchDown`: the topmost component with a ripple modifier under
+     * the press starts one, from that point in its own coordinates.
+     */
+    private fun startRipple(x: Float, y: Float) {
+        val target = rippleTargets.lastOrNull { x >= it.left && x < it.right && y >= it.top && y < it.bottom }
+            ?: return
+        context.ripples[target.componentId] =
+            RemoteContext.Ripple(context.animationTime, x - target.left, y - target.top)
+        context.needsRepaint = true
     }
 
     /** `CoreDocument.touchDrag`: moves the pointer variables so touch expressions follow it. */

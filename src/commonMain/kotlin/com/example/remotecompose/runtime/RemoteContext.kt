@@ -45,6 +45,14 @@ class RemoteContext : FloatCollections {
     /** `AnimationSpec`s by id, for the components that name one. */
     val animationSpecs = mutableMapOf<Int, Operation.AnimationSpec>()
 
+    /**
+     * The press each rippling component is showing: when it started, and where it was touched
+     * in that component's own coordinates. `RippleModifierOperation` keeps the same three.
+     */
+    class Ripple(val startedAt: Float, val x: Float, val y: Float)
+
+    internal val ripples = mutableMapOf<Int, Ripple>()
+
     /** Where each animating component is on its way from its last layout to its current one. */
     internal val measureAnimations = mutableMapOf<Int, com.example.remotecompose.layout.MeasureAnimation>()
 
