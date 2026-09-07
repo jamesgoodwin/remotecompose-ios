@@ -102,6 +102,10 @@ fun main(args: Array<String>) {
         buildVisibilitySample()
         return
     }
+    if (args.getOrNull(0) == "easing") {
+        buildEasingSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2519,4 +2523,41 @@ private fun buildVisibilitySample() {
     val bytes = writer.encodeToByteArray()
     File("visibility.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to visibility.rc")
+}
+
+/**
+ * The same stepping target eased three ways, so the curves can be compared at a given moment:
+ * the standard cubic, `EASE_OUT_BOUNCE` and `EASE_OUT_ELASTIC`. Each drives the right-hand edge
+ * of a bar, so where the bar ends is what the curve says at that instant.
+ */
+private fun buildEasingSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 160, "easing", platform)
+
+    // 0 for a second then 100 for a second, which is the change each curve eases.
+    val target = floatArrayOf(
+        Rc.Time.CONTINUOUS_SEC, Rc.FloatExpression.FLOOR, 2f, Rc.FloatExpression.MOD,
+        100f, Rc.FloatExpression.MUL,
+    )
+    val curves = listOf(
+        "standard" to androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+        "bounce" to androidx.compose.remote.core.operations.utilities.easing.Easing.EASE_OUT_BOUNCE,
+        "elastic" to androidx.compose.remote.core.operations.utilities.easing.Easing.EASE_OUT_ELASTIC,
+    )
+    val colors = listOf(0xFF1E88E5.toInt(), 0xFF43A047.toInt(), 0xFFE53935.toInt())
+
+    for ((index, curve) in curves.withIndex()) {
+        val animation = androidx.compose.remote.core.operations.utilities.easing.FloatAnimation.packToFloatArray(
+            1f, curve.second, null, Float.NaN, Float.NaN,
+        )
+        val eased = writer.floatExpression(target, animation)
+        val right = writer.floatExpression(eased, 40f, Rc.FloatExpression.ADD)
+        val top = 20f + index * 40f
+        writer.getRcPaint().setColor(colors[index]).commit()
+        writer.drawRect(40f, top, right, top + 24f)
+    }
+
+    val bytes = writer.encodeToByteArray()
+    File("easing.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to easing.rc")
 }

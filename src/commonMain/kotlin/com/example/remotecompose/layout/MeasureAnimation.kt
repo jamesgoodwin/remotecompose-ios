@@ -1,6 +1,7 @@
 package com.example.remotecompose.layout
 
 import com.example.remotecompose.runtime.CubicEasing
+import com.example.remotecompose.runtime.Easing
 
 /**
  * A component moving from where it was to where it now is, a transcription of
@@ -24,7 +25,7 @@ internal class MeasureAnimation(
     easingType: Int,
     var startedAt: Float,
 ) {
-    private val easing: CubicEasing = CubicEasing.preset(easingType)
+    private val easing: Easing = CubicEasing.preset(easingType)
 
     /** True while [at] would still be moving; a finished animation is left where it landed. */
     fun isRunning(now: Float): Boolean = duration > 0f && now - startedAt < duration

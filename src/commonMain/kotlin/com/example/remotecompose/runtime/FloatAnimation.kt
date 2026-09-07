@@ -1,10 +1,55 @@
 package com.example.remotecompose.runtime
 
+import kotlin.math.pow
+import kotlin.math.sin
+
+/** `Easing`: a curve from 0 to 1, which is all any of its subclasses offer the callers here. */
+interface Easing {
+    fun get(fraction: Float): Float
+}
+
+/**
+ * `BounceCurve`: the value drops in and settles over four shortening bounces.
+ */
+class BounceCurve : Easing {
+    override fun get(fraction: Float): Float {
+        var t = fraction
+        if (t < 0f) return 0f
+        if (t < 0.36363637f) return 0.73333335f * (7.5625f * t * t + t)
+        if (t < 0.72727275f) {
+            t -= 0.54545456f
+            return 7.5625f * t * t + 0.75f
+        }
+        if (t < 0.90909090909f) {
+            t -= 0.8181818f
+            return 7.5625f * t * t + 0.9375f
+        }
+        if (t <= 1f) {
+            t -= 0.95454544f
+            return 7.5625f * t * t + 0.984375f
+        }
+        return 1f
+    }
+}
+
+/**
+ * `ElasticOutCurve`: overshoots and oscillates into place, the oscillation decaying by `2^-10t`.
+ * `2.0943952` is the `C4` the real class names, which is two thirds of pi.
+ */
+class ElasticOutCurve : Easing {
+    override fun get(fraction: Float): Float {
+        if (fraction <= 0f) return 0f
+        if (fraction >= 1f) return 1f
+        val decay = 2.0.pow((-10f * fraction).toDouble())
+        return (decay * sin(((fraction * 10f - 0.75f) * 2.0943952f).toDouble()) + 1.0).toFloat()
+    }
+}
+
 /**
  * A cubic Bézier easing on `(0,0) .. (1,1)` with control points `(x1,y1)`, `(x2,y2)`:
  * `CubicEasing` from remote-core, including its preset curves and its bisection lookup.
  */
-class CubicEasing(private val x1: Float, private val y1: Float, private val x2: Float, private val y2: Float) {
+class CubicEasing(private val x1: Float, private val y1: Float, private val x2: Float, private val y2: Float) : Easing {
 
     private fun getX(t: Float): Float {
         val u = 1f - t
@@ -23,7 +68,7 @@ class CubicEasing(private val x1: Float, private val y1: Float, private val x2: 
     }
 
     /** `CubicEasing.get`: bisect the parameter until `getX` is within 0.01 of [x], then interpolate. */
-    fun get(x: Float): Float {
+    override fun get(x: Float): Float {
         if (x <= 0f) return 0f
         if (x >= 1f) return 1f
         var t = 0.5f
@@ -52,8 +97,19 @@ class CubicEasing(private val x1: Float, private val y1: Float, private val x2: 
         const val EASE_OUT_BOUNCE = 13
         const val EASE_OUT_ELASTIC = 14
 
+        /**
+         * The curve a type names, as `FloatAnimation` chooses it: 1..6 the cubic presets, 13 the
+         * bounce, 14 the elastic. 12 is a spline over a supplied spec, which needs the spec and
+         * so is built in [FloatAnimation] rather than here; anything else is the standard cubic.
+         */
+        fun preset(type: Int): Easing = when (type) {
+            EASE_OUT_BOUNCE -> BounceCurve()
+            EASE_OUT_ELASTIC -> ElasticOutCurve()
+            else -> cubicPreset(type)
+        }
+
         /** Preset control points from `CubicEasing.<clinit>`. */
-        fun preset(type: Int): CubicEasing = when (type) {
+        fun cubicPreset(type: Int): CubicEasing = when (type) {
             CUBIC_ACCELERATE -> CubicEasing(0.4f, 0.05f, 0.8f, 0.7f)
             CUBIC_DECELERATE -> CubicEasing(0f, 0f, 0.2f, 0.95f)
             CUBIC_LINEAR -> CubicEasing(1f, 1f, 0f, 0f)
@@ -79,12 +135,12 @@ class FloatAnimation(description: FloatArray) {
     val type: Int
     var initialValue: Float = Float.NaN
     var targetValue: Float = Float.NaN
-    private val easing: CubicEasing
+    private val easing: Easing
 
     init {
         duration = if (description.isEmpty()) 1f else description[0]
         var easingType = CubicEasing.CUBIC_STANDARD
-        var curve: CubicEasing? = null
+        var curve: Easing? = null
         if (description.size > 1) {
             val packed = description[1].toRawBits()
             easingType = packed and 0xFF
