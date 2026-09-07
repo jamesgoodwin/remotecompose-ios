@@ -8,7 +8,9 @@ import com.example.remotecompose.demo.COFFEE_RC_BYTES
 import com.example.remotecompose.demo.FLIGHT_RC_BYTES
 import com.example.remotecompose.demo.LIST_RC_BYTES
 import com.example.remotecompose.demo.MATERIAL_RC_BYTES
+import com.example.remotecompose.demo.CAROUSEL_RC_BYTES
 import com.example.remotecompose.demo.PAINT_RC_BYTES
+import com.example.remotecompose.demo.PARALLAX_RC_BYTES
 import com.example.remotecompose.demo.PATTERN_RC_BYTES
 import com.example.remotecompose.demo.SAMPLE_RC_BYTES
 import com.example.remotecompose.demo.SHOWCASE_RC_BYTES
@@ -33,6 +35,7 @@ val FIXTURES: Map<String, ByteArray> = mapOf(
     "article" to ARTICLE_RC_BYTES,
     "attributes" to ATTRIBUTES_RC_BYTES,
     "anim" to ANIM_RC_BYTES,
+    "carousel" to CAROUSEL_RC_BYTES,
     "coffee" to COFFEE_RC_BYTES,
     "coretext" to CORETEXT_RC_BYTES,
     "easing" to EASING_RC_BYTES,
@@ -42,6 +45,7 @@ val FIXTURES: Map<String, ByteArray> = mapOf(
     "material" to MATERIAL_RC_BYTES,
     "named" to NAMED_RC_BYTES,
     "paint" to PAINT_RC_BYTES,
+    "parallax" to PARALLAX_RC_BYTES,
     "pattern" to PATTERN_RC_BYTES,
     "sample" to SAMPLE_RC_BYTES,
     "shader" to SHADER_RC_BYTES,

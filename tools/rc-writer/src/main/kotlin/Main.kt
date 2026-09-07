@@ -138,6 +138,14 @@ fun main(args: Array<String>) {
         buildWatchSample()
         return
     }
+    if (args.getOrNull(0) == "parallax") {
+        buildParallaxSample()
+        return
+    }
+    if (args.getOrNull(0) == "carousel") {
+        buildCarouselSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -3201,4 +3209,252 @@ private fun buildWatchSample() {
     val bytes = writer.encodeToByteArray()
     File("watch.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to watch.rc")
+}
+
+/**
+ * A scene that comes apart as it scrolls: sky, far hills, near hills and the ground each move at
+ * their own rate behind the text.
+ *
+ * All four rates are the same float. `MODIFIER_SCROLL` moves everything inside it by the scroll
+ * position, so a layer is pulled *back* by `scroll * (1 - rate)` to make it lag — a layer at rate
+ * 0 stays put in the window and one at rate 1 travels with the text. That subtraction is the
+ * whole of the effect, and the document does it.
+ */
+private fun buildParallaxSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "parallax", platform)
+
+    /** A band of colour with a soft top edge, standing in for a photographed layer. */
+    fun ridge(width: Int, height: Int, color: Int, crest: (Double) -> Double): java.awt.image.BufferedImage {
+        val image = java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        for (x in 0 until width) {
+            val top = (crest(x.toDouble() / width) * height).toInt().coerceIn(0, height - 1)
+            for (y in top until height) image.setRGB(x, y, color)
+            // One row of half cover, so the crest is not a staircase.
+            if (top > 0) image.setRGB(x, top - 1, (color and 0x00FFFFFF) or 0x80000000.toInt())
+        }
+        return image
+    }
+
+    val sky = java.awt.image.BufferedImage(300, 260, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+    for (y in 0 until 260) {
+        val t = y / 260.0
+        val r = (60 + 150 * t).toInt()
+        val g = (90 + 90 * t).toInt()
+        val b = (150 + 40 * t).toInt()
+        for (x in 0 until 300) sky.setRGB(x, y, (0xFF shl 24) or (r shl 16) or (g shl 8) or b)
+    }
+    val farHills = ridge(300, 120, 0xFF5C6E8A.toInt()) { x -> 0.45 + 0.22 * Math.sin(x * 7.0) + 0.1 * Math.sin(x * 17.0) }
+    val nearHills = ridge(300, 140, 0xFF33415C.toInt()) { x -> 0.40 + 0.28 * Math.sin(3.0 + x * 5.0) }
+    val ground = ridge(300, 120, 0xFF1B2233.toInt()) { x -> 0.30 + 0.16 * Math.sin(1.0 + x * 9.0) }
+
+    val skyId = writer.storeBitmap(sky)
+    val farId = writer.storeBitmap(farHills)
+    val nearId = writer.storeBitmap(nearHills)
+    val groundId = writer.storeBitmap(ground)
+
+    val lines = listOf(
+        "" to 0f,
+        "Four layers, one number" to 15f,
+        "The sky, the far hills, the near" to 13f,
+        "hills and the ground are moving" to 13f,
+        "at four different speeds, and all" to 13f,
+        "four are the scroll position." to 13f,
+        "" to 0f,
+        "How a layer lags" to 15f,
+        "Everything inside a scrolling" to 13f,
+        "component is moved by the scroll." to 13f,
+        "A layer is pulled back again by" to 13f,
+        "scroll times one minus its rate," to 13f,
+        "so a rate of nothing stays put" to 13f,
+        "and a rate of one travels along." to 13f,
+        "" to 0f,
+        "Nobody is told any of this" to 15f,
+        "The host hands over the finger." to 13f,
+        "The subtraction is in the file." to 13f,
+        "" to 0f,
+    )
+
+    val lineHeight = 18f
+    val headingHeight = 22f
+    val heroHeight = 250f
+    val window = 400f
+    val textHeight = lines.sumOf { (t, size) ->
+        (if (t.isEmpty()) 10.0 else if (size > 13f) headingHeight.toDouble() else lineHeight.toDouble())
+    }.toFloat()
+    val content = heroHeight + textHeight
+
+    val scroll = writer.addFloatConstant(0f)
+
+    /** How far to pull a layer back so that it travels at [rate] of the scroll. */
+    fun lag(rate: Float) = writer.floatExpression(scroll, 1f - rate, Rc.FloatExpression.MUL)
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    writer.startColumn(RecordingModifier().fillMaxSize().background(0xFF0E1220.toInt()), 1, 4)
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth().height(window).verticalScroll(scroll),
+        1, 4,
+    )
+
+    // The scene, clipped to its own box so the layers can overhang it.
+    writer.startBox(
+        RecordingModifier().fillMaxWidth().height(heroHeight).clip(RectShape(0f, 0f, 0f, 0f)),
+        1, 2,
+    )
+    // Furthest first. Each is drawn taller than the box so that lagging never shows its edge.
+    for ((id, rate, top) in listOf(
+        Triple(skyId, 0.10f, -30f),
+        Triple(farId, 0.35f, 96f),
+        Triple(nearId, 0.60f, 120f),
+        Triple(groundId, 0.85f, 170f),
+    )) {
+        writer.save()
+        writer.translate(0f, lag(rate))
+        val height = if (id == skyId) 260f else if (id == farId) 120f else if (id == nearId) 140f else 120f
+        writer.drawBitmap(id, 0f, top, 300f, top + height, "layer")
+        writer.restore()
+    }
+    // The sun, which sits furthest back of all and so barely moves.
+    writer.save()
+    writer.translate(0f, lag(0.05f))
+    writer.getRcPaint().setColor(0xFFFFD08A.toInt()).setStyle(0).commit()
+    writer.drawCircle(214f, 66f, 22f)
+    writer.restore()
+    writer.endBox()
+
+    // The words, which travel with the scroll like anything else.
+    writer.startColumn(RecordingModifier().fillMaxWidth().padding(16f), 1, 4)
+    for ((line, size) in lines) {
+        if (line.isEmpty()) {
+            writer.startBox(RecordingModifier().fillMaxWidth().height(10f), 1, 2)
+            writer.endBox()
+        } else {
+            text(
+                writer.addText(line),
+                if (size > 13f) 0xFFEDE7F6.toInt() else 0xFFB9B3C7.toInt(),
+                size,
+                if (size > 13f) 700f else 400f,
+                RecordingModifier().fillMaxWidth().height(if (size > 13f) headingHeight else lineHeight),
+            )
+        }
+    }
+    writer.endColumn()
+
+    writer.endColumn()
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("parallax.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to parallax.rc; content $content, overflow ${content - window}")
+}
+
+/**
+ * A carousel of pictures that flings, with each picture drifting inside its own card as the card
+ * crosses the screen — the effect a photo carousel gets from moving the image slower than the
+ * frame that holds it.
+ *
+ * Both are the horizontal scroll position. The card's place on screen is `left - scroll`, so how
+ * far it is from the middle is `left + half - scroll - 150`, and the picture is shifted by a
+ * quarter of that the other way. Every card has its own copy of that sum; nothing is measured at
+ * runtime and nothing is asked of the host.
+ */
+private fun buildCarouselSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "carousel", platform)
+
+    /** A picture: a graded sky over two ridges, in its own hue. */
+    fun picture(hue: Float): java.awt.image.BufferedImage {
+        val w = 250
+        val h = 200
+        val image = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        for (y in 0 until h) {
+            val t = y / h.toDouble()
+            val sky = java.awt.Color.getHSBColor(hue, (0.45 - 0.25 * t).toFloat(), (0.55 + 0.35 * t).toFloat())
+            for (x in 0 until w) image.setRGB(x, y, sky.rgb)
+        }
+        for ((depth, shade) in listOf(0.62 to 0.42f, 0.78 to 0.24f)) {
+            val ridge = java.awt.Color.getHSBColor(hue, 0.35f, shade)
+            for (x in 0 until w) {
+                val top = ((depth + 0.07 * Math.sin(x / 26.0 + depth * 9)) * h).toInt().coerceIn(0, h - 1)
+                for (y in top until h) image.setRGB(x, y, ridge.rgb)
+            }
+        }
+        return image
+    }
+
+    val places = listOf(
+        "Brecon" to 0.58f,
+        "Snowdon" to 0.44f,
+        "Dartmoor" to 0.10f,
+        "Cairngorm" to 0.72f,
+        "Mourne" to 0.88f,
+    )
+    val cards = places.map { (name, hue) -> Triple(name, writer.storeBitmap(picture(hue)), hue) }
+
+    val cardWidth = 168f
+    val cardHeight = 232f
+    val gap = 12f
+    val edge = 16f
+    val middle = 150f
+
+    val scroll = writer.addFloatConstant(0f)
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFF12101A.toInt()).padding(16f).spacedBy(12f),
+        1, 4,
+    )
+    text(writer.addText("Places"), 0xFFEDE7F6.toInt(), 22f, 700f)
+
+    writer.startRow(
+        RecordingModifier().fillMaxWidth().height(cardHeight).horizontalScroll(scroll).spacedBy(gap),
+        1, 2,
+    )
+    for ((index, card) in cards.withIndex()) {
+        val (name, bitmapId, _) = card
+        val left = edge + index * (cardWidth + gap)
+        // How far this card's middle is from the middle of the window, as it scrolls.
+        val fromMiddle = writer.floatExpression(
+            left + cardWidth / 2f - middle, scroll, Rc.FloatExpression.SUB,
+        )
+        // The picture drifts a quarter of that, the other way.
+        val drift = writer.floatExpression(fromMiddle, -0.25f, Rc.FloatExpression.MUL)
+
+        writer.startBox(
+            RecordingModifier().width(cardWidth).height(cardHeight)
+                .clip(RoundedRectShape(16f, 16f, 16f, 16f))
+                .background(0xFF1D1A26.toInt())
+                .then(RippleElement()),
+            1, 2,
+        )
+        // The picture is wider than the card, so there is something to drift into.
+        writer.save()
+        writer.translate(drift, 0f)
+        writer.drawBitmap(bitmapId, -41f, 0f, 209f, 168f, name)
+        writer.restore()
+
+        // The name and its distance, under the picture and inside the same card.
+        writer.getRcPaint().setColor(0xFFEDE7F6.toInt()).setTextSize(17f).setStyle(0).commit()
+        writer.drawTextAnchored(writer.addText(name), 16f, 196f, -1f, 0f, 0)
+        writer.getRcPaint().setColor(0xFF9C96AD.toInt()).setTextSize(12f).commit()
+        writer.drawTextAnchored(writer.addText("${18 + index * 7} miles"), 16f, 216f, -1f, 0f, 0)
+        writer.endBox()
+    }
+    writer.endRow()
+
+    text(writer.addText("Drag sideways — the pictures lag their frames"), 0xFF9C96AD.toInt(), 12f)
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("carousel.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to carousel.rc; content ${cards.size * cardWidth + (cards.size - 1) * gap}")
 }
