@@ -175,6 +175,20 @@ object RemoteComposeParser {
         }
         // Guards FloatFunctionDefine's "Recursion not allowed".
         val executing = HashSet<Int>()
+        // What `PatternForEach` has bound its local item to while its body is being walked.
+        val itemBindings = HashMap<Int, Int>()
+
+        /**
+         * An id as the entry currently being expanded would name it.
+         *
+         * A for-each body names its local item, and every expansion means a different entry.
+         * Where a value is read as the body is walked, [RemoteContext.aliasId] has already put
+         * the entry's value under the local item's id and this changes nothing. Where an id is
+         * instead kept for later — a text component resolves its string once the whole tree is
+         * laid out, long after the loop has moved on — the entry's own id has to be what is
+         * kept, which is what this returns.
+         */
+        fun itemId(id: Int): Int = itemBindings[id] ?: id
         // A particle loop's restart creates the particle again, from its system's own equations.
         val particleCreators = operations.filterIsInstance<Op.ParticlesCreate>().associate { it.id to it.equations }
         // ConditionalOperations TYPE_CHANGED compares against the previous frame's operands.
@@ -882,7 +896,7 @@ object RemoteComposeParser {
                     is Op.LayoutText -> {
                         // TextLayout.paintingComponent builds its own paint: size, weight, italic, color.
                         val node = LayoutNode(LayoutNode.Kind.TEXT)
-                        node.textId = op.textId
+                        node.textId = itemId(op.textId)
                         val fontSize = resolveFloat(op.fontSize).takeUnless { it.isNaN() || it <= 0f } ?: DEFAULT_LAYOUT_TEXT_SIZE
                         val weight = resolveFloat(op.fontWeight).takeUnless { it.isNaN() || it <= 0f }?.toInt() ?: 400
                         node.textPaint = PaintStyle(
@@ -895,7 +909,7 @@ object RemoteComposeParser {
 
                     is Op.LayoutImage -> {
                         val node = LayoutNode(LayoutNode.Kind.IMAGE)
-                        node.bitmapId = op.bitmapId
+                        node.bitmapId = itemId(op.bitmapId)
                         node.imageScaleType = op.scaleType
                         node.imageAlpha = resolveFloat(op.alpha).takeUnless { it.isNaN() } ?: 1f
                         tree.openNode(node, paint)
@@ -1178,6 +1192,22 @@ object RemoteComposeParser {
                         }
                     }
 
+                    is Op.PatternForEach -> {
+                        // PatternForEach.materialize(): once per entry of the list, with the
+                        // local item standing for that entry.
+                        val end = scopeEnds[i] ?: operations.size
+                        val entries = idListPool[op.collectionId]
+                        if (entries != null) {
+                            for (entryId in entries.take(MAX_LOOP_ITERATIONS)) {
+                                context.aliasId(op.localItemId, entryId)
+                                itemBindings[op.localItemId] = entryId
+                                walk(i + 1, end)
+                            }
+                            itemBindings.remove(op.localItemId)
+                        }
+                        i = end // the block's own CONTAINER_END
+                    }
+
                     is Op.LoopStart -> {
                         // LoopOperation: re-apply the body once per index with the loop variable set.
                         val end = scopeEnds[i] ?: operations.size
@@ -1301,7 +1331,7 @@ object RemoteComposeParser {
                 is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations, is Op.LoopStart, is Op.ConditionalOperations,
                 is Op.ModifierClick, is Op.ModifierMultiClick, is Op.ModifierTouchDown, is Op.ModifierTouchUp,
                 is Op.ModifierTouchCancel, is Op.FloatFunctionDefine, is Op.ParticlesLoop,
-                is Op.ParticlesCompare -> open.addLast(i)
+                is Op.ParticlesCompare, is Op.PatternForEach -> open.addLast(i)
                 is Op.ContainerEnd -> open.removeLastOrNull()?.let { ends[it] = i }
                 else -> Unit
             }

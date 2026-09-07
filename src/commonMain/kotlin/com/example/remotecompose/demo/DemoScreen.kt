@@ -27,13 +27,13 @@ import com.example.remotecompose.ui.RemoteComposeCanvas
  * an interactive document handles its own buttons; a tap it does not claim moves to the next page.
  *
  * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint, 3 anim,
- *   4 actions, 5 text paths, 6 generated, 7 material). Lets the device hosts launch straight onto
+ *   4 actions, 5 text paths, 6 generated, 7 material, 8 list). Lets the device hosts launch straight onto
  *   a page for scripted screenshots: Android reads an `--ei page N` intent extra, iOS an
  *   `RC_PAGE` environment variable.
  */
 @Composable
 fun DemoScreen(initialPage: Int = 0) {
-    var page by remember { mutableStateOf(initialPage.coerceIn(0, 7)) }
+    var page by remember { mutableStateOf(initialPage.coerceIn(0, 8)) }
     val pages = listOf(
         "Coverage" to SAMPLE_RC_BYTES,
         "Showcase" to SHOWCASE_RC_BYTES,
@@ -43,6 +43,7 @@ fun DemoScreen(initialPage: Int = 0) {
         "Text paths" to TEXTPATH_RC_BYTES,
         "Generated" to ADVANCED_RC_BYTES,
         "Material" to MATERIAL_RC_BYTES,
+        "List" to LIST_RC_BYTES,
     )
     val (label, bytes) = pages[page]
     val next = { page = (page + 1) % pages.size }

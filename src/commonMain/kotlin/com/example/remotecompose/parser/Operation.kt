@@ -256,6 +256,21 @@ sealed interface Operation {
     data class LoopStart(val indexVariableId: Int, val from: Float, val step: Float, val until: Float) : Operation
 
     /**
+     * `PatternForEach`: runs the block that follows once per entry of the id list [collectionId],
+     * with [localItemId] standing for that entry. Closed by a `ContainerEnd`.
+     *
+     * The real operation is a macro rather than a loop: it serializes its body once and inflates
+     * a fresh copy per entry with [localItemId] remapped to the entry's own id, so the expanded
+     * document holds one copy of the body per item. What reaches the screen is the same either
+     * way, and this evaluator walks the body per entry instead of copying it.
+     *
+     * Only an id list can be iterated. `ArrayAccess.getId` — what the real operation binds
+     * [localItemId] to — is defined on `DataListIds` alone; the float lists inherit its default
+     * of -1, so a float list has nothing to bind.
+     */
+    data class PatternForEach(val collectionId: Int, val localItemId: Int) : Operation
+
+    /**
      * `ShaderData`: an AGSL shader — its source is the text at [shaderTextId] — and the uniforms
      * to bind when it is used. Decoded so the stream stays aligned and the document can be
      * inspected; painting one needs a runtime shader compiler this renderer does not have, so

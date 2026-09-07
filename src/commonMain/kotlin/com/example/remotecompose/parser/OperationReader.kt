@@ -337,6 +337,7 @@ internal object OperationReader {
             if (count > 80) throw RemoteComposeParseException("Float function call $id passes $count arguments (max 80)")
             Op.FloatFunctionCall(id, List(count) { r.readFloat32() })
         }
+        Operations.MACRO_FOR_EACH -> Op.PatternForEach(r.readS32(), r.readS32())
         Operations.LOOP_START -> Op.LoopStart(r.readS32(), r.readFloat32(), r.readFloat32(), r.readFloat32())
         Operations.LAYOUT_STATE -> Op.LayoutState(r.readS32(), r.readS32(), r.readS32(), r.readS32(), r.readS32())
         Operations.LAYOUT_CONTENT -> Op.LayoutContent(r.readS32())

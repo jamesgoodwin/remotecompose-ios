@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 128 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 129 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -70,6 +70,7 @@ because the format has no generic length prefix to skip by.
 | 199 | `TEXT_TRANSFORM` | supported |  |
 | 214 | `CONTAINER_END` | supported |  |
 | 215 | `LOOP_START` | supported |  |
+| 244 | `MACRO_FOR_EACH` | supported | over an id list, which is the only kind that has entry ids |
 
 ### Paint
 
@@ -208,8 +209,8 @@ because the format has no generic length prefix to skip by.
 ## Not decoded
 
 A document using any of these fails to parse. They fall into groups: sound (`PLAY_SOUND`,
-`DATA_SOUND`, `SOUND_EXPRESSION`), the loom macro system (`MACRO_*`, `REFERENCED_OPERATIONS`,
-`INCLUDE_REFERENCED_OPERATIONS`), the attribute readers (`ATTRIBUTE_TEXT`, `ATTRIBUTE_IMAGE`,
+`DATA_SOUND`, `SOUND_EXPRESSION`), the loom macro system (`MACRO_DEFINE`, `MACRO_CALL`, `MACRO_ARGUMENT`,
+`MACRO_BLOCK`, `REFERENCED_OPERATIONS`, `INCLUDE_REFERENCED_OPERATIONS`), the attribute readers (`ATTRIBUTE_TEXT`, `ATTRIBUTE_IMAGE`,
 `ATTRIBUTE_TIME`, `ATTRIBUTE_COLOR`), dynamic float lists, host-named and metadata actions,
 accessibility semantics, and the extension range.
 
@@ -247,7 +248,6 @@ accessibility semantics, and the extension range.
 | 238 | `LAYOUT_COMPUTE` |
 | 239 | `CORE_TEXT` |
 | 242 | `TEXT_STYLE` |
-| 244 | `MACRO_FOR_EACH` |
 | 245 | `INCLUDE_REFERENCED_OPERATIONS` |
 | 246 | `MACRO_DEFINE` |
 | 247 | `MACRO_CALL` |

@@ -132,5 +132,6 @@ internal object Operations {
     const val MODIFIER_ALIGN_BY = 237
     const val LAYOUT_FLOW = 240
     const val SKIP = 241
+    const val MACRO_FOR_EACH = 244
     const val MODIFIER_DIMENSION_CONSTRAINTS = 243
 }

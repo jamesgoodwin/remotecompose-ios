@@ -5,7 +5,7 @@
 #   tools/capture-screens.sh <page> [more pages...]
 #
 # A page is the index DemoScreen shows: 0 coverage, 1 showcase, 2 paint, 3 anim, 4 actions,
-# 5 text paths, 6 generated. Page 3 (anim) moves with the clock and page 7 (material) is scaled
+# 5 text paths, 6 generated, 8 list. Page 3 (anim) moves with the clock and page 7 (material) is scaled
 # to the screen by RemoteComposeCanvas, so neither is pixel-comparable this way and both are
 # refused rather than silently compared.
 #
@@ -31,6 +31,7 @@ fixture_for_page() {
     4) echo tools/rc-writer/actions.rc ;;
     5) echo tools/rc-writer/textpath.rc ;;
     6) echo tools/rc-writer/advanced.rc ;;
+    8) echo tools/rc-writer/list.rc ;;
     3) echo "page 3 (anim) changes with the clock, so it has no fixed reference" >&2; return 1 ;;
     7) echo "page 7 (material) is scaled to the screen, so it is not pixel-comparable" >&2; return 1 ;;
     *) echo "unknown page $1" >&2; return 1 ;;

@@ -83,6 +83,29 @@ class RemoteContext {
         needsRepaint = false
     }
 
+    /**
+     * Makes [alias] read as whatever [source] holds, across every pool.
+     *
+     * `PatternForEach` binds its local item to an entry's id by remapping ids as it re-reads the
+     * body, which reaches the same place from the other end: this evaluator reads the body as it
+     * stands, so the entry's value is copied to the id the body names. The difference shows only
+     * if a body writes to its local item, which the real one would drop on the next expansion
+     * and this one keeps until the next entry overwrites it.
+     */
+    fun aliasId(alias: Int, source: Int) {
+        if (alias == source) return
+        texts[source]?.let { texts[alias] = it } ?: texts.remove(alias)
+        floats[source]?.let { floats[alias] = it } ?: floats.remove(alias)
+        ints[source]?.let { ints[alias] = it } ?: ints.remove(alias)
+        longs[source]?.let { longs[alias] = it } ?: longs.remove(alias)
+        booleans[source]?.let { booleans[alias] = it } ?: booleans.remove(alias)
+        colors[source]?.let { colors[alias] = it } ?: colors.remove(alias)
+        paths[source]?.let { paths[alias] = it } ?: paths.remove(alias)
+        idLists[source]?.let { idLists[alias] = it } ?: idLists.remove(alias)
+        dataMaps[source]?.let { dataMaps[alias] = it } ?: dataMaps.remove(alias)
+        bitmaps[source]?.let { bitmaps[alias] = it } ?: bitmaps.remove(alias)
+    }
+
     fun loadFloat(id: Int, value: Float) {
         floats[id] = value
     }

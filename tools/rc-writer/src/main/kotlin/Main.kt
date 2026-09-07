@@ -80,7 +80,46 @@ fun main(args: Array<String>) {
         buildMaterialSample()
         return
     }
+    if (args.getOrNull(0) == "list") {
+        buildListSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * A list written once and expanded per item: `MACRO_FOR_EACH` over an id list of strings, with
+ * the body naming the loop's local item where the row's label goes. The document holds one copy
+ * of the body, not one per row.
+ */
+private fun buildListSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(240, 200, "list", platform)
+
+    val names = writer.addStringList("Espresso", "Cortado", "Flat white", "Filter")
+    val collection = androidx.compose.remote.core.operations.Utils.idFromNan(names)
+    val item = writer.definePatternParameter("item")
+
+    writer.startColumn(RecordingModifier().fillMaxSize().padding(16f).spacedBy(8f), 1, 4)
+
+    val heading = writer.addText("Menu")
+    writer.startTextComponent(RecordingModifier(), heading, 0xFF1A237E.toInt(), 20f, 0, 400f, "", 0.toShort(), 1.toShort(), 1, 1)
+    writer.endTextComponent()
+
+    // One row per name, written once. The text component reads the loop's local item, which each
+    // expansion binds to that entry's own string id.
+    writer.addPatternForEach(collection, item)
+    writer.startRow(RecordingModifier().fillMaxWidth().height(28f).background(0xFFE8EAF6.toInt()).padding(8f, 0f, 8f, 0f), 1, 2)
+    writer.startTextComponent(RecordingModifier(), item, 0xFF283593.toInt(), 14f, 0, 400f, "", 0.toShort(), 1.toShort(), 1, 1)
+    writer.endTextComponent()
+    writer.endRow()
+    writer.endPatternForEach()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("list.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to list.rc")
 }
 
 /**
