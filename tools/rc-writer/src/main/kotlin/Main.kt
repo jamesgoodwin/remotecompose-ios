@@ -3224,34 +3224,24 @@ private fun buildParallaxSample() {
     val platform = JvmRcPlatformServices()
     val writer = RemoteComposeWriter(300, 420, "parallax", platform)
 
-    /** A band of colour with a soft top edge, standing in for a photographed layer. */
-    fun ridge(width: Int, height: Int, color: Int, crest: (Double) -> Double): java.awt.image.BufferedImage {
-        val image = java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-        for (x in 0 until width) {
-            val top = (crest(x.toDouble() / width) * height).toInt().coerceIn(0, height - 1)
-            for (y in top until height) image.setRGB(x, y, color)
-            // One row of half cover, so the crest is not a staircase.
-            if (top > 0) image.setRGB(x, top - 1, (color and 0x00FFFFFF) or 0x80000000.toInt())
-        }
-        return image
+    /**
+     * A layer, straight in as the file on disk. The ridges are PNGs with the sky cut away, so
+     * each one can sit in front of the last; the sky itself is a JPEG, since nothing shows
+     * through it. See `tools/rc-writer/photos/CREDITS.md`.
+     */
+    fun layer(name: String): Triple<Int, Int, Int> {
+        val file = File("photos/layer-$name.${if (name == "sky") "jpg" else "png"}")
+        val bytes = file.readBytes()
+        val image = javax.imageio.ImageIO.read(file)
+        val id = writer.nextId()
+        writer.getBuffer().storeBitmap(id, image.width, image.height, bytes)
+        return Triple(id, image.width, image.height)
     }
 
-    val sky = java.awt.image.BufferedImage(300, 260, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-    for (y in 0 until 260) {
-        val t = y / 260.0
-        val r = (60 + 150 * t).toInt()
-        val g = (90 + 90 * t).toInt()
-        val b = (150 + 40 * t).toInt()
-        for (x in 0 until 300) sky.setRGB(x, y, (0xFF shl 24) or (r shl 16) or (g shl 8) or b)
-    }
-    val farHills = ridge(300, 120, 0xFF5C6E8A.toInt()) { x -> 0.45 + 0.22 * Math.sin(x * 7.0) + 0.1 * Math.sin(x * 17.0) }
-    val nearHills = ridge(300, 140, 0xFF33415C.toInt()) { x -> 0.40 + 0.28 * Math.sin(3.0 + x * 5.0) }
-    val ground = ridge(300, 120, 0xFF1B2233.toInt()) { x -> 0.30 + 0.16 * Math.sin(1.0 + x * 9.0) }
-
-    val skyId = writer.storeBitmap(sky)
-    val farId = writer.storeBitmap(farHills)
-    val nearId = writer.storeBitmap(nearHills)
-    val groundId = writer.storeBitmap(ground)
+    val skyLayer = layer("sky")
+    val farLayer = layer("far")
+    val midLayer = layer("mid")
+    val nearLayer = layer("near")
 
     val lines = listOf(
         "" to 0f,
@@ -3305,25 +3295,21 @@ private fun buildParallaxSample() {
         RecordingModifier().fillMaxWidth().height(heroHeight).clip(RectShape(0f, 0f, 0f, 0f)),
         1, 2,
     )
-    // Furthest first. Each is drawn taller than the box so that lagging never shows its edge.
-    for ((id, rate, top) in listOf(
-        Triple(skyId, 0.10f, -30f),
-        Triple(farId, 0.35f, 96f),
-        Triple(nearId, 0.60f, 120f),
-        Triple(groundId, 0.85f, 170f),
+    // Furthest first, each drawn taller than the box so that lagging never shows its lower edge.
+    for ((layerData, rate, top) in listOf(
+        Triple(skyLayer, 0.10f, -36f),
+        Triple(farLayer, 0.35f, 86f),
+        Triple(midLayer, 0.60f, 122f),
+        Triple(nearLayer, 0.85f, 152f),
     )) {
+        val (id, imageWidth, imageHeight) = layerData
         writer.save()
         writer.translate(0f, lag(rate))
-        val height = if (id == skyId) 260f else if (id == farId) 120f else if (id == nearId) 140f else 120f
-        writer.drawBitmap(id, 0f, top, 300f, top + height, "layer")
+        val drawWidth = 300f
+        val drawHeight = drawWidth * imageHeight / imageWidth
+        writer.drawBitmap(id, 0f, top, drawWidth, top + drawHeight, "layer")
         writer.restore()
     }
-    // The sun, which sits furthest back of all and so barely moves.
-    writer.save()
-    writer.translate(0f, lag(0.05f))
-    writer.getRcPaint().setColor(0xFFFFD08A.toInt()).setStyle(0).commit()
-    writer.drawCircle(214f, 66f, 22f)
-    writer.restore()
     writer.endBox()
 
     // The words, which travel with the scroll like anything else.
