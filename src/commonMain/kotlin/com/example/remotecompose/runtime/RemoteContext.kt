@@ -5,6 +5,7 @@ import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.text.BitmapFont
 import com.example.remotecompose.parser.Operation
 import com.example.remotecompose.parser.Operation.TouchExpression
+import kotlin.math.abs
 
 /**
  * The document's live state, mirroring `androidx.compose.remote.core.RemoteContext`: every pool
@@ -196,6 +197,10 @@ class RemoteContext : FloatCollections {
         var moved: Boolean = false
         /** `mCurrentValue`: what the last drag left, which outlives the finger. */
         var value: Float = Float.NaN
+        /** `mEasingToStop` and `mTouchUpTime`: the glide the finger left behind, and when. */
+        var easingToStop: Boolean = false
+        var touchUpTime: Float = 0f
+        val easing: VelocityEasing = VelocityEasing()
     }
 
     internal val touchStates = mutableMapOf<Int, TouchState>()
@@ -213,6 +218,18 @@ class RemoteContext : FloatCollections {
         val state = touchStates.getOrPut(op.id) { TouchState() }
         val min = resolveFloat(op.min)
         val max = resolveFloat(op.max)
+        if (state.easingToStop) {
+            // `apply` while `mEasingToStop`: the value is wherever the glide has reached, and the
+            // glide is over once the clock has passed its duration.
+            val elapsed = animationTime - state.touchUpTime
+            val position = state.easing.position(elapsed)
+            state.value = position
+            state.moved = true
+            loadFloat(op.id, clampTo(position, min, max))
+            if (!state.easing.isRunning(elapsed)) state.easingToStop = false
+            needsRepaint = true
+            return
+        }
         if (!state.down) {
             // `TouchExpression.apply` only shows the default while nothing has moved it; what a
             // drag left stays after the finger goes, which is what makes a list stay scrolled.
@@ -251,6 +268,8 @@ class RemoteContext : FloatCollections {
         touchY = y
         for (op in expressions) {
             val state = touchStates.getOrPut(op.id) { TouchState() }
+            // A finger landing on something still gliding stops it where it is.
+            state.easingToStop = false
             state.down = true
             state.valueAtDown = getFloat(op.id).takeUnless { it.isNaN() } ?: resolveFloat(op.defValue).takeUnless { it.isNaN() } ?: 0f
             state.expressionAtDown = evaluateTouchExpression(op)
@@ -264,10 +283,95 @@ class RemoteContext : FloatCollections {
         needsRepaint = true
     }
 
-    internal fun touchUp() {
-        for (state in touchStates.values) state.down = false
+    /**
+     * `TouchExpression.touchUp`: the finger leaves at some speed, and what it was carrying keeps
+     * going. The velocity that matters is the expression's, not the pointer's, so the expression
+     * is evaluated once where the finger is and once a moment further along the way it was
+     * travelling, and the difference over that moment is the speed the value was moving at.
+     *
+     * `getStopPosition` then says where it should come to rest — for `STOP_GENTLY`, half the
+     * velocity further on, held inside the bounds — and `VelocityEasing` shapes the journey.
+     */
+    internal fun touchUp(velocityX: Float, velocityY: Float, expressions: List<Operation.TouchExpression>) {
+        val byId = expressions.associateBy { it.id }
+        for ((id, state) in touchStates) {
+            if (!state.down) continue
+            state.down = false
+            val op = byId[id] ?: continue
+            if (stopModeOf(op) == STOP_INSTANTLY) continue
+            val before = evaluateTouchExpression(op)
+            val after = withPointerAt(touchX + velocityX * TOUCH_EPSILON, touchY + velocityY * TOUCH_EPSILON) {
+                evaluateTouchExpression(op)
+            }
+            if (before.isNaN() || after.isNaN()) continue
+            val velocity = (after - before) / TOUCH_EPSILON
+            val current = getFloat(id).takeUnless { it.isNaN() } ?: continue
+            val min = resolveFloat(op.min)
+            val max = resolveFloat(op.max)
+            val stop = stopPosition(op, current, velocity, min, max)
+            val limits = velocityLimits(op)
+            // `min(2, maxTime * |stop - current| / (2 * maxVelocity))`.
+            val time = minOf(
+                2f,
+                limits.maxTime * abs(stop - current) / (2f * limits.maxVelocity),
+            )
+            state.easing.config(current, stop, velocity, time, limits.maxAcceleration, limits.maxVelocity)
+            if (!state.easing.isUseful()) continue
+            state.touchUpTime = animationTime
+            state.easingToStop = true
+        }
         needsRepaint = true
     }
+
+    /** Runs [block] as though the pointer were somewhere else, then puts it back. */
+    private inline fun <T> withPointerAt(x: Float, y: Float, block: () -> T): T {
+        val savedX = touchX
+        val savedY = touchY
+        touchX = x
+        touchY = y
+        try {
+            return block()
+        } finally {
+            touchX = savedX
+            touchY = savedY
+        }
+    }
+
+    /** `mStopMode`: the high half of the packed int the tap expression's length is in. */
+    private fun stopModeOf(op: Operation.TouchExpression): Int = op.tapExpPacked shr 16
+
+    /**
+     * `getStopPosition`: where a value let go of at [velocity] should settle.
+     *
+     * `STOP_GENTLY` (and `STOP_ABSOLUTE_POS`) carry on half the velocity further and stay inside
+     * the bounds; `STOP_ENDS` goes to whichever end is nearer. The notch modes are decoded and
+     * not applied — see `docs/OPCODES.md`.
+     */
+    private fun stopPosition(
+        op: Operation.TouchExpression,
+        value: Float,
+        velocity: Float,
+        min: Float,
+        max: Float,
+    ): Float {
+        val target = clampTo(value + velocity / 2f, min, max)
+        return when (stopModeOf(op)) {
+            STOP_ENDS -> {
+                val floor = if (min.isNaN()) 0f else min
+                if (value + velocity > (max + floor) / 2f) max else floor
+            }
+            else -> target
+        }
+    }
+
+    /** `mMaxTime`/`mMaxAcceleration`/`mMaxVelocity`: the trailing floats, or the class defaults. */
+    private fun velocityLimits(op: Operation.TouchExpression): Limits {
+        val spec = op.tapExpFloats
+        return if (spec.size >= 4 && spec[0] == 0f) Limits(spec[1], spec[2], spec[3])
+        else Limits(maxTime = 1f, maxAcceleration = 5f, maxVelocity = 7f)
+    }
+
+    internal class Limits(val maxTime: Float, val maxAcceleration: Float, val maxVelocity: Float)
 
     /** A float by id: a system variable for ids 1..35, else the pool value, else NaN. */
     fun getFloat(id: Int): Float = when (id) {
@@ -336,6 +440,14 @@ class RemoteContext : FloatCollections {
         const val THEME_LIGHT = -3
 
         const val ID_CONTINUOUS_SEC = 1
+        /** `TouchExpression.STOP_*`: what a released touch expression settles on. */
+        const val STOP_GENTLY = 0
+        const val STOP_INSTANTLY = 1
+        const val STOP_ENDS = 2
+
+        /** The moment `TouchExpression.touchUp` looks ahead by to measure the value's speed. */
+        const val TOUCH_EPSILON = 1e-4f
+
         const val ID_TIME_IN_SEC = 2
         const val ID_TIME_IN_MIN = 3
         const val ID_TIME_IN_HR = 4

@@ -28,8 +28,10 @@ class ScrollTest {
      * clip modifier as well as the scroll, so the window is the last clip of that size and the
      * translate straight after it is the scroll.
      */
-    private fun scrollOffset(document: RemoteComposeDocument): Float {
-        val opcodes = document.frame(0L).opcodes
+    private fun scrollOffset(document: RemoteComposeDocument): Float = offsetIn(document.frame(0L).opcodes)
+
+    /** The same, read from a frame already drawn, so the clock is left where the caller put it. */
+    private fun offsetIn(opcodes: List<Opcode>): Float {
         val window = opcodes.indexOfLast { it is Opcode.ClipRect && it.bottom == WINDOW }
         assertTrue(window >= 0, "the scrolling component clips to its window")
         return -(opcodes[window + 1] as Opcode.Translate).dy
@@ -142,6 +144,73 @@ class ScrollTest {
         document.frame(0L)
         document.frame(2000L)
         assertEquals(before, scrollOffset(document), 0.01f)
+    }
+
+    /** Drags the menu up by 100 and lets go at [speed] document units a second. */
+    private fun flung(speed: Float): RemoteComposeDocument {
+        val document = loaded()
+        document.touchDown(150f, 300f)
+        document.frame(0L)
+        document.touchDrag(150f, 200f)
+        document.frame(0L)
+        document.touchUp(150f, 200f, 0f, -speed)
+        return document
+    }
+
+    private fun offsetAt(document: RemoteComposeDocument, at: Long): Float =
+        offsetIn(document.frame(at).opcodes)
+
+    @Test
+    fun lettingGoWhileMovingCarriesOn() {
+        val document = flung(600f)
+        assertEquals(100f, offsetAt(document, 0L), 0.01f, "where the finger left it")
+        val early = offsetAt(document, 100L)
+        assertTrue(early > 100f, "it kept going: $early")
+        assertTrue(offsetAt(document, 200L) > early, "and is still going")
+    }
+
+    @Test
+    fun itSlowsDownRatherThanStoppingDead() {
+        val document = flung(600f)
+        offsetAt(document, 0L)
+        val first = offsetAt(document, 100L) - 100f
+        val second = offsetAt(document, 200L) - offsetAt(document, 100L)
+        val third = offsetAt(document, 300L) - offsetAt(document, 200L)
+        assertTrue(first > second && second > third, "each step is shorter: $first, $second, $third")
+    }
+
+    @Test
+    fun itComesToRestAndStaysThere() {
+        val document = flung(600f)
+        // Half the velocity further on is past the end, so it settles against it.
+        val settled = offsetAt(document, 1000L)
+        assertEquals(CONTENT - WINDOW, settled, 0.01f)
+        assertEquals(settled, offsetAt(document, 2000L), 0.01f, "and does not drift after")
+    }
+
+    @Test
+    fun aSlowerReleaseTravelsLessFar() {
+        // `getStopPosition` for STOP_GENTLY is half the velocity beyond where the finger left.
+        val gentle = flung(120f)
+        gentle.frame(0L)
+        assertEquals(160f, offsetAt(gentle, 2000L), 1f, "100 plus half of 120")
+    }
+
+    @Test
+    fun aFingerComingBackDownStopsIt() {
+        val document = flung(600f)
+        offsetAt(document, 0L)
+        val caught = offsetAt(document, 100L)
+        document.touchDown(150f, 300f)
+        assertEquals(caught, offsetAt(document, 150L), 1f, "it stopped where it was caught")
+        assertEquals(caught, offsetAt(document, 400L), 1f, "and stays under the finger")
+    }
+
+    @Test
+    fun aReleaseWithNoSpeedLeavesItWhereItIs() {
+        val document = flung(0f)
+        assertEquals(100f, offsetAt(document, 0L), 0.01f)
+        assertEquals(100f, offsetAt(document, 800L), 0.01f, "nothing to carry on with")
     }
 
     @Test

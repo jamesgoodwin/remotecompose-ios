@@ -187,7 +187,7 @@ because the format has no generic length prefix to skip by.
 | 221 | `MODIFIER_OFFSET` | supported |  |
 | 223 | `MODIFIER_ZINDEX` | supported |  |
 | 224 | `MODIFIER_GRAPHICS_LAYER` | partial | alpha, rotation, scale and translation; the rest of the attributes are ignored |
-| 226 | `MODIFIER_SCROLL` | partial | the window, the offset and dragging; velocity easing and notch stops are not applied |
+| 226 | `MODIFIER_SCROLL` | partial | the window, the offset, dragging and the glide after a release; notch stops are not applied |
 | 228 | `MODIFIER_MARQUEE` | decoded only | no scrolling text |
 | 229 | `MODIFIER_RIPPLE` | supported | the library's own near-white circle, which shows on a coloured surface and barely on a white one |
 | 231 | `MODIFIER_WIDTH_IN` | supported |  |
@@ -203,7 +203,7 @@ because the format has no generic length prefix to skip by.
 | 59 | `MODIFIER_CLICK` | supported |  |
 | 64 | `CLICK_AREA` | supported |  |
 | 83 | `MODIFIER_MULTI_CLICK` | supported |  |
-| 157 | `TOUCH_EXPRESSION` | partial | default drag mode; velocity easing, wrap and notch stops are not applied |
+| 157 | `TOUCH_EXPRESSION` | partial | default drag mode, and `STOP_GENTLY`/`STOP_ENDS`/`STOP_INSTANTLY` after a release; wrap and the notch stop modes are not applied |
 | 209 | `HOST_ACTION` | supported |  |
 | 212 | `VALUE_INTEGER_CHANGE_ACTION` | supported |  |
 | 213 | `VALUE_STRING_CHANGE_ACTION` | supported |  |

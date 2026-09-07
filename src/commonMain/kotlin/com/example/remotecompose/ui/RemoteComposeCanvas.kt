@@ -19,6 +19,8 @@ import kotlinx.coroutines.isActive
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
@@ -134,6 +136,9 @@ internal fun Modifier.documentGestures(
         val down = awaitFirstDown(requireUnconsumed = false)
         val start = fit().toDocumentSpace(down.position)
         loaded.touchDown(start.x, start.y)
+        // How fast the finger is going when it leaves is what a scrolling list carries on with.
+        val velocity = VelocityTracker()
+        velocity.addPosition(down.uptimeMillis, down.position)
         var dragging = false
         var last = down
         while (true) {
@@ -141,6 +146,7 @@ internal fun Modifier.documentGestures(
             val change = event.changes.firstOrNull { it.id == down.id } ?: break
             last = change
             if (!change.pressed) break
+            velocity.addPosition(change.uptimeMillis, change.position)
             if (!dragging &&
                 (change.position - down.position).getDistance() > viewConfiguration.touchSlop
             ) {
@@ -155,7 +161,10 @@ internal fun Modifier.documentGestures(
             }
         }
         val end = fit().toDocumentSpace(last.position)
-        loaded.touchUp(end.x, end.y)
+        // The tracker measures in pixels a second; the document is in its own units.
+        val scale = fit().scale
+        val pixelsPerSecond = if (dragging) velocity.calculateVelocity() else Velocity.Zero
+        loaded.touchUp(end.x, end.y, pixelsPerSecond.x / scale, pixelsPerSecond.y / scale)
         // A press that never moved is a click on whatever is under it.
         if (!dragging) loaded.click(end.x, end.y)
     }

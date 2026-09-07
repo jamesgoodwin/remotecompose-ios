@@ -103,15 +103,22 @@ class RemoteComposeDocument internal constructor(
         context.touchDrag(x, y)
     }
 
-    /** `CoreDocument.touchUp`: releases every touch expression and runs any touch-up actions. */
-    fun touchUp(x: Float, y: Float): Boolean {
-        context.touchUp()
+    /**
+     * `CoreDocument.touchUp`: releases every touch expression and runs any touch-up actions.
+     *
+     * [velocityX] and [velocityY] are how fast the pointer was travelling when it left, in
+     * document units per second. A touch expression uses them to keep going — a list carries on
+     * under its own momentum and glides to a stop — so a caller with no velocity to report
+     * leaves them at zero and the value simply stays where it was put.
+     */
+    fun touchUp(x: Float, y: Float, velocityX: Float = 0f, velocityY: Float = 0f): Boolean {
+        context.touchUp(velocityX, velocityY, touchExpressions)
         return dispatch(ActionTrigger.TOUCH_UP, x, y)
     }
 
-    /** `CoreDocument.touchCancel`. */
+    /** `CoreDocument.touchCancel`: as touchUp, but nothing carries on. */
     fun touchCancel(x: Float, y: Float): Boolean {
-        context.touchUp()
+        context.touchUp(0f, 0f, touchExpressions)
         return dispatch(ActionTrigger.TOUCH_CANCEL, x, y)
     }
 
