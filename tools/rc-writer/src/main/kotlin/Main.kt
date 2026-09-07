@@ -3366,34 +3366,32 @@ private fun buildCarouselSample() {
     val platform = JvmRcPlatformServices()
     val writer = RemoteComposeWriter(300, 420, "carousel", platform)
 
-    /** A picture: a graded sky over two ridges, in its own hue. */
-    fun picture(hue: Float): java.awt.image.BufferedImage {
-        val w = 250
-        val h = 200
-        val image = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-        for (y in 0 until h) {
-            val t = y / h.toDouble()
-            val sky = java.awt.Color.getHSBColor(hue, (0.45 - 0.25 * t).toFloat(), (0.55 + 0.35 * t).toFloat())
-            for (x in 0 until w) image.setRGB(x, y, sky.rgb)
-        }
-        for ((depth, shade) in listOf(0.62 to 0.42f, 0.78 to 0.24f)) {
-            val ridge = java.awt.Color.getHSBColor(hue, 0.35f, shade)
-            for (x in 0 until w) {
-                val top = ((depth + 0.07 * Math.sin(x / 26.0 + depth * 9)) * h).toInt().coerceIn(0, h - 1)
-                for (y in top until h) image.setRGB(x, y, ridge.rgb)
-            }
-        }
-        return image
+    /**
+     * A photograph, straight into the document as the JPEG bytes on disk.
+     *
+     * `writer.storeBitmap(image)` would re-encode through the platform services, which produces
+     * PNG — several times the size for a photograph. `nextId()` plus the buffer's own
+     * `storeBitmap` puts the file in as it is, so five pictures cost about 75 kB rather than
+     * half a megabyte.
+     */
+    fun photo(name: String): Int {
+        val file = File("photos/$name.jpg")
+        val bytes = file.readBytes()
+        val image = javax.imageio.ImageIO.read(file)
+        val id = writer.nextId()
+        writer.getBuffer().storeBitmap(id, image.width, image.height, bytes)
+        return id
     }
 
-    val places = listOf(
-        "Brecon" to 0.58f,
-        "Snowdon" to 0.44f,
-        "Dartmoor" to 0.10f,
-        "Cairngorm" to 0.72f,
-        "Mourne" to 0.88f,
-    )
-    val cards = places.map { (name, hue) -> Triple(name, writer.storeBitmap(picture(hue)), hue) }
+    // Real places, and real photographs of them: CC0, from Wikimedia Commons. See
+    // `tools/rc-writer/photos/CREDITS.md` for who took each one.
+    val cards = listOf(
+        "Brecon" to "brecon",
+        "Snowdon" to "snowdon",
+        "Dartmoor" to "dartmoor",
+        "Cairngorm" to "cairngorm",
+        "Mourne" to "mourne",
+    ).map { (label, file) -> label to photo(file) }
 
     val cardWidth = 168f
     val cardHeight = 232f
@@ -3419,7 +3417,7 @@ private fun buildCarouselSample() {
         1, 2,
     )
     for ((index, card) in cards.withIndex()) {
-        val (name, bitmapId, _) = card
+        val (name, bitmapId) = card
         val left = edge + index * (cardWidth + gap)
         // How far this card's middle is from the middle of the window, as it scrolls.
         val fromMiddle = writer.floatExpression(
