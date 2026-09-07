@@ -33,6 +33,12 @@ internal object OperationReader {
             val length = r.readS32()
             Op.TextData(id, r.readUtf8(length))
         }
+        Operations.NAMED_VARIABLE -> {
+            // `declareId`, `readInt`, then `readUTF8(4000)`, which is a length and that many bytes.
+            val id = r.readS32()
+            val type = r.readS32()
+            Op.NamedVariable(id, type, r.readUtf8(r.readS32()))
+        }
         Operations.TEXT_SUBTEXT -> Op.TextSubtext(r.readS32(), r.readS32(), r.readFloat32(), r.readFloat32())
         Operations.TEXT_TRANSFORM -> Op.TextTransform(r.readS32(), r.readS32(), r.readFloat32(), r.readFloat32(), r.readS32())
         Operations.ROOT_CONTENT_DESCRIPTION -> Op.RootContentDescription(r.readS32())

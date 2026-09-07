@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 138 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 139 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -34,6 +34,7 @@ because the format has no generic length prefix to skip by.
 
 | Id | Opcode | Status | Notes |
 | --: | --- | --- | --- |
+| 137 | `NAMED_VARIABLE` | supported | gives a pool value a name, and `RemoteComposeDocument.setNamed*` is the host putting one in by it |
 | 45 | `DATA_SHADER` | decoded only | uniforms are kept; painting one needs a runtime shader compiler |
 | 80 | `DATA_FLOAT` | supported |  |
 | 101 | `DATA_BITMAP` | supported |  |
@@ -223,12 +224,16 @@ A document using any of these fails to parse. They fall into groups: sound (`PLA
 `ATTRIBUTE_IMAGE`, `ATTRIBUTE_TIME`), host-named and metadata actions, accessibility semantics,
 and the extension range.
 
+`UPDATE` (195) is in this table but cannot appear in a document: the constant is declared in
+`Operations`, and no class in remote-core 1.0.0-alpha18 answers to it — nothing registers a
+reader for 195 and no operation's `id()` returns it. There is nothing to decode until upstream
+implements it.
+
 | Id | Opcode |
 | --: | --- |
 | 2 | `COMPONENT_START` |
 | 4 | `LOAD_BITMAP` |
 | 132 | `MATRIX_SET` |
-| 137 | `NAMED_VARIABLE` |
 | 139 | `DRAW_CONTENT` |
 | 141 | `PLAY_SOUND` |
 | 142 | `REFERENCED_OPERATIONS` |

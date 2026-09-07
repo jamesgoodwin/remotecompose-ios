@@ -589,6 +589,14 @@ sealed interface Operation {
     data class ValueFloatChange(val valueId: Int, val value: Float) : Operation
     data class ValueIntegerExpressionChange(val valueId: Long, val value: Long) : Operation
     data class ValueFloatExpressionChange(val valueId: Int, val value: Int) : Operation
+    /**
+     * `NamedVariable` (opcode `NAMED_VARIABLE`): `[id][type][length][utf8 name]`. Gives a pool
+     * value a name the host can find it by; [type] is `STRING_TYPE` 0, `FLOAT_TYPE` 1,
+     * `COLOR_TYPE` 2, `IMAGE_TYPE` 3, `INT_TYPE` 4, `LONG_TYPE` 5, and 6 for both
+     * `FLOAT_ARRAY_TYPE` and `PATH_TYPE`, which the real class gives the same number.
+     */
+    data class NamedVariable(val id: Int, val type: Int, val name: String) : Operation
+
     data class TouchExpression(
         val id: Int, val defValue: Float, val min: Float, val max: Float, val velocity: Float, val flags: Int,
         val srcExp: List<Float>, val tapExpPacked: Int, val tapExp: List<Float>, val tapExpFloats: List<Float>,

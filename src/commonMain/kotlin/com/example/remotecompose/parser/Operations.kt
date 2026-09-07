@@ -55,6 +55,7 @@ internal object Operations {
     const val COLOR_EXPRESSIONS = 134
     const val TEXT_FROM_FLOAT = 135
     const val TEXT_MERGE = 136
+    const val NAMED_VARIABLE = 137
     const val COLOR_CONSTANT = 138
     const val DATA_INT = 140
     const val DATA_BOOLEAN = 143

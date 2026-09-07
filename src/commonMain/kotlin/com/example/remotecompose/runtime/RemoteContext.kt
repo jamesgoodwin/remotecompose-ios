@@ -52,6 +52,32 @@ class RemoteContext : FloatCollections {
      */
     class Ripple(val startedAt: Float, val x: Float, val y: Float)
 
+    /** A pool value the document gave a name to, and what kind of value it is. */
+    class NamedValue(val id: Int, val type: Int)
+
+    /** `loadVariableName`: what the host can find a value by, filled in by `NAMED_VARIABLE`. */
+    val namedValues = mutableMapOf<String, NamedValue>()
+
+    fun loadVariableName(name: String, id: Int, type: Int) {
+        namedValues[name] = NamedValue(id, type)
+    }
+
+    /**
+     * `setNamed*Override`: the host putting a value in by name, which is the point of naming one.
+     * Returns false when the document never named it, or named it as something else.
+     *
+     * The concrete player's own override bookkeeping is not in the extracted jars — only the
+     * abstract declarations and `loadVariableName`, which is what the operation itself does — so
+     * this writes straight into the pool the name points at.
+     */
+    fun setNamedValue(name: String, type: Int, write: (Int) -> Unit): Boolean {
+        val named = namedValues[name] ?: return false
+        if (named.type != type) return false
+        write(named.id)
+        needsRepaint = true
+        return true
+    }
+
     /** What a component's visibility was, what it is heading for, and when it set off. */
     class VisibilityState(var from: Int, var target: Int, var startedAt: Float)
 
@@ -181,6 +207,21 @@ class RemoteContext : FloatCollections {
 
     fun overrideInteger(id: Int, value: Int) {
         ints[id] = value
+        needsRepaint = true
+    }
+
+    fun overrideColorValue(id: Int, argb: Int) {
+        colors[id] = Color(argb)
+        needsRepaint = true
+    }
+
+    fun overrideLong(id: Int, value: Long) {
+        longs[id] = value
+        needsRepaint = true
+    }
+
+    fun overrideTextValue(id: Int, value: String) {
+        texts[id] = value
         needsRepaint = true
     }
 
@@ -445,6 +486,15 @@ class RemoteContext : FloatCollections {
         const val THEME_LIGHT = -3
 
         const val ID_CONTINUOUS_SEC = 1
+        /** `NamedVariable` types. 6 is both `FLOAT_ARRAY_TYPE` and `PATH_TYPE` upstream. */
+        const val NAMED_STRING = 0
+        const val NAMED_FLOAT = 1
+        const val NAMED_COLOR = 2
+        const val NAMED_IMAGE = 3
+        const val NAMED_INT = 4
+        const val NAMED_LONG = 5
+        const val NAMED_FLOAT_ARRAY = 6
+
         /** `TouchExpression.STOP_*`: what a released touch expression settles on. */
         const val STOP_GENTLY = 0
         const val STOP_INSTANTLY = 1

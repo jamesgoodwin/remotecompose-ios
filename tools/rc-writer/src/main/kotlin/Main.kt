@@ -106,6 +106,10 @@ fun main(args: Array<String>) {
         buildEasingSample()
         return
     }
+    if (args.getOrNull(0) == "named") {
+        buildNamedSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2564,4 +2568,46 @@ private fun buildEasingSample() {
     val bytes = writer.encodeToByteArray()
     File("easing.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to easing.rc")
+}
+
+/**
+ * A card whose contents the host fills in: every value it draws is named through
+ * `NAMED_VARIABLE`, so a host can set them by name without knowing an id.
+ */
+private fun buildNamedSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 180, "named", platform)
+
+    // Each of these writes a NAMED_VARIABLE and then the value itself, and hands back a
+    // reference to use in the document.
+    val title = writer.addNamedString("title", "Awaiting host")
+    val amount = writer.addNamedFloat("amount", 0f)
+    val accent = writer.addNamedColor("accent", 0xFF6750A4.toInt())
+    // Named but not drawn: the record still says what the host may set, which is the half of
+    // this that matters — the document declaring its inputs.
+    writer.addNamedInt("count", 0)
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 1.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    writer.startColumn(RecordingModifier().fillMaxSize().background(0xFFFFFFFF.toInt()).padding(16f).spacedBy(8f), 1, 4)
+
+    text(title, 0xFF1B1B1F.toInt(), 20f, 700f)
+
+    // The amount as text, so a host setting the float shows up as words rather than a bar alone.
+    text(writer.createTextFromFloat(amount, 3, 2, 0), 0xFF44464F.toInt(), 14f)
+
+    // And as a bar, in the named colour, so setting the colour is visible too.
+    writer.startBox(RecordingModifier().fillMaxWidth().height(16f), 1, 2)
+    writer.getRcPaint().setColorId(accent).commit()
+    writer.drawRect(0f, 0f, writer.floatExpression(amount, 2.68f, Rc.FloatExpression.MUL), 16f)
+    writer.endBox()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("named.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to named.rc")
 }

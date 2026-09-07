@@ -308,6 +308,10 @@ object RemoteComposeParser {
                     // run on gesture rather than while evaluating (each operation's runAction).
                     is Op.HostAction -> tree.addAction(DocumentAction.Host(op.actionId))
                     is Op.ValueFloatChange -> tree.addAction(DocumentAction.SetFloat(op.valueId, op.value))
+                    // `NamedVariable.apply`: loadVariableName(name, id, type). The value itself
+                    // is written by whatever record follows; this only says what it is called.
+                    is Op.NamedVariable -> context.loadVariableName(op.name, op.id, op.type)
+
                     is Op.ValueIntegerChange -> tree.addAction(DocumentAction.SetInteger(op.valueId, op.value))
                     is Op.ValueStringChange -> tree.addAction(DocumentAction.SetText(op.valueId, op.stringId))
                     is Op.ValueFloatExpressionChange ->

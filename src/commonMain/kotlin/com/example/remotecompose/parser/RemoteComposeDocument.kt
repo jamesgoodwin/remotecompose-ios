@@ -130,6 +130,38 @@ class RemoteComposeDocument internal constructor(
     }
 
     /** Runs one action, mirroring the `runAction` of the operation it came from. */
+    /**
+     * The names this document gave its values, and what kind each is: `NAMED_VARIABLE` is how a
+     * document says which of its values a host is expected to fill in.
+     */
+    val namedValues: Map<String, RemoteContext.NamedValue> get() = context.namedValues
+
+    /**
+     * `setNamedFloatOverride`: puts [value] into the float the document named [name].
+     *
+     * Returns false if the document never named one, or named it as a different kind, so a host
+     * pushing a value it has no home for finds out rather than being ignored. The next frame
+     * shows it, as any other value change does.
+     */
+    fun setNamedFloat(name: String, value: Float): Boolean =
+        context.setNamedValue(name, RemoteContext.NAMED_FLOAT) { context.overrideFloat(it, value) }
+
+    /** `setNamedIntegerOverride`. */
+    fun setNamedInteger(name: String, value: Int): Boolean =
+        context.setNamedValue(name, RemoteContext.NAMED_INT) { context.overrideInteger(it, value) }
+
+    /** `setNamedColorOverride`; the value is ARGB, as every colour on the wire is. */
+    fun setNamedColor(name: String, argb: Int): Boolean =
+        context.setNamedValue(name, RemoteContext.NAMED_COLOR) { context.overrideColorValue(it, argb) }
+
+    /** `setNamedLong`. */
+    fun setNamedLong(name: String, value: Long): Boolean =
+        context.setNamedValue(name, RemoteContext.NAMED_LONG) { context.overrideLong(it, value) }
+
+    /** `setNamedStringOverride`. */
+    fun setNamedString(name: String, value: String): Boolean =
+        context.setNamedValue(name, RemoteContext.NAMED_STRING) { context.overrideTextValue(it, value) }
+
     private fun run(action: DocumentAction) {
         when (action) {
             is DocumentAction.Host -> context.runHostAction(action.actionId, action.metadata ?: "")

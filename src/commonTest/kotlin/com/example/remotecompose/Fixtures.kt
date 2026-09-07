@@ -32,6 +32,7 @@ val FIXTURES: Map<String, ByteArray> = mapOf(
     "easing" to EASING_RC_BYTES,
     "list" to LIST_RC_BYTES,
     "material" to MATERIAL_RC_BYTES,
+    "named" to NAMED_RC_BYTES,
     "paint" to PAINT_RC_BYTES,
     "pattern" to PATTERN_RC_BYTES,
     "sample" to SAMPLE_RC_BYTES,
