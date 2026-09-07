@@ -60,6 +60,7 @@ fun DemoScreen(initialPage: Int = 0) {
         "Coffee" to COFFEE_RC_BYTES,
         "Article" to ARTICLE_RC_BYTES,
         "Flight" to FLIGHT_RC_BYTES,
+        "Watch" to WATCH_RC_BYTES,
     )
     var page by remember { mutableStateOf(initialPage.coerceIn(0, pages.lastIndex)) }
     val (label, bytes) = pages[page]
@@ -69,6 +70,13 @@ fun DemoScreen(initialPage: Int = 0) {
         // The document keeps the whole screen and stays centred in it, which is what the pixel
         // harness relies on to find it in a screenshot; the bar floats over the backdrop below.
         when (label) {
+            // Runs on the clock alone, and has a palette for each mode.
+            "Watch" -> RemoteComposeCanvas(
+                bytes = bytes,
+                modifier = Modifier.fillMaxSize().padding(bottom = BAR_SPACE),
+                dark = isSystemInDarkTheme(),
+                onAction = { go(1) },
+            )
             // The one page where the host has something to say: the document names its values
             // and this feeds them, the way a real one would from a network.
             "Flight" -> {

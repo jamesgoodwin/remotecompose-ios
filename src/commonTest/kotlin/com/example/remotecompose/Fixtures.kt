@@ -12,6 +12,7 @@ import com.example.remotecompose.demo.PAINT_RC_BYTES
 import com.example.remotecompose.demo.PATTERN_RC_BYTES
 import com.example.remotecompose.demo.SAMPLE_RC_BYTES
 import com.example.remotecompose.demo.SHOWCASE_RC_BYTES
+import com.example.remotecompose.demo.WATCH_RC_BYTES
 import com.example.remotecompose.demo.TEXTPATH_RC_BYTES
 
 /**
@@ -46,6 +47,7 @@ val FIXTURES: Map<String, ByteArray> = mapOf(
     "shader" to SHADER_RC_BYTES,
     "showcase" to SHOWCASE_RC_BYTES,
     "textpath" to TEXTPATH_RC_BYTES,
+    "watch" to WATCH_RC_BYTES,
     "timeattr" to TIMEATTR_RC_BYTES,
     "visibility" to VISIBILITY_RC_BYTES,
 )

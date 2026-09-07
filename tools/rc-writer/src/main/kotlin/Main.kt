@@ -134,6 +134,10 @@ fun main(args: Array<String>) {
         buildFlightSample()
         return
     }
+    if (args.getOrNull(0) == "watch") {
+        buildWatchSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -3063,4 +3067,123 @@ private fun buildFlightSample() {
     val bytes = writer.encodeToByteArray()
     File("flight.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to flight.rc")
+}
+
+/**
+ * A watch face, which is the shape of surface this format most obviously serves: handed over
+ * once and left to run for hours with nothing behind it.
+ *
+ * Every moving thing is arithmetic over the clock the document already has. The hands are
+ * `MATRIX_ROTATE` by an angle worked out from `TIME_IN_SEC`/`_MIN`/`_HR`; the date is
+ * `ATTRIBUTE_TIME` reading the calendar off the same moment; the arc under the dial is how far
+ * through the day it is. Nobody sends it a frame.
+ */
+private fun buildWatchSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "watch", platform)
+
+    // A colour per mode, so the face is at home in either.
+    var nextThemeId = 900
+    fun themed(light: Int, dark: Int): Int {
+        val id = nextThemeId++
+        writer.getBuffer().addThemedColor(id, 0, 0.toShort(), 0.toShort(), light, dark)
+        return id
+    }
+    val face = themed(0xFFF7F2FA.toInt(), 0xFF121016.toInt())
+    val rim = themed(0xFFE7E0EC.toInt(), 0xFF2A2630.toInt())
+    val ink = themed(0xFF1B1B1F.toInt(), 0xFFE6E1E9.toInt())
+    val faint = themed(0xFF7A7580.toInt(), 0xFF8E8894.toInt())
+    val accent = themed(0xFF6750A4.toInt(), 0xFFD0BCFF.toInt())
+
+    val cx = 150f
+    val cy = 156f
+    val radius = 128f
+
+    writer.getRcPaint().setColorId(face).commit()
+    writer.drawRect(0f, 0f, 300f, 420f)
+
+    // The dial.
+    writer.getRcPaint().setColorId(rim).setStyle(1).setStrokeWidth(2f).commit()
+    writer.drawCircle(cx, cy, radius)
+
+    // Sixty ticks, the twelve on the hour longer. Static geometry, so the endpoints are worked
+    // out here rather than by the document.
+    for (minute in 0 until 60) {
+        val angle = Math.toRadians(minute * 6.0 - 90.0)
+        val hour = minute % 5 == 0
+        val inner = radius - (if (hour) 16f else 7f)
+        writer.getRcPaint().setColorId(if (hour) ink else faint).setStyle(1)
+            .setStrokeWidth(if (hour) 3f else 1f).commit()
+        writer.drawLine(
+            cx + (inner * Math.cos(angle)).toFloat(), cy + (inner * Math.sin(angle)).toFloat(),
+            cx + ((radius - 3f) * Math.cos(angle)).toFloat(), cy + ((radius - 3f) * Math.sin(angle)).toFloat(),
+        )
+    }
+
+    // The angles. A hand sweeps once per its own unit, and each carries the one below it so the
+    // hour hand creeps rather than jumping on the hour.
+    val secondAngle = writer.floatExpression(Rc.Time.TIME_IN_SEC, 6f, Rc.FloatExpression.MUL)
+    val minuteAngle = writer.floatExpression(
+        Rc.Time.TIME_IN_MIN, 6f, Rc.FloatExpression.MUL,
+        Rc.Time.TIME_IN_SEC, 0.1f, Rc.FloatExpression.MUL, Rc.FloatExpression.ADD,
+    )
+    val hourAngle = writer.floatExpression(
+        Rc.Time.TIME_IN_HR, 12f, Rc.FloatExpression.MOD, 30f, Rc.FloatExpression.MUL,
+        Rc.Time.TIME_IN_MIN, 0.5f, Rc.FloatExpression.MUL, Rc.FloatExpression.ADD,
+    )
+
+    /** One hand: a rounded bar from the centre, turned to [angle]. */
+    fun hand(angle: Float, colorId: Int, length: Float, width: Float, tail: Float) {
+        writer.save()
+        writer.rotate(angle, cx, cy)
+        writer.getRcPaint().setColorId(colorId).setStyle(0).commit()
+        writer.drawRoundRect(cx - width / 2f, cy - length, cx + width / 2f, cy + tail, width / 2f, width / 2f)
+        writer.restore()
+    }
+
+    hand(hourAngle, ink, 74f, 8f, 16f)
+    hand(minuteAngle, ink, 108f, 6f, 18f)
+    hand(secondAngle, accent, 116f, 2.5f, 26f)
+
+    // The pin the hands turn about.
+    writer.getRcPaint().setColorId(accent).setStyle(0).commit()
+    writer.drawCircle(cx, cy, 5f)
+    writer.getRcPaint().setColorId(face).commit()
+    writer.drawCircle(cx, cy, 2f)
+
+    // The date, read off the same moment the hands are: an id with no long behind it means now.
+    val now = -1
+    val dayOfMonth = writer.timeAttribute(now, 9.toShort())
+    val weekday = writer.timeAttribute(now, 11.toShort())
+    val month = writer.timeAttribute(now, 10.toShort())
+
+    // Day and month names, chosen by index out of a list the document carries.
+    val weekdays = writer.addList(
+        listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN").map { writer.addText(it) }.toIntArray(),
+    )
+    val months = writer.addList(
+        listOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+            .map { writer.addText(it) }.toIntArray(),
+    )
+
+    writer.getRcPaint().setColorId(faint).setTextSize(13f).commit()
+    writer.drawTextAnchored(writer.textLookup(weekdays, weekday), cx, 318f, 0f, 0f, 0)
+    writer.getRcPaint().setColorId(ink).setTextSize(22f).commit()
+    writer.drawTextAnchored(writer.createTextFromFloat(dayOfMonth, 2, 0, 4 or 1), cx, 346f, 0f, 0f, 0)
+    writer.getRcPaint().setColorId(faint).setTextSize(13f).commit()
+    writer.drawTextAnchored(writer.textLookup(months, month), cx, 372f, 0f, 0f, 0)
+
+    // How far through the day it is, as an arc under the dial.
+    val throughDay = writer.floatExpression(
+        Rc.Time.TIME_IN_HR, 60f, Rc.FloatExpression.MUL, Rc.Time.TIME_IN_MIN, Rc.FloatExpression.ADD,
+        1440f, Rc.FloatExpression.DIV, 360f, Rc.FloatExpression.MUL,
+    )
+    writer.getRcPaint().setColorId(rim).setStyle(1).setStrokeWidth(4f).commit()
+    writer.drawArc(30f, 380f, 270f, 410f, 180f, 180f)
+    writer.getRcPaint().setColorId(accent).setStyle(1).setStrokeWidth(4f).commit()
+    writer.drawArc(30f, 380f, 270f, 410f, 180f, writer.floatExpression(throughDay, 0.5f, Rc.FloatExpression.MUL))
+
+    val bytes = writer.encodeToByteArray()
+    File("watch.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to watch.rc")
 }
