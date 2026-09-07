@@ -28,6 +28,7 @@ import com.example.remotecompose.engine.RenderContext
 import com.example.remotecompose.model.Header
 import com.example.remotecompose.model.RemoteAction
 import com.example.remotecompose.parser.RemoteComposeParser
+import com.example.remotecompose.runtime.RemoteContext
 
 /**
  * Platform-agnostic renderer for Remote Compose binary payloads.
@@ -48,6 +49,8 @@ import com.example.remotecompose.parser.RemoteComposeParser
  *   `RemoteComposeWriter`. Re-parsed only when this exact [ByteArray] instance changes
  *   (`remember(bytes)`), matching Kotlin's reference-based `ByteArray` equality — pass a new array
  *   instance when the underlying content changes, not the same array mutated in place.
+ * @param dark Which of the document's palettes to paint; see `THEME` and `COLOR_THEME`. A
+ *   document with one palette looks the same either way.
  * @param onAction Invoked when the document runs a `HOST_ACTION`. Defaults to a no-op.
  * @param fallback Optional composable shown instead of the canvas when [bytes] fails to parse
  *   (a truncated record, or an opcode this parser does not handle). When `null` and parsing
@@ -57,6 +60,7 @@ import com.example.remotecompose.parser.RemoteComposeParser
 fun RemoteComposeCanvas(
     bytes: ByteArray,
     modifier: Modifier = Modifier,
+    dark: Boolean = false,
     onAction: (RemoteAction) -> Unit = {},
     fallback: (@Composable () -> Unit)? = null,
 ) {
@@ -69,6 +73,9 @@ fun RemoteComposeCanvas(
         fallback?.invoke()
         return
     }
+
+    // A document carries a palette for each mode; this is the host saying which one it is in.
+    loaded.paintTheme = if (dark) RemoteContext.THEME_DARK else RemoteContext.THEME_LIGHT
 
     val document by rememberDocumentFrames(loaded)
     val renderContext = remember(loaded, textMeasurer) { RenderContext(document, textMeasurer) }

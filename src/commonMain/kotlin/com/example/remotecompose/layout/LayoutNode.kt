@@ -124,6 +124,19 @@ class LayoutNode(val kind: Kind) {
     var stateIndexId: Int = 0
 
     // TEXT
+    /** The id the document gave this component, which is what identifies it between frames. */
+    var componentId: Int = 0
+
+    /** The id of the `AnimationSpec` this component animates by, or -1 for none. */
+    var animationId: Int = -1
+
+    /**
+     * How long this component takes to move to a new layout, and on what curve, from the
+     * `AnimationSpec` among its modifiers. Zero means it simply appears where it now is.
+     */
+    var motionDuration: Float = 0f
+    var motionEasing: Int = 0
+
     var textId: Int = 0
     var textPaint: PaintStyle? = null
     var textAlign: Int = 1

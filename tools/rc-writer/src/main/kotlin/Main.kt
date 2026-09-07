@@ -103,7 +103,7 @@ fun main(args: Array<String>) {
  */
 private fun buildCoffeeSample() {
     val platform = JvmRcPlatformServices()
-    val writer = RemoteComposeWriter(300, 380, "coffee", platform)
+    val writer = RemoteComposeWriter(300, 420, "coffee", platform)
 
     // A colour with a value for each mode. The pair is written once and read by id after that,
     // so the rest of the document says nothing about which mode it is in.
@@ -131,7 +131,29 @@ private fun buildCoffeeSample() {
     writer.startColumn(RecordingModifier().fillMaxSize().backgroundId(surface.toShort()).padding(16f).spacedBy(12f), 1, 4)
 
     text(writer.addText("Bean & Bone"), onSurface, 22f, 700f)
-    text(writer.addText("Cotham Hill, Bristol"), muted, 12f)
+
+    // "closes in N min", from the clock: 18:00 less the time of day, in minutes. TIME_IN_HR and
+    // TIME_IN_MIN are system variables, so this follows the clock without the host saying a word.
+    val minutesLeft = writer.floatExpression(
+        18f, Rc.Time.TIME_IN_HR, Rc.FloatExpression.SUB, 60f, Rc.FloatExpression.MUL,
+        Rc.Time.TIME_IN_MIN, Rc.FloatExpression.SUB,
+        0f, Rc.FloatExpression.MAX,
+    )
+    val closing = writer.textMerge(
+        writer.textMerge(writer.addText("Cotham Hill · closes in "), writer.createTextFromFloat(minutesLeft, 2, 0, 4 or 1)),
+        writer.addText(" min"),
+    )
+    text(closing, muted, 12f)
+
+    // A brightness bar under the heading: the accent's own brightness through COLOR_ATTRIBUTE,
+    // which is a different number in each palette, so the bar is shorter in the dark.
+    val brightness = writer.getColorAttribute(accent, 2.toShort())
+    writer.startBox(RecordingModifier().fillMaxWidth().height(3f), 1, 2)
+    writer.getRcPaint().setColorId(outline).commit()
+    writer.drawRect(0f, 0f, 268f, 3f)
+    writer.getRcPaint().setColorId(accent).commit()
+    writer.drawRect(0f, 0f, writer.floatExpression(brightness, 268f, Rc.FloatExpression.MUL), 3f)
+    writer.endBox()
 
     // The menu: taller than the window it is shown through, so it scrolls. The scroll position
     // is a document value the modifier's own touch expression drives, and dragging moves it.
@@ -148,9 +170,26 @@ private fun buildCoffeeSample() {
         Item("Cold brew", "18 hour steep", "£3.60"),
         Item("Espresso", "One shot", "£2.40"),
     )
-    for (item in menu) {
+    // Tapping an item makes its card taller. The height is a float the tap writes, and the
+    // animation spec on the row is what turns the change into a movement rather than a jump.
+    val expanded = writer.addFloatConstant(0f)
+    val expandedId = androidx.compose.remote.core.operations.Utils.idFromNan(expanded)
+    for ((index, item) in menu.withIndex()) {
+        // 56 normally, 92 for whichever item was tapped: (expanded == index) ? 92 : 56.
+        val rowHeight = writer.floatExpression(
+            expanded, (index + 1).toFloat(), Rc.FloatExpression.SUB, Rc.FloatExpression.ABS,
+            0.5f, Rc.FloatExpression.STEP, 36f, Rc.FloatExpression.MUL, 92f, Rc.FloatExpression.SUB,
+            Rc.FloatExpression.CHANGE_SIGN,
+        )
         writer.startRow(
-            RecordingModifier().fillMaxWidth().height(56f)
+            RecordingModifier().fillMaxWidth().height(rowHeight)
+                .animationSpec(
+                    index + 1, 0.35f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                    0.35f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                    androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_IN,
+                    androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_OUT,
+                )
+                .onClick(ValueFloatChange(expandedId, (index + 1).toFloat()))
                 .clip(RoundedRectShape(12f, 12f, 12f, 12f))
                 .backgroundId(card.toShort())
                 .dynamicBorder(1f, 12f, outline.toShort(), 2)
@@ -167,6 +206,18 @@ private fun buildCoffeeSample() {
         writer.endRow()
     }
     writer.endColumn()
+
+    // A way out of the page, and a demonstration that a host action still reaches the host from
+    // inside all of this.
+    writer.startBox(
+        RecordingModifier().fillMaxWidth().height(36f)
+            .clip(RoundedRectShape(18f, 18f, 18f, 18f))
+            .dynamicBorder(1f, 18f, outline.toShort(), 2)
+            .onClick(HostAction(11)),
+        1, 2,
+    )
+    text(writer.addText("Next demo"), accent, 13f, 700f)
+    writer.endBox()
 
     writer.endColumn()
 

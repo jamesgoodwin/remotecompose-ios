@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 137 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 138 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -21,7 +21,7 @@ because the format has no generic length prefix to skip by.
 | Id | Opcode | Status | Notes |
 | --: | --- | --- | --- |
 | 0 | `HEADER` | supported |  |
-| 14 | `ANIMATION_SPEC` | decoded only | component enter/exit animation is not run |
+| 14 | `ANIMATION_SPEC` | partial | a component that moved or resized is drawn on its way there; the enter and exit animations are not run |
 | 63 | `THEME` | supported | brackets the operations belonging to one mode |
 | 65 | `ROOT_CONTENT_BEHAVIOR` | decoded only | no document-level scaling or scroll mode |
 | 103 | `ROOT_CONTENT_DESCRIPTION` | decoded only | accessibility text is not surfaced |
@@ -40,6 +40,7 @@ because the format has no generic length prefix to skip by.
 | 102 | `DATA_TEXT` | supported |  |
 | 123 | `DATA_PATH` | supported |  |
 | 138 | `COLOR_CONSTANT` | supported |  |
+| 180 | `ATTRIBUTE_COLOR` | supported | a colour's hue, saturation, brightness or one channel, as a float |
 | 196 | `COLOR_THEME` | supported | one colour with a value for each mode |
 | 140 | `DATA_INT` | supported |  |
 | 143 | `DATA_BOOLEAN` | supported |  |
@@ -218,8 +219,8 @@ because the format has no generic length prefix to skip by.
 
 A document using any of these fails to parse. They fall into groups: sound (`PLAY_SOUND`,
 `DATA_SOUND`, `SOUND_EXPRESSION`), the rest of the loom system (`REFERENCED_OPERATIONS`,
-`INCLUDE_REFERENCED_OPERATIONS`), the attribute readers (`ATTRIBUTE_TEXT`, `ATTRIBUTE_IMAGE`,
-`ATTRIBUTE_TIME`, `ATTRIBUTE_COLOR`), host-named and metadata actions, accessibility semantics,
+`INCLUDE_REFERENCED_OPERATIONS`), the remaining attribute readers (`ATTRIBUTE_TEXT`,
+`ATTRIBUTE_IMAGE`, `ATTRIBUTE_TIME`), host-named and metadata actions, accessibility semantics,
 and the extension range.
 
 | Id | Opcode |
@@ -239,7 +240,6 @@ and the extension range.
 | 170 | `ATTRIBUTE_TEXT` |
 | 171 | `ATTRIBUTE_IMAGE` |
 | 172 | `ATTRIBUTE_TIME` |
-| 180 | `ATTRIBUTE_COLOR` |
 | 184 | `DRAW_BITMAP_TEXT_ANCHORED` |
 | 189 | `DATA_FONT` |
 | 190 | `DRAW_TO_BITMAP` |

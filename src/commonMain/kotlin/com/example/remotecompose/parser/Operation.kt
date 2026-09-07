@@ -31,6 +31,14 @@ sealed interface Operation {
     data class Theme(val theme: Int) : Operation
 
     /**
+     * `ColorAttribute`: stores one component of the colour [colorId] as the float [id] — its
+     * hue, saturation or brightness, or one of its channels. [type] is `HUE`(0),
+     * `SATURATION`(1), `BRIGHTNESS`(2), `RED`(3), `GREEN`(4), `BLUE`(5) or `ALPHA`(6). Every
+     * value comes out between 0 and 1, hue included.
+     */
+    data class ColorAttribute(val id: Int, val colorId: Int, val type: Int) : Operation
+
+    /**
      * `ColorTheme`: one colour with a value for each mode. [lightMode] and [darkMode] are ARGB;
      * [colorGroupId] and the two indices name a palette entry, which the real operation's own
      * `apply` does not read either.

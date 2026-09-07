@@ -51,6 +51,9 @@ fun main(args: Array<String>) {
         val (x, y) = points.first().split(':').map { it.trim().toFloat() }
         if (points.size == 1) {
             println("Tap at $x, $y ${if (loaded.click(x, y)) "handled" else "ignored"}")
+            // A frame at time zero, so that anything the tap set in motion starts there and the
+            // frame rendered at `timeSeconds` is that far into it.
+            loaded.frame(0L)
         } else {
             // "x:y>x:y" is a drag, which is how a scrolling component is moved.
             val (toX, toY) = points[1].split(':').map { it.trim().toFloat() }

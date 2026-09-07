@@ -33,6 +33,7 @@ fixture_for_page() {
     6) echo tools/rc-writer/advanced.rc ;;
     8) echo tools/rc-writer/list.rc ;;
     9) echo tools/rc-writer/pattern.rc ;;
+    10) echo "page 10 (coffee) wraps its text and follows the clock, so neither its layout nor its content is the same twice" >&2; return 1 ;;
     3) echo "page 3 (anim) changes with the clock, so it has no fixed reference" >&2; return 1 ;;
     7) echo "page 7 (material) is scaled to the screen, so it is not pixel-comparable" >&2; return 1 ;;
     *) echo "unknown page $1" >&2; return 1 ;;

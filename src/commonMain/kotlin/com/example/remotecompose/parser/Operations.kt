@@ -86,6 +86,7 @@ internal object Operations {
     const val LAYOUT_FIT_BOX = 176
     const val HAPTIC_FEEDBACK = 177
     const val DEBUG_MESSAGE = 179
+    const val ATTRIBUTE_COLOR = 180
     const val MATRIX_FROM_PATH = 181
     const val BITMAP_TEXT_MEASURE = 183
     const val MATRIX_CONSTANT = 186

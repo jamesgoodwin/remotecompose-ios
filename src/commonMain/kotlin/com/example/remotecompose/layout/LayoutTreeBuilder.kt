@@ -114,8 +114,45 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
             engine.measure(root, 0f, windowWidth, 0f, windowHeight)
             root.x = 0f; root.y = 0f
         }
+        animateMeasures(root)
         engine.paint(root, out)
         hitRegions = engine.collectHitRegions(root)
         return out
+    }
+
+    /**
+     * `AnimateMeasure`: a component that named an `AnimationSpec` and has moved or resized since
+     * the last frame is drawn on its way there rather than at its new place.
+     *
+     * The tree is built afresh every frame, so what identifies a component between frames is the
+     * id the document gave it. Anything without a spec is left where it was laid out.
+     */
+    private fun animateMeasures(root: LayoutNode) {
+        val now = context.animationTime
+        var running = false
+        fun visit(node: LayoutNode) {
+            if (node.motionDuration > 0f && node.componentId != 0) {
+                val existing = context.measureAnimations[node.componentId]
+                val duration = node.motionDuration
+                if (existing == null) {
+                    // First seen: it is simply where it is, and next frame has something to
+                    // animate from.
+                    context.measureAnimations[node.componentId] = MeasureAnimation(
+                        node.x, node.y, node.width, node.height,
+                        node.x, node.y, node.width, node.height,
+                        duration, node.motionEasing, now,
+                    )
+                } else {
+                    val moved = existing.toX != node.x || existing.toY != node.y ||
+                        existing.toWidth != node.width || existing.toHeight != node.height
+                    if (moved) existing.retarget(node.x, node.y, node.width, node.height, now)
+                    existing.applyTo(node, now)
+                    if (existing.isRunning(now)) running = true
+                }
+            }
+            for (child in node.children) visit(child)
+        }
+        visit(root)
+        if (running) context.needsRepaint = true
     }
 }

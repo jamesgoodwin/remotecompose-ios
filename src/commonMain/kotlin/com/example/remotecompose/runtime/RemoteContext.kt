@@ -42,6 +42,12 @@ class RemoteContext : FloatCollections {
     /** Matrices, keyed by id, as the raw values a `MatrixAccess` hands out. */
     val matrices = mutableMapOf<Int, FloatArray>()
 
+    /** `AnimationSpec`s by id, for the components that name one. */
+    val animationSpecs = mutableMapOf<Int, Operation.AnimationSpec>()
+
+    /** Where each animating component is on its way from its last layout to its current one. */
+    internal val measureAnimations = mutableMapOf<Int, com.example.remotecompose.layout.MeasureAnimation>()
+
     /** Particle variables, keyed by the id of the `ParticlesCreate` that made them. */
     val particles = mutableMapOf<Int, ParticleSystem>()
 

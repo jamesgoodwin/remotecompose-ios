@@ -35,9 +35,10 @@ class ScrollTest {
         return -(opcodes[window + 1] as Opcode.Translate).dy
     }
 
-    /** One per menu row: the bordered card each item is drawn in. */
+    /** One per menu row: the bordered card each item is drawn in, which the footer is not. */
     private fun rows(document: RemoteComposeDocument): List<Opcode.DrawRoundRect> =
-        document.frame(0L).opcodes.filterIsInstance<Opcode.DrawRoundRect>().filter { it.paint.strokeWidth == 1f }
+        document.frame(0L).opcodes.filterIsInstance<Opcode.DrawRoundRect>()
+            .filter { it.paint.strokeWidth == 1f && it.bottom - it.top == 79f }
 
     @Test
     fun theModifierIsAContainerHoldingTheTouchExpressionThatDrivesIt() {

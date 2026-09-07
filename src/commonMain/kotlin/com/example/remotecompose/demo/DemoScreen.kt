@@ -18,6 +18,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.unit.sp
 import com.example.remotecompose.ui.RemoteComposeCanvas
 
@@ -27,13 +28,13 @@ import com.example.remotecompose.ui.RemoteComposeCanvas
  * an interactive document handles its own buttons; a tap it does not claim moves to the next page.
  *
  * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint, 3 anim,
- *   4 actions, 5 text paths, 6 generated, 7 material, 8 list, 9 pattern). Lets the device hosts launch straight onto
+ *   4 actions, 5 text paths, 6 generated, 7 material, 8 list, 9 pattern, 10 coffee). Lets the device hosts launch straight onto
  *   a page for scripted screenshots: Android reads an `--ei page N` intent extra, iOS an
  *   `RC_PAGE` environment variable.
  */
 @Composable
 fun DemoScreen(initialPage: Int = 0) {
-    var page by remember { mutableStateOf(initialPage.coerceIn(0, 9)) }
+    var page by remember { mutableStateOf(initialPage.coerceIn(0, 10)) }
     val pages = listOf(
         "Coverage" to SAMPLE_RC_BYTES,
         "Showcase" to SHOWCASE_RC_BYTES,
@@ -45,6 +46,7 @@ fun DemoScreen(initialPage: Int = 0) {
         "Material" to MATERIAL_RC_BYTES,
         "List" to LIST_RC_BYTES,
         "Pattern" to PATTERN_RC_BYTES,
+        "Coffee" to COFFEE_RC_BYTES,
     )
     val (label, bytes) = pages[page]
     val next = { page = (page + 1) % pages.size }
@@ -52,7 +54,16 @@ fun DemoScreen(initialPage: Int = 0) {
         modifier = Modifier
             .fillMaxSize()
     ) {
-        if (label == "Material") {
+        if (label == "Coffee") {
+            // The one page shown at the size a phone would show it: it scrolls and it has a dark
+            // palette, so it is given the whole screen and told which mode the system is in.
+            RemoteComposeCanvas(
+                bytes = bytes,
+                modifier = Modifier.fillMaxSize(),
+                dark = isSystemInDarkTheme(),
+                onAction = { next() },
+            )
+        } else if (label == "Material") {
             // The one page shown through the public composable rather than the 1:1 screenshot
             // host: it scales the document to the screen, so the buttons are the size a finger
             // expects. Its own "Next demo" button asks the host to move on through a host action.
@@ -65,9 +76,9 @@ fun DemoScreen(initialPage: Int = 0) {
             // A tap the document itself does not handle switches to the next page.
             RealPayloadDemoScreen(bytes) { next() }
         }
-        // The Material page carries its own chrome and its own way out, so the overlay label
-        // would only cover its snackbar.
-        if (label != "Material") BasicText(
+        // The Material and Coffee pages carry their own chrome and their own way out, so the
+        // overlay label would only cover what they draw at the bottom.
+        if (label != "Material" && label != "Coffee") BasicText(
             text = "$label — tap to switch",
             style = TextStyle(color = Color.White, fontSize = 13.sp, textAlign = TextAlign.Center),
             modifier = Modifier

@@ -235,6 +235,39 @@ object RemoteComposeParser {
                 when (op) {
                     is Op.Theme -> documentTheme = op.theme
 
+                    is Op.ColorAttribute -> {
+                        // ColorAttribute.paint(): one component of a colour, as a float. HSV is
+                        // Utils.getHue/getSaturation/getBrightness, with hue over 360 so that it
+                        // lands in the same 0..1 range as everything else.
+                        colorPool[op.colorId]?.let { colour ->
+                            val r = colour.red
+                            val g = colour.green
+                            val b = colour.blue
+                            val high = max(r, max(g, b))
+                            val low = min(r, min(g, b))
+                            val span = high - low
+                            val value = when (op.type and 0xFF) {
+                                0 -> { // HUE
+                                    val degrees = when {
+                                        span == 0f -> 0f
+                                        high == r -> ((g - b) / span + 6f) * 60f
+                                        high == g -> ((b - r) / span + 2f) * 60f
+                                        else -> ((r - g) / span + 4f) * 60f
+                                    }
+                                    (if (degrees >= 360f) degrees - 360f else degrees) / 360f
+                                }
+                                1 -> if (high == 0f) 0f else span / high // SATURATION
+                                2 -> high // BRIGHTNESS
+                                3 -> r
+                                4 -> g
+                                5 -> b
+                                6 -> colour.alpha
+                                else -> Float.NaN
+                            }
+                            if (!value.isNaN()) floatPool[op.id] = value
+                        }
+                    }
+
                     is Op.ColorTheme -> {
                         // ColorTheme.setTheme(): the value for the mode being painted.
                         val argb = if (context.paintTheme == RemoteContext.THEME_LIGHT) op.lightMode else op.darkMode
@@ -245,8 +278,18 @@ object RemoteComposeParser {
                     // this evaluator: their semantics are runtime state, actions or animation, which
                     // need the per-frame context of docs/PLAN.md step 5.
 
+                    is Op.AnimationSpec -> {
+                        // The spec is written among a component's modifiers, so the component it
+                        // belongs to is the one open rather than one it names by id.
+                        context.animationSpecs[op.animationId] = op
+                        tree.current?.let { node ->
+                            node.motionDuration = resolveFloat(op.motionDuration).takeUnless { it.isNaN() } ?: 0f
+                            node.motionEasing = op.motionEasingType
+                        }
+                    }
+
                     is Op.Skip, is Op.Rem, is Op.RootContentDescription, is Op.DebugMessage,
-                    is Op.AnimationSpec, is Op.HapticFeedback, is Op.RootContentBehavior,
+                    is Op.HapticFeedback, is Op.RootContentBehavior,
                     is Op.ModifierAlignBy, is Op.ModifierMarquee,
                     is Op.ModifierRipple, is Op.ModifierDrawContent -> Unit
 
@@ -917,6 +960,8 @@ object RemoteComposeParser {
                         node.horizontalPositioning = op.horizontalPositioning
                         node.verticalPositioning = op.verticalPositioning
                         node.spacedBy = resolveFloat(op.spacedBy).takeUnless { it.isNaN() } ?: 0f
+                        node.componentId = op.componentId
+                        node.animationId = op.animationId
                         if (op is Op.LayoutFlow) {
                             node.maxItemsInMainAxis = op.maxItemsInMainAxis.takeIf { it > 0 } ?: Int.MAX_VALUE
                             node.maxLines = op.maxLinesInCrossAxis.takeIf { it > 0 } ?: Int.MAX_VALUE
@@ -928,6 +973,8 @@ object RemoteComposeParser {
                         val node = LayoutNode(if (op is Op.LayoutBox) LayoutNode.Kind.BOX else LayoutNode.Kind.FIT_BOX)
                         node.horizontalPositioning = op.horizontalPositioning
                         node.verticalPositioning = op.verticalPositioning
+                        node.componentId = op.componentId
+                        node.animationId = op.animationId
                         tree.openNode(node, paint)
                     }
 
@@ -947,6 +994,8 @@ object RemoteComposeParser {
                             textSize = fontSize, fontWeight = weight, fontItalic = op.fontStyle == 1,
                         )
                         node.textAlign = op.textAlign and 0xFFFF
+                        node.componentId = op.componentId
+                        node.animationId = op.animationId
                         tree.openNode(node, paint)
                     }
 
