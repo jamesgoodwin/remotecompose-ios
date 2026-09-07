@@ -436,7 +436,7 @@ object RemoteComposeParser {
                     }
 
                     is Op.DrawTextRun -> {
-                        val textId = op.textId
+                        val textId = itemId(op.textId)
                         val start = op.start
                         val end = op.end
                         val x = resolveFloat(op.x)
@@ -452,7 +452,10 @@ object RemoteComposeParser {
                     }
 
                     is Op.DrawTextAnchored -> {
-                        val textId = op.textId
+                        // The opcode keeps the id and the string is looked up at draw time, so
+                        // inside a loop or a pattern it has to be this pass's copy — otherwise
+                        // every row shows whatever the last pass computed.
+                        val textId = itemId(op.textId)
                         val x = resolveFloat(op.x)
                         val y = resolveFloat(op.y)
                         val panX = resolveFloat(op.panX)
@@ -1570,7 +1573,14 @@ object RemoteComposeParser {
                             var iterations = 0
                             while (value < until && iterations < MAX_LOOP_ITERATIONS) {
                                 context.loadFloat(op.indexVariableId, value)
+                                // A pass round the loop declares the same ids as the last one, so
+                                // it is an expansion in the same sense a pattern call is: what it
+                                // declares needs an id of its own, or a value kept for later — the
+                                // string behind a drawn text — reads whichever pass ran last and
+                                // every row comes out saying the same thing.
+                                expansionDepth++
                                 walk(ops, i + 1, end)
+                                expansionDepth--
                                 value += step
                                 iterations++
                             }

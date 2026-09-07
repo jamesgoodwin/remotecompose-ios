@@ -146,6 +146,10 @@ fun main(args: Array<String>) {
         buildCarouselSample()
         return
     }
+    if (args.getOrNull(0) == "lazylist") {
+        buildLazyListSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -3418,4 +3422,99 @@ private fun buildCarouselSample() {
     val bytes = writer.encodeToByteArray()
     File("carousel.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to carousel.rc; content ${cards.size * cardWidth + (cards.size - 1) * gap}")
+}
+
+/**
+ * A list of five hundred rows that only ever builds the dozen you can see.
+ *
+ * The rows are written once, inside a `LOOP_START` that runs over the index. Each pass works out
+ * how far its own row is from the middle of the window — `index * height + height / 2 - scroll -
+ * window / 2`, made positive — and a `CONDITIONAL_OPERATIONS` block draws the row only when that
+ * is less than half a window plus half a row. A conditional that does not hold skips its block
+ * outright, so a row out of view costs its arithmetic and nothing else: no component, no text, no
+ * rectangle.
+ *
+ * The extent still has to be right or there would be nothing to scroll, so one empty box as tall
+ * as all five hundred rows sits under them and owns it.
+ *
+ * What this is not: the whole document is in memory either way, and the loop still goes round five
+ * hundred times a frame. What it saves is the building — which is the part that grows a tree,
+ * measures it and fills an opcode list.
+ */
+private fun buildLazyListSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "lazylist", platform)
+
+    val rows = 500
+    val rowHeight = 56f
+    val window = 356f
+    val ink = 0xFFEDE7F6.toInt()
+    val muted = 0xFF9C96AD.toInt()
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    val scroll = writer.addFloatConstant(0f)
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFF12101A.toInt()).padding(16f).spacedBy(6f),
+        1, 4,
+    )
+
+    text(writer.addText("500 rows"), ink, 22f, 700f)
+    // Which row is at the top, worked out from the scroll rather than counted.
+    val firstVisible = writer.floatExpression(scroll, rowHeight, Rc.FloatExpression.DIV, Rc.FloatExpression.FLOOR)
+    val caption = writer.textMerge(
+        writer.textMerge(writer.addText("from row "), writer.createTextFromFloat(firstVisible, 3, 0, 4 or 1)),
+        writer.addText(" — only these are built"),
+    )
+    text(caption, muted, 12f)
+
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth().height(window).verticalScroll(scroll),
+        1, 4,
+    )
+    // One empty box as tall as the whole list, so the scroll has the right distance to run.
+    writer.startBox(RecordingModifier().fillMaxWidth().height(rows * rowHeight), 1, 2)
+
+    val index = writer.startLoopVar(0f, 1f, rows.toFloat())
+    // How far this row's middle is from the middle of the window.
+    val fromMiddle = writer.floatExpression(
+        index, rowHeight, Rc.FloatExpression.MUL, rowHeight / 2f, Rc.FloatExpression.ADD,
+        scroll, Rc.FloatExpression.SUB, window / 2f, Rc.FloatExpression.SUB,
+        Rc.FloatExpression.ABS,
+    )
+    writer.conditionalOperations(2.toByte(), fromMiddle, (window + rowHeight) / 2f) // TYPE_LT
+
+    val top = writer.floatExpression(index, rowHeight, Rc.FloatExpression.MUL)
+    val bottom = writer.floatExpression(top, rowHeight - 8f, Rc.FloatExpression.ADD)
+    writer.getRcPaint().setColor(0xFF1D1A26.toInt()).setStyle(0).commit()
+    writer.drawRoundRect(0f, top, 268f, bottom, 12f, 12f)
+
+    // A bar whose length comes from the row's own number, so each row looks different.
+    val barTop = writer.floatExpression(top, 30f, Rc.FloatExpression.ADD)
+    val barBottom = writer.floatExpression(top, 36f, Rc.FloatExpression.ADD)
+    val barRight = writer.floatExpression(
+        index, 37f, Rc.FloatExpression.MOD, 6f, Rc.FloatExpression.MUL, 30f, Rc.FloatExpression.ADD,
+    )
+    writer.getRcPaint().setColor(0xFF6750A4.toInt()).commit()
+    writer.drawRoundRect(16f, barTop, barRight, barBottom, 3f, 3f)
+
+    val label = writer.textMerge(writer.addText("Row "), writer.createTextFromFloat(index, 3, 0, 4 or 1))
+    writer.getRcPaint().setColor(ink).setTextSize(15f).commit()
+    writer.drawTextAnchored(label, 16f, writer.floatExpression(top, 20f, Rc.FloatExpression.ADD), -1f, 0f, 0)
+
+    writer.endConditionalOperations()
+    writer.endLoop()
+
+    writer.endBox()
+    writer.endColumn()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("lazylist.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to lazylist.rc; $rows rows, extent ${rows * rowHeight}")
 }

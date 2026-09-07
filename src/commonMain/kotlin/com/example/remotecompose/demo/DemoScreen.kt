@@ -63,6 +63,7 @@ fun DemoScreen(initialPage: Int = 0) {
         "Watch" to WATCH_RC_BYTES,
         "Parallax" to PARALLAX_RC_BYTES,
         "Carousel" to CAROUSEL_RC_BYTES,
+        "Lazy list" to LAZYLIST_RC_BYTES,
     )
     var page by remember { mutableStateOf(initialPage.coerceIn(0, pages.lastIndex)) }
     val (label, bytes) = pages[page]
@@ -73,7 +74,7 @@ fun DemoScreen(initialPage: Int = 0) {
         // harness relies on to find it in a screenshot; the bar floats over the backdrop below.
         when (label) {
             // Both are dragged, and both are dark of their own accord.
-            "Parallax", "Carousel" -> RemoteComposeCanvas(
+            "Parallax", "Carousel", "Lazy list" -> RemoteComposeCanvas(
                 bytes = bytes,
                 modifier = Modifier.fillMaxSize().background(Color(0xFF12101A)).padding(bottom = BAR_SPACE),
                 onAction = { go(1) },
