@@ -3,6 +3,8 @@ package com.example.remotecompose.layout
 import androidx.compose.ui.graphics.Color
 import com.example.remotecompose.model.Opcode
 import com.example.remotecompose.model.PaintStyle
+import com.example.remotecompose.text.TextBlock
+import com.example.remotecompose.text.TextWrapping
 import com.example.remotecompose.runtime.ActionTrigger
 import com.example.remotecompose.runtime.DocumentAction
 
@@ -174,6 +176,19 @@ class LayoutNode(val kind: Kind) {
     var textId: Int = 0
     var textPaint: PaintStyle? = null
     var textAlign: Int = 1
+
+    /** `CoreText.OVERFLOW_*`: what becomes of text that will not fit in the lines it has. */
+    var textOverflow: Int = TextWrapping.OVERFLOW_CLIP
+
+    /** `StaticLayout`'s `spacingAdd` and `spacingMult`, from `CoreText`'s line-height parameters. */
+    var lineHeightAdd: Float = 0f
+    var lineHeightMultiplier: Float = 1f
+
+    /** `CoreText.JUSTIFICATION_MODE_*`, which stretches a broken line to the full width. */
+    var justificationMode: Int = 0
+
+    /** The lines this text was broken into, once it has been measured; null while it is one line. */
+    internal var textBlock: TextBlock? = null
     internal var textWidth: Float = 0f
     internal var textHeight: Float = 0f
 

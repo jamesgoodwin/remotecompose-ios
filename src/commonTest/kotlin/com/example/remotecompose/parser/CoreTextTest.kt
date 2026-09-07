@@ -11,9 +11,10 @@ import kotlin.test.assertTrue
  * `CommandParameters`: a key byte, then a value whose type comes from `TextStyle.PARAMETERS`
  * rather than from the wire, which is why one reader serves both.
  *
- * `CoreText` gives two of those keys its own meanings — 23 is the style it points at and 24 its
- * colour, where `TextStyle` calls them `flags` and `parentId`. That is read off the bytes the
- * writer produces rather than assumed, and the fixture varies both so a coincidence would show.
+ * `CoreText` gives two of those keys its own meanings. `CoreText.read` fills an array by key and
+ * hands it to the constructor, whose last two ints go to `mFlags` and `mTextStyleId` — so 23 is
+ * the flags and 24 is the style the component inherits from, where `TextStyle` calls them
+ * `flags` and `parentId`. The colour is key 3 for both, as it is everywhere else.
  */
 class CoreTextTest {
 
@@ -44,14 +45,17 @@ class CoreTextTest {
     }
 
     @Test
-    fun theTwoKeysCoreTextReadsDifferentlyVaryWithWhatWasAsked() {
+    fun theKeyCoreTextReadsAsAStyleIsTheOneTextStyleCallsAParent() {
         val texts = operations.filterIsInstance<Operation.CoreText>()
-        // Key 24 is the colour: two different colours were asked for and both land there.
-        assertEquals(0xFF1B1B1F.toInt(), texts[0].parameters.int(24))
-        assertEquals(0xFF5F5A66.toInt(), texts[1].parameters.int(24))
-        // Key 23 is the style: the first points at one, the second at nothing.
-        assertEquals(-1, texts[1].parameters.int(23))
-        assertTrue(texts[0].parameters.int(23) != -1, "the first points at a style")
+        val style = operations.filterIsInstance<Operation.TextStyleData>().single().parameters
+        // Key 24: the first component points at the style that was written. The second names no
+        // style, and -1 is that key's default, so nothing is written for it at all —
+        // `countIfNotDefault` leaves a parameter out rather than spending bytes saying "none".
+        assertEquals(style.int(Operation.StyleParameters.P_ID), texts[0].parameters.int(24))
+        assertEquals(null, texts[1].parameters.int(24))
+        // And the colour is key 3, where every other operation keeps one.
+        assertEquals(0xFF1B1B1F.toInt(), texts[0].parameters.int(Operation.StyleParameters.P_COLOR))
+        assertEquals(0xFF5F5A66.toInt(), texts[1].parameters.int(Operation.StyleParameters.P_COLOR))
     }
 
     @Test
@@ -74,7 +78,7 @@ class CoreTextTest {
     fun aComponentKeepsWhatItDidStateOverTheStyle() {
         // The component writes its own font size, so the style's 22 does not displace it. That is
         // the same precedence `applyStyle` has, which only fills in nulls.
-        assertEquals(16f, drawn()[0].paint.textSize)
+        assertEquals(18f, drawn()[0].paint.textSize)
     }
 
     @Test

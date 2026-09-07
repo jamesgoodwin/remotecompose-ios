@@ -158,6 +158,10 @@ fun main(args: Array<String>) {
         buildReferencedSample()
         return
     }
+    if (args.getOrNull(0) == "wrap") {
+        buildWrapSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2844,11 +2848,31 @@ private fun buildCoreTextSample() {
         null, null, null, null, null, null, null, null, null, null, null, null, -1,
     )
 
+    // The long `startTextComponent`: text, the style to inherit from, then the colour and the
+    // rest. Its second argument is the style id — `CoreText.read` puts that key in
+    // `mTextStyleId` — and the third is the colour, which the four-argument overload cannot
+    // reach at all: that one writes 0 there and leaves the text invisible.
+    fun component(text: Int, styleId: Int, colour: Int, size: Float, weight: Float) {
+        writer.startTextComponent(
+            RecordingModifier(),
+            text, styleId, colour, 0,
+            size, 0f, 0f,
+            0, weight, "",
+            0, 0, -1,
+            0f, 0f, 1f,
+            0, 0, 0,
+            false, false,
+            arrayOf<String>(), floatArrayOf(),
+            false, 0,
+        )
+        writer.endTextComponent()
+    }
+
     writer.startColumn(RecordingModifier().fillMaxSize().background(0xFFFFFFFF.toInt()).padding(16f).spacedBy(8f), 1, 4)
-    writer.startTextComponent(RecordingModifier(), heading, 0xFF1B1B1F.toInt(), style)
-    writer.endTextComponent()
-    writer.startTextComponent(RecordingModifier(), body, 0xFF5F5A66.toInt(), -1)
-    writer.endTextComponent()
+    // The first states a size of its own and takes the weight from the style; the second points
+    // at no style at all.
+    component(heading, style, 0xFF1B1B1F.toInt(), 18f, 400f)
+    component(body, -1, 0xFF5F5A66.toInt(), 14f, 400f)
     writer.endColumn()
 
     val bytes = writer.encodeToByteArray()
@@ -3826,3 +3850,126 @@ private fun buildReferencedSample() {
     File("referenced.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to referenced.rc; block $badge included ${cards.size} times")
 }
+
+
+/**
+ * Text that will not fit on one line.
+ *
+ * `TextLayout` and `CoreText` both hand their layout to the host — `computeWrapSize` calls
+ * `PaintContext.layoutComplexText` and `paintingComponent` gives the result to
+ * `drawComplexText` — so what a document says about it is the parameters: the alignment, the
+ * overflow, the line limit, the two line-height numbers and the justification mode.
+ *
+ * The positional argument list of `startTextComponent` maps onto `CoreText`'s keyed parameters
+ * in an order the class file does not name; the order used here was read back off the bytes.
+ */
+private fun buildWrapSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 560, "wrap", platform)
+
+    val ink = 0xFFF2F2F7.toInt()
+    val faint = 0xFF9AA0B4.toInt()
+    val card = 0xFF1E2029.toInt()
+
+    // CoreText.TEXT_ALIGN_* and OVERFLOW_*.
+    val alignLeft = 1
+    val alignJustify = 4
+    val overflowClip = 1
+    val overflowEllipsis = 3
+    val overflowStartEllipsis = 4
+    val overflowMiddleEllipsis = 5
+
+    /**
+     * A `CORE_TEXT` with its layout parameters spelled out. The arguments are, in order: the
+     * text, the parent id, the colour, the colour id, the size, the min and max sizes, the
+     * style, the weight, the family, then alignment, overflow, max lines, letter spacing, the
+     * two line-height numbers, break strategy, hyphenation, justification, underline and
+     * strikethrough.
+     */
+    fun paragraph(
+        text: String,
+        size: Float = 13f,
+        colour: Int = ink,
+        weight: Float = 400f,
+        align: Int = alignLeft,
+        overflow: Int = overflowClip,
+        maxLines: Int = -1,
+        lineHeightAdd: Float = 0f,
+        lineHeightMultiplier: Float = 1f,
+        justification: Int = 0,
+        modifier: RecordingModifier = RecordingModifier(),
+    ) {
+        writer.startTextComponent(
+            modifier,
+            writer.addText(text), 0, colour, 0,
+            size, 0f, 0f,
+            0, weight, "",
+            align, overflow, maxLines,
+            0f, lineHeightAdd, lineHeightMultiplier,
+            0, 0, justification,
+            false, false,
+            arrayOf<String>(), floatArrayOf(),
+            false, 0,
+        )
+        writer.endTextComponent()
+    }
+
+    fun label(text: String) = paragraph(text, size = 10f, colour = faint)
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFF101219.toInt()).padding(16f).spacedBy(4f),
+        1, 4,
+    )
+    paragraph("Wrapping", size = 22f, weight = 700f)
+
+    label("A paragraph, broken where it runs out of room")
+    paragraph(
+        "The document says how wide the text may be and how many lines it may take; where the " +
+            "breaks fall is worked out from that and from the font it is drawn in.",
+        modifier = RecordingModifier().fillMaxWidth().background(card).padding(8f),
+    )
+
+    label("Two lines, then an ellipsis")
+    paragraph(
+        "Overflow says what becomes of what will not fit. This one is allowed two lines and the " +
+            "rest is cut, with an ellipsis to say that it was.",
+        overflow = overflowEllipsis, maxLines = 2,
+        modifier = RecordingModifier().fillMaxWidth().background(card).padding(8f),
+    )
+
+    label("One line, cut at the start")
+    paragraph(
+        "/Volumes/Archive/2024/September/field-recordings/dawn-chorus.wav",
+        overflow = overflowStartEllipsis, maxLines = 1,
+        modifier = RecordingModifier().fillMaxWidth().background(card).padding(8f),
+    )
+
+    label("One line, cut in the middle")
+    paragraph(
+        "/Volumes/Archive/2024/September/field-recordings/dawn-chorus.wav",
+        overflow = overflowMiddleEllipsis, maxLines = 1,
+        modifier = RecordingModifier().fillMaxWidth().background(card).padding(8f),
+    )
+
+    label("Justified — every line but the last stretched to the width")
+    paragraph(
+        "The words on a broken line are pushed apart until the line fills its width. The line " +
+            "the paragraph ends on is left as it is, which is what tells the eye it is the end.",
+        align = alignJustify,
+        modifier = RecordingModifier().fillMaxWidth().background(card).padding(8f),
+    )
+
+    label("A line break of its own, and a line height of one and a half")
+    paragraph(
+        "Written on one line\nand continued on another",
+        lineHeightMultiplier = 1.5f,
+        modifier = RecordingModifier().fillMaxWidth().background(card).padding(8f),
+    )
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("wrap.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to wrap.rc")
+}
+

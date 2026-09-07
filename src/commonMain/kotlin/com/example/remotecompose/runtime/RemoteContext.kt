@@ -164,6 +164,18 @@ class RemoteContext : FloatCollections {
      */
     fun nextGeneratedId(): Int = generatedIds++
 
+    /**
+     * A string this renderer produced rather than the document — a line a paragraph was broken
+     * into — under an id of its own, so a `DrawText` can name it the way it names a `DATA_TEXT`.
+     * The library has no equivalent: there, a broken text goes to the host as one laid-out block
+     * through `PaintContext.drawComplexText`, and never becomes separate draws at all.
+     */
+    fun registerText(text: String): Int {
+        val id = nextGeneratedId()
+        texts[id] = text
+        return id
+    }
+
     /** Starts the generated ids again, so that a frame reuses the previous frame's. */
     fun resetGeneratedIds() {
         generatedIds = FIRST_GENERATED_ID

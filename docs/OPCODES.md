@@ -35,7 +35,7 @@ because the format has no generic length prefix to skip by.
 | Id | Opcode | Status | Notes |
 | --: | --- | --- | --- |
 | 170 | `ATTRIBUTE_TEXT` | partial | a measurement of the text, or its length; the monospace and max-height measuring flags are not applied |
-| 239 | `CORE_TEXT` | partial | drawn with its text, colour, size, weight and alignment, taking from a `TEXT_STYLE` what it did not state; line breaking, overflow and ellipsis, justification, hyphenation, max lines, letter spacing and line height are not applied |
+| 239 | `CORE_TEXT` | partial | drawn with its text, colour, size, weight and alignment, taking from a `TEXT_STYLE` what it did not state, and broken into lines: `maxLines`, the three ellipsis overflows, the two line-height parameters and inter-word justification. `BREAK_STRATEGY_HIGH_QUALITY` and `_BALANCED` fall back to the greedy break, `JUSTIFICATION_MODE_INTER_CHARACTER` to inter-word, and letter spacing and hyphenation are read and not applied |
 | 242 | `TEXT_STYLE` | supported | a bundle of text parameters under an id, for a `CORE_TEXT` to point at |
 | 184 | `DRAW_BITMAP_TEXT_ANCHORED` | supported | a bitmap-font run placed by pan about a point, as `DRAW_TEXT_ANCHOR` places ordinary text |
 | 172 | `ATTRIBUTE_TIME` | partial | the clock and calendar parts of a moment, and the gap between two; in UTC, since the real clock's zone is not in the jars |
@@ -176,7 +176,7 @@ because the format has no generic length prefix to skip by.
 | 204 | `LAYOUT_COLUMN` | supported |  |
 | 205 | `LAYOUT_CANVAS` | supported |  |
 | 207 | `LAYOUT_CANVAS_CONTENT` | supported |  |
-| 208 | `LAYOUT_TEXT` | supported |  |
+| 208 | `LAYOUT_TEXT` | supported | broken into lines the same way `CORE_TEXT` is; `computeWrapSize` passes no line-height or justification of its own, only the alignment, the overflow and the line limit |
 | 217 | `LAYOUT_STATE` | supported |  |
 | 230 | `LAYOUT_COLLAPSIBLE_ROW` | supported |  |
 | 233 | `LAYOUT_COLLAPSIBLE_COLUMN` | supported |  |

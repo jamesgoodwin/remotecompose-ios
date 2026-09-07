@@ -9,6 +9,8 @@ import com.example.remotecompose.runtime.CubicEasing
 import com.example.remotecompose.runtime.HitRegion
 import com.example.remotecompose.runtime.RemoteContext
 import com.example.remotecompose.text.TextMetricsProvider
+import com.example.remotecompose.text.TextBlock
+import com.example.remotecompose.text.TextWrapping
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -201,11 +203,27 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
     ) {
         when (node.kind) {
             LayoutNode.Kind.TEXT -> {
-                val metrics = textMetrics.measure(context.texts[node.textId] ?: "", node.textPaint ?: DEFAULT_TEXT_PAINT)
-                node.textWidth = metrics.width
-                node.textHeight = metrics.height
-                size.width = min(maxW, metrics.width)
-                size.height = min(maxH, metrics.height)
+                // `TextLayout.computeWrapSize`: one measurement of the whole string, and then the
+                // complex path when that will not do — the string breaks itself, or it is wider
+                // than the room and may take more than one line.
+                val text = context.texts[node.textId] ?: ""
+                val paint = node.textPaint ?: DEFAULT_TEXT_PAINT
+                val metrics = textMetrics.measure(text, paint)
+                val block = if (TextWrapping.needsLayout(text, metrics.width, maxW, node.maxLines, node.textOverflow)) {
+                    TextWrapping.layout(
+                        text = text, paint = paint, metrics = textMetrics, maxWidth = maxW,
+                        maxLines = node.maxLines, overflow = node.textOverflow,
+                        lineHeightAdd = node.lineHeightAdd,
+                        lineHeightMultiplier = node.lineHeightMultiplier,
+                    )
+                } else {
+                    null
+                }
+                node.textBlock = block
+                node.textWidth = block?.width ?: metrics.width
+                node.textHeight = block?.height ?: metrics.height
+                size.width = min(maxW, node.textWidth)
+                size.height = min(maxH, node.textHeight)
             }
             LayoutNode.Kind.IMAGE -> {
                 context.bitmaps[node.bitmapId]?.let { pngNaturalSize(it) }?.let {
@@ -718,21 +736,84 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
     private fun paintText(node: LayoutNode, out: MutableList<Opcode>) {
         val contentW = node.width - node.paddingLeft - node.paddingRight
         val contentH = node.height - node.paddingTop - node.paddingBottom
-        val x = when (node.textAlign) {
-            3 -> (contentW - node.textWidth) / 2f // CENTER
-            2, 6 -> contentW - node.textWidth // RIGHT, END
-            else -> 0f
-        }
-        val clip = node.textWidth > contentW
+        val block = node.textBlock
+        val clip = node.textWidth > contentW ||
+            (block != null && node.textOverflow != TextWrapping.OVERFLOW_VISIBLE && block.height > contentH + 0.01f)
         if (clip) {
             out += Opcode.MatrixSave
             out += Opcode.ClipRect(0f, 0f, contentW, contentH)
         }
-        out += Opcode.DrawText(
-            stringIndex = node.textId, x = x, y = 0f,
-            paint = node.textPaint ?: DEFAULT_TEXT_PAINT, panY = 1f,
-        )
+        if (block == null) {
+            out += Opcode.DrawText(
+                stringIndex = node.textId, x = alignedX(node.textAlign, node.textWidth, contentW), y = 0f,
+                paint = node.textPaint ?: DEFAULT_TEXT_PAINT, panY = 1f,
+            )
+        } else {
+            paintTextBlock(node, block, contentW, out)
+        }
         if (clip) out += Opcode.MatrixRestore
+    }
+
+    /**
+     * A broken text, line by line: `drawComplexText` hands the whole laid-out block to the host,
+     * which this renderer has no equivalent of, so each line is drawn where the layout put it.
+     *
+     * A line is drawn from a string of its own rather than from the component's, since the
+     * component's is the whole paragraph; the strings the lines were broken into are registered
+     * under generated ids the frame carries alongside the document's own.
+     */
+    private fun paintTextBlock(node: LayoutNode, block: TextBlock, contentW: Float, out: MutableList<Opcode>) {
+        val paint = node.textPaint ?: DEFAULT_TEXT_PAINT
+        val justifying = node.textAlign == TEXT_ALIGN_JUSTIFY ||
+            node.justificationMode == JUSTIFICATION_MODE_INTER_WORD ||
+            node.justificationMode == JUSTIFICATION_MODE_INTER_CHARACTER
+        for ((index, line) in block.lines.withIndex()) {
+            val baseline = block.ascent + index * block.lineHeight
+            val width = block.lineWidths.getOrElse(index) { 0f }
+            // A line the text ended is left alone: justification stretches the ones that were
+            // broken, which is what keeps the last line of a paragraph from being pulled apart.
+            val stretch = justifying && !block.ended.getOrElse(index) { true } && width < contentW
+            if (stretch && paintJustified(node, line, width, contentW, baseline, paint, out)) continue
+            val x = if (justifying) 0f else alignedX(node.textAlign, width, contentW)
+            out += Opcode.DrawText(
+                stringIndex = context.registerText(line), x = x, y = baseline,
+                paint = paint, panY = null,
+            )
+        }
+    }
+
+    /**
+     * One line with its words pushed apart to fill the width, as `JUSTIFICATION_MODE_INTER_WORD`
+     * asks. Returns false for a line with nothing to push apart, which is then drawn as it is.
+     *
+     * `JUSTIFICATION_MODE_INTER_CHARACTER` is drawn this way too rather than by spacing the
+     * glyphs; `docs/OPCODES.md` says so.
+     */
+    private fun paintJustified(
+        node: LayoutNode, line: String, width: Float, contentW: Float,
+        baseline: Float, paint: PaintStyle, out: MutableList<Opcode>,
+    ): Boolean {
+        val words = line.split(" ").filter { it.isNotEmpty() }
+        if (words.size < 2) return false
+        val slack = (contentW - width) / (words.size - 1)
+        var x = 0f
+        for ((index, word) in words.withIndex()) {
+            out += Opcode.DrawText(
+                stringIndex = context.registerText(word), x = x, y = baseline,
+                paint = paint, panY = null,
+            )
+            if (index < words.size - 1) {
+                x += textMetrics.measure("$word ", paint).width + slack
+            }
+        }
+        return true
+    }
+
+    /** `getAlignValue`: where a line of [width] starts inside [contentW]. */
+    private fun alignedX(align: Int, width: Float, contentW: Float): Float = when (align) {
+        TEXT_ALIGN_CENTER -> (contentW - width) / 2f
+        TEXT_ALIGN_RIGHT, TEXT_ALIGN_END -> contentW - width
+        else -> 0f
     }
 
     /** `ImageLayout.paintingComponent`: the bitmap scaled into the content box per `scaleType`. */
@@ -829,6 +910,18 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
 
         /** Degrees to radians, for the two graphics-layer rotations that foreshorten. */
         private const val PI_OVER_180 = PI.toFloat() / 180f
+
+        /** `CoreText.TEXT_ALIGN_*`. */
+        const val TEXT_ALIGN_LEFT = 1
+        const val TEXT_ALIGN_RIGHT = 2
+        const val TEXT_ALIGN_CENTER = 3
+        const val TEXT_ALIGN_JUSTIFY = 4
+        const val TEXT_ALIGN_START = 5
+        const val TEXT_ALIGN_END = 6
+
+        /** `CoreText.JUSTIFICATION_MODE_*`. */
+        const val JUSTIFICATION_MODE_INTER_WORD = 1
+        const val JUSTIFICATION_MODE_INTER_CHARACTER = 2
 
         /** `GraphicsLayerModifierOperation` attribute keys; a float-valued key carries bit `0x400`. */
         const val GL_SCALE_X = 0 or 0x400

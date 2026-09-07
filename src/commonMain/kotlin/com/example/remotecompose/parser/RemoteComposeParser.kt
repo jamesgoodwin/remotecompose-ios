@@ -33,6 +33,7 @@ import com.example.remotecompose.text.FloatFormat
 import com.example.remotecompose.text.GlyphPlacement
 import com.example.remotecompose.text.TextAnchoring
 import com.example.remotecompose.text.TextMetricsProvider
+import com.example.remotecompose.text.TextWrapping
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -159,8 +160,14 @@ object RemoteComposeParser {
         // includes the -1 the writer sends for "all of it") runs to the string's end.
         // CoreText's own readings of two keys, taken from the bytes it writes: the style it
         // points at, and its colour. TextStyle calls the same two `flags` and `parentId`.
-        val CORE_TEXT_STYLE_ID = 23
-        val CORE_TEXT_COLOR = 24
+        /**
+         * `CoreText`'s two keys that `TextStyle` names differently. `CoreText.read` fills an
+         * array by key and hands it to the constructor, whose last two ints go to `mFlags` and
+         * `mTextStyleId` — so 23 is the flags and 24 is the style this component inherits from,
+         * where `TextStyle` calls them `flags` and `parentId`. The colour is key 3 for both.
+         */
+        val CORE_TEXT_FLAGS = 23
+        val CORE_TEXT_STYLE_ID = 24
 
         fun runOf(text: String, start: Int, end: Int): String {
             val from = start.coerceIn(0, text.length)
@@ -660,11 +667,12 @@ object RemoteComposeParser {
                         // against the bytes, since CoreText's keys do not carry the same meanings
                         // as TextStyle's own.
                         //
-                        // Only what this renderer can draw is taken: the text, its colour, size,
-                        // weight and alignment. CoreText's layout — line breaking, overflow and
-                        // ellipsis, justification, hyphenation, max lines, letter spacing and line
-                        // height — is not applied. See `docs/OPCODES.md`.
-                        val style = op.parameters.int(CORE_TEXT_STYLE_ID)?.let { context.textStyles[it] }
+                        // Taken here: the text, its colour, size, weight, alignment, and the
+                        // parameters its layout needs — max lines, overflow, the two line-height
+                        // numbers and the justification mode. Letter spacing, hyphenation and the
+                        // break strategy are read and not applied. See `docs/OPCODES.md`.
+                        val style = op.parameters.int(CORE_TEXT_STYLE_ID)
+                            ?.takeIf { it != -1 }?.let { context.textStyles[it] }
                         fun styled(key: Int): Any? = op.parameters.values[key] ?: style?.values?.get(key)
 
                         val node = LayoutNode(LayoutNode.Kind.TEXT)
@@ -673,8 +681,8 @@ object RemoteComposeParser {
                             ?.takeUnless { it <= 0f } ?: DEFAULT_LAYOUT_TEXT_SIZE
                         val weight = (styled(Op.StyleParameters.P_FONT_WEIGHT) as? Float)
                             ?.takeUnless { it <= 0f }?.toInt() ?: 400
-                        val argb = op.parameters.int(CORE_TEXT_COLOR)
-                        val colorId = op.parameters.int(Op.StyleParameters.P_COLOR_ID)
+                        val argb = styled(Op.StyleParameters.P_COLOR) as? Int
+                        val colorId = (styled(Op.StyleParameters.P_COLOR_ID) as? Int)?.takeIf { it != -1 }
                         val color = colorId?.let { colorPool[it] } ?: argb?.let { Color(it) } ?: Color.Black
                         node.textPaint = PaintStyle(
                             color, PaintStyleKind.FILL,
@@ -682,6 +690,14 @@ object RemoteComposeParser {
                             fontItalic = (styled(Op.StyleParameters.P_FONT_STYLE) as? Int) == 1,
                         )
                         node.textAlign = (styled(Op.StyleParameters.P_TEXT_ALIGN) as? Int) ?: 1
+                        node.maxLines = (styled(Op.StyleParameters.P_MAX_LINES) as? Int)
+                            ?.takeIf { it > 0 } ?: Int.MAX_VALUE
+                        node.textOverflow = (styled(Op.StyleParameters.P_OVERFLOW) as? Int)
+                            ?: TextWrapping.OVERFLOW_CLIP
+                        node.lineHeightAdd = (styled(Op.StyleParameters.P_LINE_HEIGHT_ADD) as? Float) ?: 0f
+                        node.lineHeightMultiplier = (styled(Op.StyleParameters.P_LINE_HEIGHT_MULTIPLIER) as? Float)
+                            ?.takeIf { it > 0f } ?: 1f
+                        node.justificationMode = (styled(Op.StyleParameters.P_JUSTIFICATION_MODE) as? Int) ?: 0
                         node.componentId = op.parameters.int(Op.StyleParameters.P_ID) ?: 0
                         tree.openNode(node, paint)
                     }
@@ -1146,6 +1162,11 @@ object RemoteComposeParser {
                             textSize = fontSize, fontWeight = weight, fontItalic = op.fontStyle == 1,
                         )
                         node.textAlign = op.textAlign and 0xFFFF
+                        // `TextLayout.computeWrapSize` passes no line-height or justification
+                        // parameters of its own — only the alignment, the overflow and the line
+                        // limit, the rest going in as 0, 0, 1 and none.
+                        node.maxLines = op.maxLines.takeIf { it > 0 } ?: Int.MAX_VALUE
+                        node.textOverflow = op.overflow
                         node.componentId = op.componentId
                         node.animationId = op.animationId
                         tree.openNode(node, paint)
