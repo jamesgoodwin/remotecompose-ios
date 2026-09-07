@@ -197,7 +197,7 @@ because the format has no generic length prefix to skip by.
 | 221 | `MODIFIER_OFFSET` | supported |  |
 | 223 | `MODIFIER_ZINDEX` | supported |  |
 | 224 | `MODIFIER_GRAPHICS_LAYER` | partial | alpha, scale, translation, transform origin, shape clip and all three rotations, each read as a value the document may compute per frame rather than a written constant; `ROTATION_X`/`ROTATION_Y` foreshorten without perspective, so `CAMERA_DISTANCE` has no effect. `TRANSLATION_Z`, `SHADOW_ELEVATION`, `SPOT_SHADOW_COLOR`, `AMBIENT_SHADOW_COLOR`, `COMPOSITING_STRATEGY`, `HAS_BLUR`, `BLUR_RADIUS_X`, `BLUR_RADIUS_Y` and `BLUR_TILE_MODE` are decoded and ignored: this renderer has no shadow, blur or projective transform to give them |
-| 226 | `MODIFIER_SCROLL` | partial | the window, the offset, dragging and the glide after a release; notch stops are not applied |
+| 226 | `MODIFIER_SCROLL` | supported | the window, the offset, dragging, the glide after a release and the notch it settles on; a press outside the component leaves it alone |
 | 228 | `MODIFIER_MARQUEE` | decoded only | no scrolling text |
 | 229 | `MODIFIER_RIPPLE` | supported | the library's own near-white circle, which shows on a coloured surface and barely on a white one |
 | 231 | `MODIFIER_WIDTH_IN` | supported |  |
@@ -213,7 +213,7 @@ because the format has no generic length prefix to skip by.
 | 59 | `MODIFIER_CLICK` | supported |  |
 | 64 | `CLICK_AREA` | supported |  |
 | 83 | `MODIFIER_MULTI_CLICK` | supported |  |
-| 157 | `TOUCH_EXPRESSION` | partial | default drag mode, and `STOP_GENTLY`/`STOP_ENDS`/`STOP_INSTANTLY` after a release; wrap and the notch stop modes are not applied |
+| 157 | `TOUCH_EXPRESSION` | partial | default drag mode, and every stop mode after a release: `STOP_GENTLY`, `STOP_ENDS`, `STOP_INSTANTLY`, `STOP_ABSOLUTE_POS` and the four notch modes. Wrap mode is applied where a released value settles but not to the value itself, which is clamped rather than carried round |
 | 209 | `HOST_ACTION` | supported |  |
 | 212 | `VALUE_INTEGER_CHANGE_ACTION` | supported |  |
 | 213 | `VALUE_STRING_CHANGE_ACTION` | supported |  |

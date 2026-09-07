@@ -84,9 +84,11 @@ class ScrollTest {
         document.frame(0L)
         document.touchDrag(150f, 400f)
         assertEquals(0f, scrollOffset(document), 0.01f)
-        // And far past the bottom stops at the overflow: the content less the window.
+        // And far past the bottom stops at the overflow: the content less the window. The press
+        // has to land on the menu — a touch expression ignores one outside its own component —
+        // though the drag that follows may go anywhere.
         document.touchUp(150f, 400f)
-        document.touchDown(150f, 400f)
+        document.touchDown(150f, 300f)
         document.frame(0L)
         document.touchDrag(150f, -600f)
         assertEquals(CONTENT - WINDOW, scrollOffset(document), 0.01f)

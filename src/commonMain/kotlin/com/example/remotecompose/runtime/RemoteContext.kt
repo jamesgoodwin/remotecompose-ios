@@ -3,6 +3,7 @@ package com.example.remotecompose.runtime
 import androidx.compose.ui.graphics.Color
 import com.example.remotecompose.model.PathCommand
 import com.example.remotecompose.text.BitmapFont
+import com.example.remotecompose.layout.LayoutEngine
 import com.example.remotecompose.parser.Operation
 import com.example.remotecompose.parser.Operation.TouchExpression
 import kotlin.math.abs
@@ -273,6 +274,9 @@ class RemoteContext : FloatCollections {
         var moved: Boolean = false
         /** `mCurrentValue`: what the last drag left, which outlives the finger. */
         var value: Float = Float.NaN
+        /** `mMaxAtDown`/`mMinAtDown`: how far one notch reaches from where the press landed. */
+        var maxAtDown: Float = Float.NaN
+        var minAtDown: Float = Float.NaN
         /** `mEasingToStop` and `mTouchUpTime`: the glide the finger left behind, and when. */
         var easingToStop: Boolean = false
         var touchUpTime: Float = 0f
@@ -280,6 +284,14 @@ class RemoteContext : FloatCollections {
     }
 
     internal val touchStates = mutableMapOf<Int, TouchState>()
+
+    /**
+     * `TouchExpression.mScrLeft`/`mScrTop`/`mScrRight`/`mScrBottom`, by the id each expression
+     * drives: where the scrolling component that owns it was last laid out. `touchDown` returns
+     * without arming an expression the press missed, which is what lets a document hold more than
+     * one scrolling thing without a drag on either moving both.
+     */
+    internal var scrollBounds: Map<Int, LayoutEngine.ScrollBounds> = emptyMap()
 
     /**
      * `TouchExpression.apply` in its default mode: while the pointer is down the expression is
@@ -343,14 +355,35 @@ class RemoteContext : FloatCollections {
         touchX = x
         touchY = y
         for (op in expressions) {
+            // `touchDown` begins by returning if the press is outside the component's rectangle.
+            // An expression no component claimed has no rectangle to be outside of.
+            val bounds = scrollBounds[op.id]
+            if (bounds != null && !bounds.contains(x, y)) continue
             val state = touchStates.getOrPut(op.id) { TouchState() }
             // A finger landing on something still gliding stops it where it is.
             state.easingToStop = false
             state.down = true
             state.valueAtDown = getFloat(op.id).takeUnless { it.isNaN() } ?: resolveFloat(op.defValue).takeUnless { it.isNaN() } ?: 0f
             state.expressionAtDown = evaluateTouchExpression(op)
+            noteNotchReach(op, state)
         }
         needsRepaint = true
+    }
+
+    /**
+     * `touchDown` under `STOP_NOTCHES_SINGLE_EVEN`: one notch either side of the value the press
+     * landed on, which is as far as the gesture that follows will be allowed to take it.
+     */
+    private fun noteNotchReach(op: Operation.TouchExpression, state: TouchState) {
+        if (stopModeOf(op) != STOP_NOTCHES_SINGLE_EVEN) return
+        val spec = stopSpec(op)
+        val count = spec.firstOrNull()?.toInt() ?: return
+        if (count == 0) return
+        val low = if (isWrapMode(op)) 0f else resolveFloat(op.min)
+        val high = if (spec.size > 1) spec[1] else resolveFloat(op.max)
+        val step = (high - low) / count
+        state.maxAtDown = state.valueAtDown + step
+        state.minAtDown = state.valueAtDown - step
     }
 
     internal fun touchDrag(x: Float, y: Float) {
@@ -384,7 +417,7 @@ class RemoteContext : FloatCollections {
             val current = getFloat(id).takeUnless { it.isNaN() } ?: continue
             val min = resolveFloat(op.min)
             val max = resolveFloat(op.max)
-            val stop = stopPosition(op, current, velocity, min, max)
+            val stop = stopPosition(op, state, current, velocity, min, max)
             val limits = velocityLimits(op)
             // `min(2, maxTime * |stop - current| / (2 * maxVelocity))`.
             val time = minOf(
@@ -417,27 +450,94 @@ class RemoteContext : FloatCollections {
     private fun stopModeOf(op: Operation.TouchExpression): Int = op.tapExpPacked shr 16
 
     /**
+     * `mWrapMode`: a min written as the id 0 rather than a number says the value runs round the
+     * ends instead of stopping at them, and leaves `mOutMin` at the 1 the constructor gave it.
+     */
+    private fun isWrapMode(op: Operation.TouchExpression): Boolean =
+        op.min.isNaN() && (op.min.toRawBits() and 0x3FFFFF) == 0
+
+    /** `mOutStopSpec`: the stop spec with whichever of its entries are ids resolved. */
+    private fun stopSpec(op: Operation.TouchExpression): List<Float> =
+        op.tapExp.map { if (it.isNaN()) resolveFloat(it) else it }
+
+    /** `wrap`: a value brought back inside `[0, max)` the way a dial's numbers come round. */
+    private fun wrap(value: Float, max: Float): Float {
+        val remainder = value % max
+        return if (remainder < 0f) remainder + max else remainder
+    }
+
+    /**
      * `getStopPosition`: where a value let go of at [velocity] should settle.
      *
-     * `STOP_GENTLY` (and `STOP_ABSOLUTE_POS`) carry on half the velocity further and stay inside
-     * the bounds; `STOP_ENDS` goes to whichever end is nearer. The notch modes are decoded and
-     * not applied — see `docs/OPCODES.md`.
+     * The place it is heading for is half the velocity further on, held inside the bounds, and
+     * each mode then says what to do with that. `STOP_GENTLY` and `STOP_ABSOLUTE_POS` take it as
+     * it is; `STOP_INSTANTLY` ignores it and stays put; `STOP_ENDS` goes to whichever end the
+     * throw was aimed past. The three notch modes round it to a stopping place:
+     *
+     * - `STOP_NOTCHES_EVEN` cuts `[low, high]` into `spec[0]` equal steps, `high` being `spec[1]`
+     *   or the maximum. A scroll whose notch count is its item count therefore lands on an item.
+     * - `STOP_NOTCHES_SINGLE_EVEN` is the same, held to one step either side of where the finger
+     *   went down, so a gesture moves one item however hard it is thrown.
+     * - `STOP_NOTCHES_PERCENTS` takes each entry as a fraction of the way from min to max, and
+     *   `STOP_NOTCHES_ABSOLUTE` as a position; both go to the nearest. These two read the spec
+     *   before its ids are resolved, as the library does — an id there is a NaN, every distance
+     *   to it is a NaN, and no comparison against one holds, so a notch written as a variable is
+     *   passed over rather than snapped to.
      */
     private fun stopPosition(
         op: Operation.TouchExpression,
+        state: TouchState,
         value: Float,
         velocity: Float,
         min: Float,
         max: Float,
     ): Float {
-        val target = clampTo(value + velocity / 2f, min, max)
-        return when (stopModeOf(op)) {
+        val wrapping = isWrapMode(op)
+        // In wrap mode the position itself is carried forward with the target, and `mOutMin` is
+        // the 1 the constructor left rather than anything the document wrote.
+        val outMin = if (wrapping) 1f else min
+        val position = if (wrapping) wrap(value, max) + velocity / 2f else value
+        val target = if (wrapping) position else clampTo(value + velocity / 2f, min, max)
+        val low = if (wrapping) 0f else min
+        return when (val mode = stopModeOf(op)) {
+            STOP_INSTANTLY -> position
             STOP_ENDS -> {
-                val floor = if (min.isNaN()) 0f else min
-                if (value + velocity > (max + floor) / 2f) max else floor
+                val floor = if (low.isNaN()) 0f else low
+                if (position + velocity > (max + floor) / 2f) max else floor
             }
+            STOP_NOTCHES_EVEN, STOP_NOTCHES_SINGLE_EVEN -> {
+                val spec = stopSpec(op)
+                val count = spec.firstOrNull()?.toInt() ?: return target
+                if (count == 0) return target
+                val high = if (spec.size > 1) spec[1] else max
+                val step = (high - low) / count
+                var notch = low + step * (0.5f + (target - outMin) / step).toInt()
+                if (mode == STOP_NOTCHES_SINGLE_EVEN) {
+                    // `mMaxAtDown`/`mMinAtDown`: one step either side of where the press landed.
+                    if (!state.maxAtDown.isNaN()) notch = minOf(state.maxAtDown, notch)
+                    if (!state.minAtDown.isNaN()) notch = maxOf(state.minAtDown, notch)
+                }
+                if (!wrapping) notch = maxOf(low, minOf(notch, max))
+                notch
+            }
+            STOP_NOTCHES_PERCENTS -> nearest(op.tapExp.map { min + it * (max - min) }, min, target)
+            STOP_NOTCHES_ABSOLUTE -> nearest(op.tapExp, min, target)
             else -> target
         }
+    }
+
+    /** The entry of [notches] nearest [target], starting from [fallback] and its own distance. */
+    private fun nearest(notches: List<Float>, fallback: Float, target: Float): Float {
+        var best = fallback
+        var bestDistance = abs(fallback - target)
+        for (notch in notches) {
+            val distance = abs(notch - target)
+            if (bestDistance > distance) {
+                bestDistance = distance
+                best = notch
+            }
+        }
+        return best
     }
 
     /** `mMaxTime`/`mMaxAcceleration`/`mMaxVelocity`: the trailing floats, or the class defaults. */
@@ -536,6 +636,11 @@ class RemoteContext : FloatCollections {
         const val STOP_GENTLY = 0
         const val STOP_INSTANTLY = 1
         const val STOP_ENDS = 2
+        const val STOP_NOTCHES_EVEN = 3
+        const val STOP_NOTCHES_PERCENTS = 4
+        const val STOP_NOTCHES_ABSOLUTE = 5
+        const val STOP_ABSOLUTE_POS = 6
+        const val STOP_NOTCHES_SINGLE_EVEN = 7
 
         /** The moment `TouchExpression.touchUp` looks ahead by to measure the value's speed. */
         const val TOUCH_EPSILON = 1e-4f

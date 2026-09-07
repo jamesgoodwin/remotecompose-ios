@@ -150,6 +150,10 @@ fun main(args: Array<String>) {
         buildLazyListSample()
         return
     }
+    if (args.getOrNull(0) == "notches") {
+        buildNotchesSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -3563,4 +3567,185 @@ private fun buildLazyListSample() {
     val bytes = writer.encodeToByteArray()
     File("lazylist.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to lazylist.rc; $rows rows, extent ${rows * rowHeight}")
+}
+
+/**
+ * `RemoteComposeWriter.addModifierScroll(int, float, int)` with the stop mode left open.
+ *
+ * That overload writes `MODIFIER_SCROLL` and the `TOUCH_EXPRESSION` that drives it, and always
+ * gives the touch expression `STOP_NOTCHES_EVEN`. This writes the same two records through the
+ * same two library calls with whichever `TouchExpression.STOP_*` and spec it is handed, which is
+ * the only way to reach the absolute, percentage and single-step modes from the creation API.
+ *
+ * The spec is taken as a function of the notch-max id because `STOP_NOTCHES_EVEN` and
+ * `STOP_NOTCHES_SINGLE_EVEN` want that id as their upper end: `ScrollModifierOperation.layout`
+ * loads the content's whole length into it, and neither mode is told the length any other way.
+ */
+private class NotchScrollModifier(
+    private val direction: Int,
+    private val position: Float,
+    private val stopMode: Int,
+    private val spec: (Float) -> FloatArray,
+) : RecordingModifier.Element {
+    override fun write(writer: RemoteComposeWriter) {
+        val maxId = writer.reserveFloatVariable()
+        val notchMaxId = writer.reserveFloatVariable()
+        val pointer =
+            if (direction != 0) androidx.compose.remote.core.RemoteContext.FLOAT_TOUCH_POS_X
+            else androidx.compose.remote.core.RemoteContext.FLOAT_TOUCH_POS_Y
+        androidx.compose.remote.core.operations.layout.modifiers.ScrollModifierOperation
+            .apply(writer.buffer.buffer, direction, position, maxId, notchMaxId)
+        writer.buffer.addTouchExpression(
+            androidx.compose.remote.core.operations.Utils.idFromNan(position),
+            0f, 0f, maxId, 0f, 3,
+            floatArrayOf(
+                pointer, -1f,
+                androidx.compose.remote.core.operations.utilities.AnimatedFloatExpression.MUL,
+            ),
+            stopMode, spec(notchMaxId), null,
+        )
+        writer.buffer.addContainerEnd()
+    }
+}
+
+/**
+ * Four strips that snap, one for each of the ways `TouchExpression` can be told where a released
+ * scroll is allowed to come to rest.
+ *
+ * `getStopPosition` works out where the throw was heading — half the velocity past where the
+ * finger left — and the stop mode says what to do with that. The pager cuts its own length into
+ * as many equal steps as it has pages and takes the nearest, held to one step either side of
+ * where the press landed, so a swipe moves one page however hard it is thrown. The strips under
+ * it take the nearest of: an even division of the whole length, a set of fractions of it, and a
+ * set of positions written out.
+ *
+ * Nothing here is a host's doing. The notches are in the file and the snap is the document's.
+ */
+private fun buildNotchesSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "notches", platform)
+
+    val window = 268f
+    val background = 0xFF11131A.toInt()
+    val ink = 0xFFE8EAF6.toInt()
+    val faint = 0xFF8A90A6.toInt()
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(background).padding(16f).spacedBy(6f),
+        1, 4,
+    )
+    text(writer.addText("Snap"), ink, 22f, 700f)
+
+    // The pager: three pages the width of the window, so the content is three windows long and
+    // an even division into three is exactly one page. STOP_NOTCHES_SINGLE_EVEN then holds the
+    // landing to one page either side of where the swipe started.
+    val pagerPosition = writer.addFloatConstant(0f)
+    val pages = listOf(
+        Triple("Cadence", 0xFF283593.toInt(), "one page a swipe"),
+        Triple("Ledger", 0xFF00695C.toInt(), "however hard it is thrown"),
+        Triple("Beacon", 0xFF6A1B9A.toInt(), "and never two at once"),
+    )
+    writer.startRow(
+        RecordingModifier().fillMaxWidth().height(100f)
+            .then(NotchScrollModifier(1, pagerPosition, 7) { notchMax -> floatArrayOf(3f, notchMax) }),
+        1, 2,
+    )
+    for ((title, colour, note) in pages) {
+        writer.startColumn(
+            // The padding counts towards the width a modifier defines, so the box is written 28
+            // narrower than the window to end up exactly a window wide — which is what makes an
+            // even division of the row's length into three land one page at a time.
+            RecordingModifier().width(window - 28f).height(100f)
+                .clip(RoundedRectShape(14f, 14f, 14f, 14f))
+                .background(colour)
+                .padding(14f)
+                .spacedBy(6f),
+            1, 4,
+        )
+        text(writer.addText(title), ink, 19f, 700f)
+        text(writer.addText(note), 0xFFC5CAE9.toInt(), 12f)
+        writer.endColumn()
+    }
+    writer.endRow()
+
+    // Which page it settled on, from the position itself: round(position / window).
+    val pageNumber = writer.floatExpression(
+        pagerPosition, window, Rc.FloatExpression.DIV, 0.5f, Rc.FloatExpression.ADD,
+        Rc.FloatExpression.FLOOR, 1f, Rc.FloatExpression.ADD,
+    )
+    text(
+        writer.textMerge(
+            writer.textMerge(writer.addText("Page "), writer.createTextFromFloat(pageNumber, 1, 0, 4 or 1)),
+            writer.addText(" of 3"),
+        ),
+        faint, 12f,
+    )
+
+    // The three remaining modes, each on a strip of tiles longer than the window it is seen
+    // through. A tile is 84 wide on a 92 stride, so six of them run 544 and there is 276 to
+    // scroll; every strip is the same size so the three modes can be told apart by where they
+    // stop rather than by how far they can go.
+    val tile = 84f
+    val stride = 92f
+    val tiles = 6
+    val content = tiles * stride - (stride - tile)
+    val scrollable = content - window
+
+    fun strip(label: String, position: Float, element: RecordingModifier.Element, colour: Int) {
+        text(writer.addText(label), faint, 11f)
+        writer.startRow(
+            RecordingModifier().fillMaxWidth().height(44f).then(element).spacedBy(stride - tile),
+            1, 2,
+        )
+        for (index in 0 until tiles) {
+            writer.startBox(
+                RecordingModifier().width(tile).height(44f)
+                    .clip(RoundedRectShape(10f, 10f, 10f, 10f))
+                    .background(colour),
+                1, 2,
+            )
+            writer.getRcPaint().setColor(ink).setTextSize(15f).setStyle(0).commit()
+            writer.drawTextAnchored(writer.addText("${index + 1}"), tile / 2f, 27f, 0f, 0f, 0)
+            writer.endBox()
+        }
+        writer.endRow()
+    }
+
+    // Even: the whole length cut into six, which is one tile's stride apart.
+    val evenPosition = writer.addFloatConstant(0f)
+    strip(
+        "Even — six notches across the strip",
+        evenPosition,
+        NotchScrollModifier(1, evenPosition, 3) { notchMax -> floatArrayOf(tiles.toFloat(), notchMax) },
+        0xFF37474F.toInt(),
+    )
+
+    // Percentages of how far there is to scroll: a quarter, a half, all of it.
+    val percentPosition = writer.addFloatConstant(0f)
+    strip(
+        "Percent — 0, ¼, ½, 1 of the scroll",
+        percentPosition,
+        NotchScrollModifier(1, percentPosition, 4) { floatArrayOf(0f, 0.25f, 0.5f, 1f) },
+        0xFF4E342E.toInt(),
+    )
+
+    // Positions written out, which need not be evenly spaced or reach either end.
+    val absolutePosition = writer.addFloatConstant(0f)
+    strip(
+        "Absolute — 0, 92, 184 written into the file",
+        absolutePosition,
+        NotchScrollModifier(1, absolutePosition, 5) { floatArrayOf(0f, stride, stride * 2f) },
+        0xFF1B5E20.toInt(),
+    )
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("notches.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to notches.rc; strip content $content, scrollable $scrollable")
 }

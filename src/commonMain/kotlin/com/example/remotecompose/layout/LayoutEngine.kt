@@ -772,6 +772,35 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
         return out
     }
 
+    /**
+     * `TouchExpression.updateBounds`: where each scrolling component is in the window, under the
+     * id of the touch expression that drives it, so that a press outside one leaves it alone.
+     *
+     * The library walks the component's parents adding their `getX`/`getY`; this adds their
+     * padding as well, which is where a child actually sits — the same origin [collectHitRegions]
+     * uses, and the same one [paint] translates by.
+     */
+    fun collectScrollBounds(
+        node: LayoutNode,
+        originX: Float = 0f,
+        originY: Float = 0f,
+        out: MutableMap<Int, ScrollBounds> = mutableMapOf(),
+    ): Map<Int, ScrollBounds> {
+        if (node.isGone) return out
+        val x = originX + node.x
+        val y = originY + node.y
+        for (scroll in node.modifiers.filterIsInstance<Modifier.Scroll>()) {
+            out[scroll.positionExpressionId] = ScrollBounds(x, y, x + node.width, y + node.height)
+        }
+        for (child in node.children) collectScrollBounds(child, x + node.paddingLeft, y + node.paddingTop, out)
+        return out
+    }
+
+    /** `mScrLeft`/`mScrTop`/`mScrRight`/`mScrBottom`: a scrolling component's place in the window. */
+    class ScrollBounds(val left: Float, val top: Float, val right: Float, val bottom: Float) {
+        fun contains(x: Float, y: Float): Boolean = x >= left && x <= right && y >= top && y <= bottom
+    }
+
     /** A component that ripples when pressed, and where it is in the window. */
     class RippleTarget(val componentId: Int, val left: Float, val top: Float, val right: Float, val bottom: Float)
 
