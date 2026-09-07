@@ -168,6 +168,10 @@ fun main(args: Array<String>) {
         buildLayoutSample()
         return
     }
+    if (args.getOrNull(0) == "marquee") {
+        buildMarqueeSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -1566,7 +1570,11 @@ private fun buildCoverageSample() {
     writer.drawRect(164f, 15f, 179f, 25f)
     writer.endBox()
 
-    writer.startBox(RecordingModifier().then(MarqueeModifier(1, 0, 1000f, 500f, 8f, 30f)), 0, 0)
+    // A marquee clips to its component and slides what does not fit, so this one is given the
+    // whole document to be a marquee over: the rect inside it is drawn at absolute coordinates,
+    // as everything in this fixture is, and there is nothing wider than the box to slide.
+    // `tools/rc-writer/marquee.rc` is where the sliding is shown.
+    writer.startBox(RecordingModifier().width(300f).height(200f).then(MarqueeModifier(1, 0, 1000f, 500f, 8f, 30f)), 0, 0)
     writer.getRcPaint()
         .setColor(0xFF827717.toInt())
         .commit()
@@ -4082,4 +4090,69 @@ private fun buildLayoutSample() {
     val bytes = writer.encodeToByteArray()
     File("layout.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to layout.rc")
+}
+
+
+/**
+ * Text too long for its box, slid rather than broken.
+ *
+ * `MarqueeModifierOperation.layout` takes the content's width from `minIntrinsicWidth` plus the
+ * spacing, and `paint` sweeps it by a raised sine — `(1 + sin(2*pi*t - pi/2)) / 2` over the
+ * overflow — so it eases to the far end, turns round and comes back. The period is the overflow
+ * over `density * velocity`; nothing moves until the initial delay has passed.
+ *
+ * The rows are one line each, since a text allowed to break would have made itself fit before the
+ * marquee ever saw it.
+ */
+private fun buildMarqueeSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 300, "marquee", platform)
+
+    val ink = 0xFFF2F3F8.toInt()
+    val faint = 0xFF8E93A8.toInt()
+    val card = 0xFF1C1F28.toInt()
+
+    fun line(value: String, colour: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(
+            modifier, writer.addText(value), 0, colour, 0, size, 0f, 0f, 0, weight, "",
+            1, 1, 1, 0f, 0f, 1f, 0, 0, 0, false, false,
+            arrayOf<String>(), floatArrayOf(), false, 0,
+        )
+        writer.endTextComponent()
+    }
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFF101319.toInt()).padding(16f).spacedBy(8f),
+        1, 4,
+    )
+    line("Marquee", ink, 22f, 700f)
+
+    /** A row whose text is held to one line, inside a marquee of the given speed. */
+    fun row(caption: String, value: String, velocity: Float) {
+        line(caption, faint, 10f)
+        writer.startBox(
+            RecordingModifier().fillMaxWidth().height(30f)
+                .clip(RoundedRectShape(8f, 8f, 8f, 8f))
+                .background(card)
+                .padding(8f)
+                .then(MarqueeModifier(1, 0, 1000f, 400f, 24f, velocity)),
+            1, 2,
+        )
+        line(value, ink, 14f)
+        writer.endBox()
+    }
+
+    row(
+        "Wider than its box, so it sweeps across and back",
+        "Sent as a drawing rather than a picture, and read where it lands",
+        30f,
+    )
+    row("The same words, taken slower", "Sent as a drawing rather than a picture, and read where it lands", 12f)
+    row("Short enough to fit, so it stays put", "Nothing to slide", 30f)
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("marquee.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to marquee.rc")
 }

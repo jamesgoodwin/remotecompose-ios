@@ -83,6 +83,23 @@ sealed class Modifier {
      * as its upper bound. Without that write a drag has nothing to stop it.
      */
     /**
+     * `MarqueeModifierOperation`: a component whose content is wider than it is slides back and
+     * forth so that all of it can be read.
+     *
+     * `paint` sweeps by a raised sine rather than a constant speed, so the content eases to each
+     * end and turns round: at phase 0 it sits at its start, at half a period it is fully over,
+     * and at a whole period it is back. The period is the overflow over `density * velocity`.
+     */
+    class Marquee(
+        val initialDelayMillis: Float,
+        val spacing: Float,
+        val velocity: Float,
+    ) : Modifier() {
+        /** `mLastTime` and `mStartTime`: when this was first painted, and when it starts moving. */
+        var startTimeMillis: Long = 0L
+    }
+
+    /**
      * `LayoutComputeOperation`: the document works out this component's own size or place.
      *
      * [run] is the block between the operation and its `ContainerEnd`, which the parser hands

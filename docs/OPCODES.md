@@ -202,7 +202,7 @@ because the format has no generic length prefix to skip by.
 | 223 | `MODIFIER_ZINDEX` | supported |  |
 | 224 | `MODIFIER_GRAPHICS_LAYER` | partial | alpha, scale, translation, transform origin, shape clip and all three rotations, each read as a value the document may compute per frame rather than a written constant; `ROTATION_X`/`ROTATION_Y` foreshorten without perspective, so `CAMERA_DISTANCE` has no effect. `TRANSLATION_Z`, `SHADOW_ELEVATION`, `SPOT_SHADOW_COLOR`, `AMBIENT_SHADOW_COLOR`, `COMPOSITING_STRATEGY`, `HAS_BLUR`, `BLUR_RADIUS_X`, `BLUR_RADIUS_Y` and `BLUR_TILE_MODE` are decoded and ignored: this renderer has no shadow, blur or projective transform to give them |
 | 226 | `MODIFIER_SCROLL` | supported | the window, the offset, dragging, the glide after a release and the notch it settles on; a press outside the component leaves it alone |
-| 228 | `MODIFIER_MARQUEE` | decoded only | no scrolling text |
+| 228 | `MODIFIER_MARQUEE` | partial | content wider than its component sweeps across it and back, by the raised sine `paint` uses, after the initial delay. The iteration count, the animation mode and the repeat delay are decoded and go unused in `paint` upstream too |
 | 229 | `MODIFIER_RIPPLE` | supported | the library's own near-white circle, which shows on a coloured surface and barely on a white one |
 | 231 | `MODIFIER_WIDTH_IN` | supported |  |
 | 232 | `MODIFIER_HEIGHT_IN` | supported |  |

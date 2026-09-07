@@ -347,6 +347,12 @@ class RemoteContext : FloatCollections {
     val componentBounds = mutableMapOf<Int, FloatArray>()
 
     /**
+     * `MarqueeModifierOperation.mStartTime`, by component id: when each marquee begins to move.
+     * The tree is built afresh every frame, so this outlives the modifier that asked for it.
+     */
+    internal val marqueeStarts = mutableMapOf<Int, Long>()
+
+    /**
      * `TouchExpression.apply` in its default mode: while the pointer is down the expression is
      * evaluated against the current pointer position and the delta since the press is added to
      * the value the variable had then; the result is clamped to `[min, max]` and stored under the

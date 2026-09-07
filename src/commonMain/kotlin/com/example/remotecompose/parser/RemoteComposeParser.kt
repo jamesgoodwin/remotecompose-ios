@@ -331,7 +331,14 @@ object RemoteComposeParser {
 
                     is Op.Skip, is Op.Rem, is Op.RootContentDescription, is Op.DebugMessage,
                     is Op.HapticFeedback, is Op.RootContentBehavior,
-                    is Op.ModifierAlignBy, is Op.ModifierMarquee, is Op.ModifierDrawContent -> Unit
+                    is Op.ModifierAlignBy, is Op.ModifierDrawContent -> Unit
+
+                    // `MarqueeModifierOperation.paint` reads only the initial delay, the spacing
+                    // and the velocity; the iteration count, the animation mode and the repeat
+                    // delay are decoded and go unused there too.
+                    is Op.ModifierMarquee -> tree.current?.modifiers?.add(
+                        Modifier.Marquee(op.initialDelay, op.spacing, op.velocity),
+                    )
 
                     is Op.ModifierRipple -> tree.current?.modifiers?.add(Modifier.Ripple())
 

@@ -177,7 +177,10 @@ MatrixRestore
 MatrixSave
 Translate(dx=0.0, dy=0.0)
 Translate(dx=0.0, dy=0.0)
+MatrixSave
+ClipRect(left=0.0, top=0.0, right=200.0, bottom=200.0)
 DrawRect(left=2.0, top=28.0, right=17.0, bottom=38.0, paint=PaintStyle(color=Color(0.50980395, 0.46666667, 0.09019608, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
+MatrixRestore
 MatrixRestore
 MatrixSave
 Translate(dx=0.0, dy=0.0)

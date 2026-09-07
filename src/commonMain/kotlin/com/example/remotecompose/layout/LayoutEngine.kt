@@ -15,6 +15,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * Measure, layout and paint for a [LayoutNode] tree: a transcription of remote-core's
@@ -694,6 +695,9 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
             if (scroll.direction == 0) out += Opcode.Translate(0f, -offset) else out += Opcode.Translate(-offset, 0f)
             scrollRestores = 1
         }
+        node.modifiers.filterIsInstance<Modifier.Marquee>().firstOrNull()?.let { marquee ->
+            scrollRestores += paintMarquee(node, marquee, out)
+        }
         when (node.kind) {
             LayoutNode.Kind.TEXT -> paintText(node, out)
             LayoutNode.Kind.IMAGE -> paintImage(node, out)
@@ -708,7 +712,64 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
         out += Opcode.MatrixRestore
     }
 
-    /** `BorderModifierOperation.defaultDrawing`. */
+    /**
+     * `MarqueeModifierOperation.paint`: content wider than the component slides back and forth
+     * inside it, so that all of it can be read.
+     *
+     * The sweep is a raised sine rather than a constant speed — `(1 + sin(2*pi*t - pi/2)) / 2`
+     * over `-overflow` — so the content eases to each end and turns round, arriving back where it
+     * started after one period. The period is the overflow over `density * velocity`, and nothing
+     * moves until the initial delay has passed twice: `mStartTime` is already the first paint
+     * plus that delay, and the comparison then waits for it again.
+     *
+     * `layout` takes the content's width from `minIntrinsicWidth` plus the spacing, which for a
+     * text is the width the whole run would take — so a marquee wants a text of one line, or the
+     * line breaking will have made it fit before this is reached.
+     */
+    private fun paintMarquee(node: LayoutNode, marquee: Modifier.Marquee, out: MutableList<Opcode>): Int {
+        val contentW = node.width - node.paddingLeft - node.paddingRight
+        val contentH = node.height - node.paddingTop - node.paddingBottom
+        val now = context.frameTimeMillis
+        val start = context.marqueeStarts.getOrPut(node.componentId) {
+            context.needsRepaint = true
+            now + marquee.initialDelayMillis.toLong()
+        }
+        out += Opcode.MatrixSave
+        out += Opcode.ClipRect(0f, 0f, contentW, contentH)
+        val content = intrinsicWidth(node) + marquee.spacing
+        val elapsed = (now - start).toFloat()
+        if (content > contentW) {
+            // Asked for while it is still waiting as well as while it is moving: the library's
+            // host redraws of its own accord, and this one stops when nothing asks — which would
+            // leave a marquee that had not started yet never starting.
+            context.needsRepaint = true
+            if (elapsed > marquee.initialDelayMillis) {
+                val overflow = content - contentW
+                val period = overflow / (context.density * marquee.velocity)
+                if (period > 0f) {
+                    val phase = (elapsed / 1000f % period) / period
+                    val offset = (1f + sin(phase * 2f * PI.toFloat() - PI.toFloat() / 2f)) / 2f * -overflow
+                    out += Opcode.Translate(offset, 0f)
+                }
+            }
+        }
+        return 1
+    }
+
+    /**
+     * `LayoutComponent.minIntrinsicWidth`: how wide the content would be given all the room.
+     *
+     * A child measured inside a narrow box has already been cut down to it, so its laid-out width
+     * says nothing; what a text would take on one line is what it kept from measuring, and a
+     * container's is the furthest its children would reach.
+     */
+    private fun intrinsicWidth(node: LayoutNode): Float = when (node.kind) {
+        LayoutNode.Kind.TEXT -> node.textWidth
+        else -> node.children.filterNot { it.isGone }
+            .maxOfOrNull { it.x + intrinsicWidth(it) } ?: node.width
+    }
+
+    /** `BorderModifierOperation.defaultDrawing`. */    /** `BorderModifierOperation.defaultDrawing`. */
     private fun paintBorder(m: Modifier.Border, out: MutableList<Opcode>) {
         val half = min(m.width, m.height) / 2f
         if (m.borderWidth >= half) {

@@ -19,29 +19,41 @@ class WakeInTest {
 
     @Test
     fun aDocumentThatAsksToBeWokenSaysWhen() {
+        // The coverage sample carries the request but also animates, so it wants a frame now
+        // regardless; the request itself is what is kept.
         val document = RemoteComposeParser.load(sample)
         document.frame(0L)
-        assertEquals(2000, document.nextRepaintDelayMillis(), "two seconds, in milliseconds")
+        assertEquals(2f, document.context.repaintSeconds, 0.001f)
+
+        // On a document with nothing else going on, that request is the answer.
+        val quiet = RemoteComposeParser.load(fixture("referenced"))
+        quiet.frame(0L)
+        quiet.context.wakeIn(2f)
+        assertEquals(2000, quiet.nextRepaintDelayMillis(), "two seconds, in milliseconds")
     }
 
     @Test
     fun theSoonestOfSeveralRequestsIsTheOneKept() {
-        // The fixture writes five seconds and then two. Keeping the last would give two either
-        // way, so the reader is what says which rule is in force: asking again puts five back
-        // only if it were the later write that counted, and it is not.
+        // The fixture writes five seconds and then two, and two is what it ends up with. In one
+        // pass that only says the last write wins, since the rule proper does not start until a
+        // request has been served — which is what the rest of this checks.
         val operations = OperationReader.readAll(sample).filterIsInstance<Operation.WakeIn>()
         assertEquals(listOf(5f, 2f), operations.map { it.seconds })
-
         val document = RemoteComposeParser.load(sample)
         document.frame(0L)
-        assertEquals(2000, document.nextRepaintDelayMillis())
+        assertEquals(2f, document.context.repaintSeconds, 0.001f)
 
-        // And once a request has been served, only a sooner one replaces it: that is the whole of
-        // what `mLastRepaint` is for, and it is why writing five after two changes nothing.
-        document.context.wakeIn(5f)
-        assertEquals(2f, document.context.repaintSeconds, 0.001f, "five does not push it back out")
-        document.context.wakeIn(1f)
-        assertEquals(1f, document.context.repaintSeconds, 0.001f, "one brings it forward")
+        // Once one has been served, only a sooner one replaces it: that is what `mLastRepaint` is
+        // for. Served on a quiet document, since a document that has already changed is answered
+        // with "now" before the wake is ever looked at.
+        val quiet = RemoteComposeParser.load(fixture("referenced"))
+        quiet.frame(0L)
+        quiet.context.wakeIn(2f)
+        assertEquals(2000, quiet.nextRepaintDelayMillis())
+        quiet.context.wakeIn(5f)
+        assertEquals(2f, quiet.context.repaintSeconds, 0.001f, "five does not push it back out")
+        quiet.context.wakeIn(1f)
+        assertEquals(1f, quiet.context.repaintSeconds, 0.001f, "one brings it forward")
     }
 
     @Test
