@@ -1,8 +1,8 @@
 package com.example.remotecompose.ui
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -94,8 +94,14 @@ fun RemoteComposeCanvas(
     Canvas(
         modifier = modifier
             .onSizeChanged { canvasSize = it }
-            // Drags before taps: a drag that starts inside a scrolling component moves it, and
-            // the tap detector below never sees the gesture. A press that does not move is a tap.
+            // One handler for the whole gesture rather than a drag detector beside a tap one:
+            // `detectTapGestures` consumes the press as soon as it arrives, and being the inner
+            // modifier it saw the event first, so the drag detector's `awaitFirstDown` never
+            // started and a scrolling component could not be moved on a device at all.
+            //
+            // A press goes to the document either way; whether it turns out to be a drag or a
+            // tap is only known once the pointer has moved past the touch slop, which is what
+            // separates scrolling a list from clicking the row under the finger.
             .pointerInput(loaded, canvasSize) {
                 val fit = {
                     fitDocumentToCanvas(
@@ -104,40 +110,35 @@ fun RemoteComposeCanvas(
                         header = loaded.header,
                     )
                 }
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        val point = fit().toDocumentSpace(offset)
-                        loaded.touchDown(point.x, point.y)
-                    },
-                    onDrag = { change, _ ->
-                        val point = fit().toDocumentSpace(change.position)
-                        loaded.touchDrag(point.x, point.y)
-                    },
-                    onDragEnd = { loaded.touchUp(Float.NaN, Float.NaN) },
-                    onDragCancel = { loaded.touchCancel(Float.NaN, Float.NaN) },
-                )
-            }
-            .pointerInput(loaded, canvasSize) {
-                val fit = {
-                    fitDocumentToCanvas(
-                        canvasWidth = canvasSize.width.toFloat(),
-                        canvasHeight = canvasSize.height.toFloat(),
-                        header = loaded.header,
-                    )
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val start = fit().toDocumentSpace(down.position)
+                    loaded.touchDown(start.x, start.y)
+                    var dragging = false
+                    var last = down
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        last = change
+                        if (!change.pressed) break
+                        if (!dragging &&
+                            (change.position - down.position).getDistance() > viewConfiguration.touchSlop
+                        ) {
+                            dragging = true
+                        }
+                        if (dragging) {
+                            val point = fit().toDocumentSpace(change.position)
+                            loaded.touchDrag(point.x, point.y)
+                            // Claim the gesture, so that whatever this canvas sits inside does
+                            // not take it over halfway through a scroll.
+                            change.consume()
+                        }
+                    }
+                    val end = fit().toDocumentSpace(last.position)
+                    loaded.touchUp(end.x, end.y)
+                    // A press that never moved is a click on whatever is under it.
+                    if (!dragging) loaded.click(end.x, end.y)
                 }
-                detectTapGestures(
-                    onPress = { offset ->
-                        val point = fit().toDocumentSpace(offset)
-                        loaded.touchDown(point.x, point.y)
-                        val released = tryAwaitRelease()
-                        val end = fit().toDocumentSpace(offset)
-                        if (released) loaded.touchUp(end.x, end.y) else loaded.touchCancel(end.x, end.y)
-                    },
-                    onTap = { offset ->
-                        val point = fit().toDocumentSpace(offset)
-                        loaded.click(point.x, point.y)
-                    },
-                )
             },
     ) {
         val fit = fitDocumentToCanvas(canvasWidth = size.width, canvasHeight = size.height, header = document.header)
