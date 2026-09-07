@@ -388,6 +388,21 @@ internal object OperationReader {
         Operations.LAYOUT_IMAGE -> Op.LayoutImage(r.readS32(), r.readS32(), r.readS32(), r.readS32(), r.readFloat32())
         Operations.HAPTIC_FEEDBACK -> Op.HapticFeedback(r.readS32())
         Operations.THEME -> Op.Theme(r.readS32())
+        // The second short is an argument count; TextAttribute reads and discards it.
+        Operations.ATTRIBUTE_TEXT -> {
+            val id = r.readS32()
+            val textId = r.readS32()
+            val type = r.readS16()
+            r.readS16()
+            Op.TextAttribute(id, textId, type)
+        }
+        Operations.ATTRIBUTE_IMAGE -> {
+            val id = r.readS32()
+            val imageId = r.readS32()
+            val type = r.readS16()
+            val args = List(r.readS16()) { r.readS32() }
+            Op.ImageAttribute(id, imageId, type, args)
+        }
         Operations.ATTRIBUTE_COLOR -> Op.ColorAttribute(r.readS32(), r.readS32(), r.readS16())
         Operations.COLOR_THEME -> Op.ColorTheme(
             id = r.readS32(), colorGroupId = r.readS32(),

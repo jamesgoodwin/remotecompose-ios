@@ -110,6 +110,10 @@ fun main(args: Array<String>) {
         buildNamedSample()
         return
     }
+    if (args.getOrNull(0) == "attributes") {
+        buildAttributesSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2610,4 +2614,45 @@ private fun buildNamedSample() {
     val bytes = writer.encodeToByteArray()
     File("named.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to named.rc")
+}
+
+/**
+ * `ATTRIBUTE_TEXT` and `ATTRIBUTE_IMAGE`: values the document reads off a string and a bitmap
+ * rather than being told. Each one drives a bar, so the number it produced is what is drawn.
+ */
+private fun buildAttributesSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 200, "attributes", platform)
+
+    val label = writer.addText("measure me")
+    // A 24x12 image, so its width and height are two different numbers to tell apart.
+    val image = java.awt.image.BufferedImage(24, 12, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+    for (yy in 0 until 12) for (xx in 0 until 24) image.setRGB(xx, yy, 0xFF3949AB.toInt())
+    val imageId = writer.addBitmap(image)
+
+    writer.getRcPaint().setColor(0xFF1B1B1F.toInt()).setTextSize(18f).commit()
+    writer.drawTextRun(label, 0, -1, 0, 0, 20f, 30f, false)
+
+    // How wide that string is with the paint above, and how many characters it has.
+    val textWidth = writer.textAttribute(label, 0.toShort())
+    val textLength = writer.textAttribute(label, 6.toShort())
+    // And the image's own size, which the document never states as a number.
+    val imageWidth = writer.bitmapAttribute(imageId, 0.toShort())
+    val imageHeight = writer.bitmapAttribute(imageId, 1.toShort())
+
+    val bars = listOf(
+        textWidth to 0xFF1E88E5.toInt(),
+        writer.floatExpression(textLength, 10f, Rc.FloatExpression.MUL) to 0xFF43A047.toInt(),
+        writer.floatExpression(imageWidth, 4f, Rc.FloatExpression.MUL) to 0xFFE53935.toInt(),
+        writer.floatExpression(imageHeight, 4f, Rc.FloatExpression.MUL) to 0xFF8E24AA.toInt(),
+    )
+    for ((index, bar) in bars.withIndex()) {
+        val top = 50f + index * 34f
+        writer.getRcPaint().setColor(bar.second).commit()
+        writer.drawRect(20f, top, writer.floatExpression(bar.first, 20f, Rc.FloatExpression.ADD), top + 20f)
+    }
+
+    val bytes = writer.encodeToByteArray()
+    File("attributes.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to attributes.rc")
 }

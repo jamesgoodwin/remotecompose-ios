@@ -625,6 +625,7 @@ object RemoteComposeParser {
                     is Op.BitmapData -> {
                         val bitmapId = op.bitmapId
                         bitmapPool[bitmapId] = op.bytes
+                        context.bitmapSizes[bitmapId] = op.width to op.height
                     }
 
                     is Op.DrawBitmap -> {
@@ -688,6 +689,38 @@ object RemoteComposeParser {
                         val bottom = resolveFloat(op.bottom)
                         val metadataTextId = op.metadataTextId
                         emit(Opcode.ActionClick(actionId, metadataTextId, left, top, right, bottom))
+                    }
+
+                    is Op.TextAttribute -> {
+                        // TextAttribute.paint(): the same measurement TextMeasure takes, plus
+                        // TEXT_LENGTH. The high byte is the monospace and max-height measuring
+                        // flags, which this renderer does not apply.
+                        val text = textPool[op.textId] ?: ""
+                        val measured = textMetrics.measure(text, paint.snapshot())
+                        val value = when (op.type and 0xFF) {
+                            0 -> measured.width
+                            1 -> measured.height
+                            2 -> 0f
+                            3 -> measured.width
+                            4 -> -measured.ascent
+                            5 -> measured.descent
+                            6 -> text.length.toFloat()
+                            else -> Float.NaN
+                        }
+                        if (!value.isNaN()) floatPool[op.id] = value
+                    }
+
+                    is Op.ImageAttribute -> {
+                        // ImageAttribute.paint(): IMAGE_WIDTH(0) or IMAGE_HEIGHT(1), which
+                        // DATA_BITMAP states beside the bytes.
+                        context.bitmapSizes[op.imageId]?.let { (width, height) ->
+                            val value = when (op.type and 0xFF) {
+                                0 -> width.toFloat()
+                                1 -> height.toFloat()
+                                else -> Float.NaN
+                            }
+                            if (!value.isNaN()) floatPool[op.id] = value
+                        }
                     }
 
                     is Op.TextMeasure -> {

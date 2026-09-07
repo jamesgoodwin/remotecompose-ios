@@ -35,6 +35,9 @@ class RemoteContext : FloatCollections {
     override fun floats(id: Int): FloatArray? = floatLists[id]
     val dataMaps = mutableMapOf<Int, List<Operation.DataMapEntry>>()
     val bitmaps = mutableMapOf<Int, ByteArray>()
+
+    /** `DATA_BITMAP` carries the size beside the bytes, which is what `ImageAttribute` reads. */
+    val bitmapSizes = mutableMapOf<Int, Pair<Int, Int>>()
     val bitmapFonts = mutableMapOf<Int, BitmapFont>()
 
     /** Shaders, keyed by id. Decoded only: nothing here paints one. */

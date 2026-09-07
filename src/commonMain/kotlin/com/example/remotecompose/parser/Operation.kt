@@ -595,6 +595,20 @@ sealed interface Operation {
      * `COLOR_TYPE` 2, `IMAGE_TYPE` 3, `INT_TYPE` 4, `LONG_TYPE` 5, and 6 for both
      * `FLOAT_ARRAY_TYPE` and `PATH_TYPE`, which the real class gives the same number.
      */
+    /**
+     * `TextAttribute` (opcode `ATTRIBUTE_TEXT`): `[id][textId][short type][short discarded]`.
+     * Stores one measurement of the text as the float [id]. Types are `MEASURE_WIDTH` 0,
+     * `MEASURE_HEIGHT` 1, the four bounds edges `LEFT` 2 / `RIGHT` 3 / `TOP` 4 / `BOTTOM` 5, and
+     * `TEXT_LENGTH` 6; the high byte carries the monospace and max-height measuring flags.
+     */
+    data class TextAttribute(val id: Int, val textId: Int, val type: Int) : Operation
+
+    /**
+     * `ImageAttribute` (opcode `ATTRIBUTE_IMAGE`): `[id][imageId][short type][short argCount]`
+     * then [args] ids. Stores `IMAGE_WIDTH` 0 or `IMAGE_HEIGHT` 1 of the bitmap as the float [id].
+     */
+    data class ImageAttribute(val id: Int, val imageId: Int, val type: Int, val args: List<Int>) : Operation
+
     data class NamedVariable(val id: Int, val type: Int, val name: String) : Operation
 
     data class TouchExpression(

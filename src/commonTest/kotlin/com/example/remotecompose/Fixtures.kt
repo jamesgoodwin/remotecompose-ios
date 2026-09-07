@@ -27,6 +27,7 @@ import com.example.remotecompose.demo.TEXTPATH_RC_BYTES
 val FIXTURES: Map<String, ByteArray> = mapOf(
     "actions" to ACTIONS_RC_BYTES,
     "advanced" to ADVANCED_RC_BYTES,
+    "attributes" to ATTRIBUTES_RC_BYTES,
     "anim" to ANIM_RC_BYTES,
     "coffee" to COFFEE_RC_BYTES,
     "easing" to EASING_RC_BYTES,
