@@ -77,6 +77,10 @@ class RemoteComposeDocument internal constructor(
         val opcodes = RemoteComposeParser.build(operations, context, textMetrics)
         hitRegions = RemoteComposeParser.hitRegions
         rippleTargets = RemoteComposeParser.rippleTargets
+        // `RunActionOperation.paint`: the blocks of the components that were painted, run in the
+        // order they were. What they write is read by the frame after this one, which is where
+        // painting puts them in the library too.
+        for (action in context.paintActions) run(action)
         return RemoteDocument(header, context.texts.toMap(), bitmaps, opcodes)
     }
 

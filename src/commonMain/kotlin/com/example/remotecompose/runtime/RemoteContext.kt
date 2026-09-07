@@ -353,6 +353,12 @@ class RemoteContext : FloatCollections {
     internal val marqueeStarts = mutableMapOf<Int, Long>()
 
     /**
+     * `RunActionOperation.paint`: the actions of every component painted this frame, in the order
+     * they were painted, for the document to run once the frame is built.
+     */
+    internal val paintActions = mutableListOf<DocumentAction>()
+
+    /**
      * `TouchExpression.apply` in its default mode: while the pointer is down the expression is
      * evaluated against the current pointer position and the delta since the press is added to
      * the value the variable had then; the result is clamped to `[min, max]` and stored under the

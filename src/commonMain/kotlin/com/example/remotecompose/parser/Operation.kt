@@ -310,6 +310,17 @@ sealed interface Operation {
     data class UpdateDynamicFloatList(val arrayId: Int, val index: Float, val value: Float) : Operation
 
     /**
+     * `RunActionOperation`: a block of actions run every time the component it modifies is
+     * painted, closed by a `ContainerEnd`.
+     *
+     * It carries nothing of its own — `read` writes no fields. `isDirty` is hardcoded true and
+     * `markNotDirty` does nothing, so it runs on every paint rather than once; a component that
+     * is not painted does not run it, which is how a document fires something when a part of it
+     * comes into view.
+     */
+    data object RunAction : Operation
+
+    /**
      * `WakeIn`: asks the host to draw the document again in [seconds], which may be an id.
      *
      * `RemoteComposeState.wakeIn` keeps the soonest of them and `getOpsToUpdate` hands the delay

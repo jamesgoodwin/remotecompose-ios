@@ -237,6 +237,9 @@ class LayoutNode(val kind: Kind) {
     /** Action lists from `MODIFIER_CLICK` and the `MODIFIER_TOUCH_*` modifiers. */
     val actions = mutableMapOf<ActionTrigger, MutableList<DocumentAction>>()
 
+    /** `RunActionOperation`: actions run every time this component is painted. */
+    val paintActions = mutableListOf<DocumentAction>()
+
     var zIndex: Float = 0f
     var paddingLeft: Float = 0f
     var paddingTop: Float = 0f

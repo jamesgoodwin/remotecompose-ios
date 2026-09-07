@@ -65,6 +65,14 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
         stack += Frame(null, ownsNode = false, savedPaint = paint.copy(), actionSink = sink)
     }
 
+    /**
+     * Opens a `RunActionOperation`'s block on the enclosing component. Its contents are collected
+     * the same way a gesture's are, but run when the component is painted rather than touched.
+     */
+    fun openPaintActions(paint: PaintState) {
+        stack += Frame(null, ownsNode = false, savedPaint = paint.copy(), actionSink = current?.paintActions)
+    }
+
     /** Adds [action] to the innermost open action list; false when no action list is open. */
     fun addAction(action: DocumentAction): Boolean {
         val sink = stack.lastOrNull()?.actionSink ?: return false

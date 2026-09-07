@@ -677,6 +677,9 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
      */
     fun paint(node: LayoutNode, out: MutableList<Opcode>) {
         if (node.isGone || node.visibility == Visibility.INVISIBLE) return
+        // `RunActionOperation.paint`: run because this component was painted, so a component that
+        // was not — gone, or in the branch of a conditional that did not hold — runs nothing.
+        if (node.paintActions.isNotEmpty()) context.paintActions += node.paintActions
         layoutModifiers(node)
         out += Opcode.MatrixSave
         out += Opcode.Translate(node.x, node.y)

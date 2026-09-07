@@ -113,6 +113,7 @@ object RemoteComposeParser {
         // same every time, so the same declaration keeps the same id rather than the document
         // growing a new one per frame.
         context.resetGeneratedIds()
+        context.paintActions.clear()
         // Cumulative paint, exactly as the real player's PaintContext keeps it: each PAINT_VALUES
         // bundle is a delta applied on top of the previous state, and every draw opcode captures
         // a snapshot of it. Saved on scope push and restored on CONTAINER_END, mirroring
@@ -1550,6 +1551,11 @@ object RemoteComposeParser {
                     // A block kept for later, not run where it is written.
                     is Op.ReferencedOperations -> i = scopeEnds[i] ?: to
 
+                    // `RunActionOperation`: its block is collected rather than painted, and run
+                    // when the component is. Closed by the same `ContainerEnd` every other
+                    // container is.
+                    is Op.RunAction -> tree.openPaintActions(paint)
+
                     // `WakeIn.paint`: a request the host reads through `nextRepaintDelayMillis`.
                     is Op.WakeIn -> context.wakeIn(resolveFloat(op.seconds))
 
@@ -1909,7 +1915,8 @@ object RemoteComposeParser {
                 is Op.ModifierClick, is Op.ModifierMultiClick, is Op.ModifierTouchDown, is Op.ModifierTouchUp,
                 is Op.ModifierTouchCancel, is Op.ModifierScroll, is Op.FloatFunctionDefine, is Op.ParticlesLoop,
                 is Op.ParticlesCompare, is Op.PatternForEach, is Op.PatternDefine, is Op.PatternCall,
-                is Op.PatternBlock, is Op.ReferencedOperations, is Op.LayoutCompute -> open.addLast(i)
+                is Op.PatternBlock, is Op.ReferencedOperations, is Op.LayoutCompute,
+                is Op.RunAction -> open.addLast(i)
                 is Op.ContainerEnd -> open.removeLastOrNull()?.let { ends[it] = i }
                 else -> Unit
             }

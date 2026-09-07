@@ -172,6 +172,10 @@ fun main(args: Array<String>) {
         buildMarqueeSample()
         return
     }
+    if (args.getOrNull(0) == "runaction") {
+        buildRunActionSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -4180,4 +4184,104 @@ private fun buildMarqueeSample() {
     val bytes = writer.encodeToByteArray()
     File("marquee.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to marquee.rc")
+}
+
+
+/**
+ * Actions run because a component was painted.
+ *
+ * `RunActionOperation.paint` runs every `ActionOperation` in its block, and its `isDirty` is
+ * hardcoded true with a `markNotDirty` that does nothing — so it runs on every paint rather than
+ * once. A component that is not painted runs nothing, which is what makes it a way of saying
+ * "while this is on screen".
+ *
+ * Two counters here, each incremented by a block of its own: one on a card that is always drawn,
+ * and one on a card the buttons hide. Hiding the second stops its counter dead while the first
+ * carries on.
+ */
+private fun buildRunActionSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 300, "runaction", platform)
+
+    val ink = 0xFFF1F2F7.toInt()
+    val faint = 0xFF8D93A9.toInt()
+
+    fun text(value: Int, colour: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(
+            modifier, value, 0, colour, 0, size, 0f, 0f, 0, weight, "",
+            1, 1, 1, 0f, 0f, 1f, 0, 0, 0, false, false,
+            arrayOf<String>(), floatArrayOf(), false, 0,
+        )
+        writer.endTextComponent()
+    }
+
+    // A counter is a float and the expression that adds one to it; the block writes the second
+    // into the first, which is what makes it count.
+    val always = writer.addFloatConstant(0f)
+    val alwaysId = androidx.compose.remote.core.operations.Utils.idFromNan(always)
+    val alwaysNext = androidx.compose.remote.core.operations.Utils.idFromNan(
+        writer.floatExpression(always, 1f, Rc.FloatExpression.ADD),
+    )
+    val whileShown = writer.addFloatConstant(0f)
+    val whileShownId = androidx.compose.remote.core.operations.Utils.idFromNan(whileShown)
+    val whileShownNext = androidx.compose.remote.core.operations.Utils.idFromNan(
+        writer.floatExpression(whileShown, 1f, Rc.FloatExpression.ADD),
+    )
+
+    // 1 is VISIBLE, 0 is GONE.
+    val shown = writer.addInteger(1).toInt()
+
+    fun card(colour: Int, caption: String, value: Float, action: Int, modifier: RecordingModifier) {
+        writer.startBox(
+            modifier.clip(RoundedRectShape(12f, 12f, 12f, 12f)).background(colour).padding(12f),
+            1, 4,
+        )
+        // The block: collected rather than painted, and run each time this card is.
+        writer.startRunActions()
+        ValueFloatExpressionChange(if (action == alwaysNext) alwaysId else whileShownId, action).write(writer)
+        writer.endRunActions()
+        writer.startColumn(RecordingModifier().spacedBy(2f), 1, 4)
+        text(writer.addText(caption), 0xFFC9CEE4.toInt(), 11f)
+        text(writer.createTextFromFloat(value, 4, 0, 4 or 1), ink, 17f, 700f)
+        writer.endColumn()
+        writer.endBox()
+    }
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFF0F1218.toInt()).padding(16f).spacedBy(8f),
+        1, 4,
+    )
+    text(writer.addText("Run action"), ink, 22f, 700f)
+
+    card(
+        0xFF283593.toInt(), "frames drawn — always on screen", always, alwaysNext,
+        RecordingModifier().fillMaxWidth().height(52f),
+    )
+    card(
+        0xFF00695C.toInt(), "frames drawn — only while it is shown", whileShown, whileShownNext,
+        RecordingModifier().fillMaxWidth().height(52f).visibility(shown),
+    )
+
+    writer.startRow(RecordingModifier().fillMaxWidth().spacedBy(8f), 1, 2)
+    for ((label, value) in listOf("Hide" to 0, "Show" to 1)) {
+        writer.startBox(
+            RecordingModifier().width(130f).height(34f)
+                .clip(RoundedRectShape(17f, 17f, 17f, 17f))
+                .background(0xFF262B36.toInt())
+                .then(RippleElement())
+                .onClick(ValueIntegerChange(shown, value)),
+            1, 2,
+        )
+        text(writer.addText(label), ink, 14f, 700f)
+        writer.endBox()
+    }
+    writer.endRow()
+
+    text(writer.addText("Hidden, the second card stops counting"), faint, 11f)
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("runaction.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to runaction.rc")
 }

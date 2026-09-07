@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 153 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 154 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -228,6 +228,7 @@ because the format has no generic length prefix to skip by.
 | 222 | `VALUE_FLOAT_CHANGE_ACTION` | supported |  |
 | 225 | `MODIFIER_TOUCH_CANCEL` | supported |  |
 | 227 | `VALUE_FLOAT_EXPRESSION_CHANGE_ACTION` | supported |  |
+| 236 | `RUN_ACTION` | supported | a block of actions run every time the component it modifies is painted — `isDirty` is hardcoded true upstream and `markNotDirty` does nothing — and not at all for a component that is not painted |
 
 
 ## Not decoded
@@ -255,7 +256,6 @@ them: `LOAD_BITMAP` (4), `MATRIX_SET` (132), `PARTICLE_PROCESS` (162), `UPDATE` 
 | 190 | `DRAW_TO_BITMAP` |
 | 195 | `UPDATE` |
 | 206 | `SOUND_EXPRESSION` |
-| 236 | `RUN_ACTION` |
 | 250 | `ACCESSIBILITY_SEMANTICS` |
 | 251 | `EXTENSION_RANGE_RESERVED_4` |
 | 252 | `EXTENSION_RANGE_RESERVED_3` |
