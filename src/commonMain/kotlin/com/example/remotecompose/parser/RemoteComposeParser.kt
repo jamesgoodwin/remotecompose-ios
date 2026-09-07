@@ -111,6 +111,9 @@ object RemoteComposeParser {
         // a snapshot of it. Saved on scope push and restored on CONTAINER_END, mirroring
         // Component.paint()'s savePaint()/restorePaint() around each component's own painting.
         val paint = PaintState()
+        // `CoreDocument.paint` sets the document's theme to UNSPECIFIED before every walk, so a
+        // document that ends inside a mode does not start the next frame there.
+        var documentTheme = RemoteContext.THEME_UNSPECIFIED
         val textPool = context.texts
         val pathPool = context.paths
         val idListPool = context.idLists
@@ -212,17 +215,38 @@ object RemoteComposeParser {
             var i = from
             while (i < to) {
                 val op = ops[i]
+                // CoreDocument.paint()'s own filter: an operation between a `Theme` naming a mode
+                // and the next one naming none belongs to that mode, and is skipped in the other.
+                // A `Theme` always runs, or the document could never leave the mode it entered.
+                if (documentTheme != RemoteContext.THEME_UNSPECIFIED &&
+                    documentTheme != context.paintTheme &&
+                    op !is Op.Theme
+                ) {
+                    // Past its end if it opens one, so that skipping a component does not leave
+                    // its `ContainerEnd` to close something else. The library only ever filters
+                    // the top level, where nothing is open; this holds either way.
+                    i = (scopeEnds[i]?.plus(1)) ?: (i + 1)
+                    continue
+                }
                 if (context.inflated && op.isConstant()) {
                     i++
                     continue
                 }
                 when (op) {
+                    is Op.Theme -> documentTheme = op.theme
+
+                    is Op.ColorTheme -> {
+                        // ColorTheme.setTheme(): the value for the mode being painted.
+                        val argb = if (context.paintTheme == RemoteContext.THEME_LIGHT) op.lightMode else op.darkMode
+                        colorPool[op.id] = Color(argb)
+                    }
+
                     // Decoded by OperationReader so the stream stays aligned, but with no effect in
                     // this evaluator: their semantics are runtime state, actions or animation, which
                     // need the per-frame context of docs/PLAN.md step 5.
 
                     is Op.Skip, is Op.Rem, is Op.RootContentDescription, is Op.DebugMessage,
-                    is Op.AnimationSpec, is Op.HapticFeedback, is Op.Theme, is Op.RootContentBehavior,
+                    is Op.AnimationSpec, is Op.HapticFeedback, is Op.RootContentBehavior,
                     is Op.ModifierAlignBy, is Op.ModifierMarquee, is Op.ModifierScroll,
                     is Op.ModifierRipple, is Op.ModifierDrawContent -> Unit
 
@@ -913,8 +937,13 @@ object RemoteComposeParser {
                         node.textId = itemId(op.textId)
                         val fontSize = resolveFloat(op.fontSize).takeUnless { it.isNaN() || it <= 0f } ?: DEFAULT_LAYOUT_TEXT_SIZE
                         val weight = resolveFloat(op.fontWeight).takeUnless { it.isNaN() || it <= 0f }?.toInt() ?: 400
+                        // TextLayout.isDynamicColorEnabled: the flags in the top half of the
+                        // alignment word say whether the colour field is an ARGB or the id of
+                        // one, which is how a text follows a themed colour.
+                        val dynamicColor = ((op.textAlign ushr 16) and 1) == 1
+                        val color = if (dynamicColor) colorPool[op.color] ?: Color.Transparent else Color(op.color)
                         node.textPaint = PaintStyle(
-                            Color(op.color), PaintStyleKind.FILL,
+                            color, PaintStyleKind.FILL,
                             textSize = fontSize, fontWeight = weight, fontItalic = op.fontStyle == 1,
                         )
                         node.textAlign = op.textAlign and 0xFFFF

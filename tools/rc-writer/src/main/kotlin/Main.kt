@@ -88,7 +88,67 @@ fun main(args: Array<String>) {
         buildPatternSample()
         return
     }
+    if (args.getOrNull(0) == "coffee") {
+        buildCoffeeSample()
+        return
+    }
     buildCoverageSample()
+}
+
+/**
+ * The coffee shop: the demo the other fixtures are parts of.
+ *
+ * Every colour is themed, so the whole screen has a light and a dark palette in the one document
+ * and the host picks between them.
+ */
+private fun buildCoffeeSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "coffee", platform)
+
+    // A colour with a value for each mode. The pair is written once and read by id after that,
+    // so the rest of the document says nothing about which mode it is in.
+    var nextThemeId = 900
+    fun themed(light: Int, dark: Int): Int {
+        val id = nextThemeId++
+        writer.getBuffer().addThemedColor(id, 0, 0.toShort(), 0.toShort(), light, dark)
+        return id
+    }
+
+    val surface = themed(0xFFFDF8F3.toInt(), 0xFF1B1614.toInt())
+    val card = themed(0xFFFFFFFF.toInt(), 0xFF2A2320.toInt())
+    val onSurface = themed(0xFF2E1E14.toInt(), 0xFFF3E9E1.toInt())
+    val muted = themed(0xFF7A6455.toInt(), 0xFFB9A79A.toInt())
+    val accent = themed(0xFF8D5524.toInt(), 0xFFD9A066.toInt())
+    val outline = themed(0xFFE7DACE.toInt(), 0xFF3D332D.toInt())
+
+    // The first short is TextLayout's flags: bit 0 says the colour field is the id of a colour
+    // rather than an ARGB, which is what lets a text follow a themed one.
+    fun text(value: Int, colorId: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, colorId, size, 0, weight, "", 1.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    writer.startColumn(RecordingModifier().fillMaxSize().backgroundId(surface.toShort()).padding(16f).spacedBy(12f), 1, 4)
+
+    text(writer.addText("Bean & Bone"), onSurface, 22f, 700f)
+    text(writer.addText("Cotham Hill, Bristol"), muted, 12f)
+
+    writer.startBox(
+        RecordingModifier().fillMaxWidth().height(70f)
+            .clip(RoundedRectShape(12f, 12f, 12f, 12f))
+            .backgroundId(card.toShort())
+            .dynamicBorder(1f, 12f, outline.toShort(), 2)
+            .padding(12f),
+        1, 2,
+    )
+    text(writer.addText("Flat white · £3.40"), accent, 15f, 700f)
+    writer.endBox()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("coffee.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to coffee.rc")
 }
 
 /**
@@ -1685,7 +1745,13 @@ private fun buildCoverageSample() {
     writer.addLong(123456789012L)
 
     writer.performHaptic(4)
-    writer.setTheme(1)
+    // THEME brackets the operations belonging to one mode: everything between a mode and the
+    // next UNSPECIFIED is skipped when painting the other. A light-only marker, then back to
+    // operations that belong to both.
+    writer.setTheme(Rc.Theme.LIGHT)
+    writer.getRcPaint().setColor(0xFFFFC107.toInt()).commit()
+    writer.drawRect(96f, 2f, 104f, 6f)
+    writer.setTheme(Rc.Theme.UNSPECIFIED)
     writer.setRootContentBehavior(1, 2, 3, 4)
 
     writer.startBox(RecordingModifier().animationSpec(3), 0, 0)

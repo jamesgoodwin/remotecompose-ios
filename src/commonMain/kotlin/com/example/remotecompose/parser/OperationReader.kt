@@ -382,6 +382,11 @@ internal object OperationReader {
         Operations.LAYOUT_IMAGE -> Op.LayoutImage(r.readS32(), r.readS32(), r.readS32(), r.readS32(), r.readFloat32())
         Operations.HAPTIC_FEEDBACK -> Op.HapticFeedback(r.readS32())
         Operations.THEME -> Op.Theme(r.readS32())
+        Operations.COLOR_THEME -> Op.ColorTheme(
+            id = r.readS32(), colorGroupId = r.readS32(),
+            lightModeIndex = r.readS16(), darkModeIndex = r.readS16(),
+            lightMode = r.readS32(), darkMode = r.readS32(),
+        )
         Operations.ROOT_CONTENT_BEHAVIOR -> Op.RootContentBehavior(r.readS32(), r.readS32(), r.readS32(), r.readS32())
         Operations.DEBUG_MESSAGE -> Op.DebugMessage(r.readS32(), r.readFloat32(), r.readS32())
         Operations.ANIMATION_SPEC -> Op.AnimationSpec(

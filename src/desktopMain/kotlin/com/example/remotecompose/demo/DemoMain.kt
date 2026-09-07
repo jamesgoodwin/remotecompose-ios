@@ -12,6 +12,7 @@ import com.example.remotecompose.engine.ComposeTextMetrics
 import com.example.remotecompose.engine.OpcodeExecutor
 import com.example.remotecompose.engine.RenderContext
 import com.example.remotecompose.parser.RemoteComposeParser
+import com.example.remotecompose.runtime.RemoteContext
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Surface
 import java.io.File
@@ -41,6 +42,8 @@ fun main(args: Array<String>) {
     // Optional third argument: the animation time in seconds at which to evaluate the document.
     val timeMillis = (args.getOrNull(2)?.toFloatOrNull() ?: 0f).let { (it * 1000f).toLong() }
     val loaded = RemoteComposeParser.load(bytes, ComposeTextMetrics(textMeasurer))
+    // Optional fifth argument: "dark" to paint the document's dark palette.
+    if (args.getOrNull(4) == "dark") loaded.paintTheme = RemoteContext.THEME_DARK
     loaded.frame(0L)
     // Optional fourth argument: taps to deliver before rendering, as "x:y,x:y".
     args.getOrNull(3)?.split(',')?.filter { it.isNotBlank() }?.forEach { point ->

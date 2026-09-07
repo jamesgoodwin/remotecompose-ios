@@ -98,6 +98,7 @@ internal object Operations {
     const val PARTICLE_COMPARE = 194
     const val DYNAMIC_FLOAT_LIST = 197
     const val UPDATE_DYNAMIC_FLOAT_LIST = 198
+    const val COLOR_THEME = 196
     const val TEXT_TRANSFORM = 199
     const val LAYOUT_ROOT = 200
     const val LAYOUT_CONTENT = 201

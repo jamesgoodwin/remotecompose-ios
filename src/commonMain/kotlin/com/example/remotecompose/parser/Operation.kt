@@ -23,7 +23,26 @@ sealed interface Operation {
 
     data class RootContentDescription(val textId: Int) : Operation
     data class RootContentBehavior(val scroll: Int, val alignment: Int, val sizing: Int, val mode: Int) : Operation
+    /**
+     * `Theme`: which mode the operations after it belong to — `LIGHT`(-3), `DARK`(-2),
+     * `SYSTEM`(0) or `UNSPECIFIED`(-1). Everything between a mode and the next `UNSPECIFIED`
+     * runs only when painting in that mode, which is how a document carries both palettes.
+     */
     data class Theme(val theme: Int) : Operation
+
+    /**
+     * `ColorTheme`: one colour with a value for each mode. [lightMode] and [darkMode] are ARGB;
+     * [colorGroupId] and the two indices name a palette entry, which the real operation's own
+     * `apply` does not read either.
+     */
+    data class ColorTheme(
+        val id: Int,
+        val colorGroupId: Int,
+        val lightModeIndex: Int,
+        val darkModeIndex: Int,
+        val lightMode: Int,
+        val darkMode: Int,
+    ) : Operation
     data class HapticFeedback(val hapticId: Int) : Operation
     data class DebugMessage(val textId: Int, val floatValue: Float, val flags: Int) : Operation
     data class Rem(val text: String) : Operation

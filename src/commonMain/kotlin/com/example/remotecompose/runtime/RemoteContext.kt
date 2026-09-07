@@ -54,6 +54,13 @@ class RemoteContext : FloatCollections {
     /** Per-expression animation state, keyed by the operation instance. */
     internal val floatExpressions = mutableMapOf<Operation.FloatExpression, FloatExpressionState>()
 
+    /**
+     * The mode the host is painting in: `THEME_LIGHT` or `THEME_DARK`. A document carries a
+     * palette for each, and the one that does not match is skipped as the operations are walked.
+     * Light by default, which is what a host that has not asked for either gets.
+     */
+    var paintTheme: Int = THEME_LIGHT
+
     var density: Float = 1f
     var windowWidth: Float = 0f
     var windowHeight: Float = 0f
@@ -297,6 +304,12 @@ class RemoteContext : FloatCollections {
     companion object {
         /** Above anything a writer allocates, so a generated id cannot land on a real one. */
         private const val FIRST_GENERATED_ID = 1 shl 24
+
+        /** `Theme`'s own values. */
+        const val THEME_SYSTEM = 0
+        const val THEME_UNSPECIFIED = -1
+        const val THEME_DARK = -2
+        const val THEME_LIGHT = -3
 
         const val ID_CONTINUOUS_SEC = 1
         const val ID_TIME_IN_SEC = 2

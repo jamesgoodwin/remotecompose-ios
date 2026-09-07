@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 136 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 137 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -22,7 +22,7 @@ because the format has no generic length prefix to skip by.
 | --: | --- | --- | --- |
 | 0 | `HEADER` | supported |  |
 | 14 | `ANIMATION_SPEC` | decoded only | component enter/exit animation is not run |
-| 63 | `THEME` | decoded only | no theme switching |
+| 63 | `THEME` | supported | brackets the operations belonging to one mode |
 | 65 | `ROOT_CONTENT_BEHAVIOR` | decoded only | no document-level scaling or scroll mode |
 | 103 | `ROOT_CONTENT_DESCRIPTION` | decoded only | accessibility text is not surfaced |
 | 177 | `HAPTIC_FEEDBACK` | decoded only | no haptics |
@@ -40,6 +40,7 @@ because the format has no generic length prefix to skip by.
 | 102 | `DATA_TEXT` | supported |  |
 | 123 | `DATA_PATH` | supported |  |
 | 138 | `COLOR_CONSTANT` | supported |  |
+| 196 | `COLOR_THEME` | supported | one colour with a value for each mode |
 | 140 | `DATA_INT` | supported |  |
 | 143 | `DATA_BOOLEAN` | supported |  |
 | 145 | `ID_MAP` | supported |  |
@@ -244,7 +245,6 @@ and the extension range.
 | 190 | `DRAW_TO_BITMAP` |
 | 191 | `WAKE_IN` |
 | 195 | `UPDATE` |
-| 196 | `COLOR_THEME` |
 | 206 | `SOUND_EXPRESSION` |
 | 210 | `HOST_NAMED_ACTION` |
 | 216 | `HOST_METADATA_ACTION` |

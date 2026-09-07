@@ -397,6 +397,7 @@ Translate(dx=-6.0, dy=-0.0)
 Translate(dx=6.0, dy=0.0)
 DrawRect(left=40.0, top=90.0, right=55.0, bottom=100.0, paint=PaintStyle(color=Color(0.0, 0.5372549, 0.48235294, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixRestore
+DrawRect(left=96.0, top=2.0, right=104.0, bottom=6.0, paint=PaintStyle(color=Color(1.0, 0.75686276, 0.02745098, 1.0, sRGB IEC61966-2.1), style=FILL, strokeWidth=0.0, strokeCap=BUTT, strokeJoin=MITER, strokeMiter=4.0, textSize=12.0, fontWeight=400, fontItalic=false, fontFamily=DEFAULT, gradient=null, blendMode=null))
 MatrixSave
 Translate(dx=0.0, dy=0.0)
 Translate(dx=0.0, dy=0.0)

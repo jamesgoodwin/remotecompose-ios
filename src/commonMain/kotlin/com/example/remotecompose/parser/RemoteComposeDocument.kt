@@ -36,6 +36,22 @@ class RemoteComposeDocument internal constructor(
      */
     val needsRepaint: Boolean get() = context.needsRepaint
 
+    /**
+     * The mode to paint in: [RemoteContext.THEME_LIGHT] or [RemoteContext.THEME_DARK].
+     *
+     * A document carries a palette for each, so changing this changes what the next frame draws.
+     * The constants a mode declares were skipped while the other mode was showing, so they are
+     * applied again on the frame after a change.
+     */
+    var paintTheme: Int
+        get() = context.paintTheme
+        set(value) {
+            if (context.paintTheme == value) return
+            context.paintTheme = value
+            context.inflated = false
+            context.needsRepaint = true
+        }
+
     /** Called with the action id and metadata of every `HOST_ACTION` the document runs. */
     var onHostAction: ((Int, String) -> Unit)?
         get() = context.onHostAction
