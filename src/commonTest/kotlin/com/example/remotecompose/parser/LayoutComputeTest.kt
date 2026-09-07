@@ -114,6 +114,34 @@ class LayoutComputeTest {
     }
 
     @Test
+    fun aFitBoxShowsTheFirstVersionThatFitsAndHidesTheRest() {
+        // `FitBoxLayout.computeSize` is about choosing, not scaling: three versions of one line,
+        // each declaring what it needs through `MODIFIER_WIDTH_IN`, and the first whose minimum
+        // fits the room is the one drawn. 268 has room for the second, 120 only for the third.
+        val document = settled()
+        val frame = document.frame(0L)
+        val shown = frame.opcodes.filterIsInstance<Opcode.DrawText>()
+            .mapNotNull { frame.strings[it.stringIndex] }
+            .filter { it.startsWith("14:32") || it.startsWith("Departure") }
+        assertEquals(listOf("14:32 · Gate B12", "14:32"), shown)
+    }
+
+    @Test
+    fun theVersionThatNeedsMoreRoomThanThereIsIsNotDrawnAtAll() {
+        // Not drawn small, and not clipped: gone. The words that need 400 are in the file — both
+        // boxes name them, and the writer keeps one copy of a string — and reach the screen from
+        // neither.
+        val texts = OperationReader.readAll(bytes).filterIsInstance<Operation.TextData>()
+        assertEquals(1, texts.count { it.text.startsWith("Departure") }, "in the file")
+        val frame = settled().frame(0L)
+        assertTrue(
+            frame.opcodes.filterIsInstance<Opcode.DrawText>()
+                .none { frame.strings[it.stringIndex]?.startsWith("Departure") == true },
+            "and drawn for neither",
+        )
+    }
+
+    @Test
     fun aComputedSizeIsSteadyOnceItIsReached() {
         // The block runs every frame off the same inputs, so it does not creep: a document whose
         // layout fed itself would show it here.

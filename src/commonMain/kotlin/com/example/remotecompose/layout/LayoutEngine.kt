@@ -322,7 +322,15 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
                     size.width = child.width; size.height = child.height
                 }
             }
-            else -> { // BOX, FIT_BOX, CANVAS, CUSTOM, ROOT
+            LayoutNode.Kind.FIT_BOX -> {
+                chooseFittingChild(node, 0f, maxW, 0f, maxH)
+                for (child in node.children) {
+                    if (child.isGone) continue
+                    size.width = max(size.width, child.width)
+                    size.height = max(size.height, child.height)
+                }
+            }
+            else -> { // BOX, CANVAS, CUSTOM, ROOT
                 for (child in node.children) {
                     measure(child, 0f, maxW, 0f, maxH)
                     if (child.isGone) continue
@@ -331,6 +339,37 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
                 }
             }
         }
+    }
+
+    /**
+     * `FitBoxLayout.computeSize`: the first child that fits is shown and the rest are hidden, so a
+     * document can carry several versions of the same thing and let the room decide.
+     *
+     * Nothing here is scaled — the name is about choosing, not fitting. What a version needs is
+     * the minimum of its `MODIFIER_WIDTH_IN`/`MODIFIER_HEIGHT_IN`, which is what
+     * `computeSizeOriginal` compares; a version that declares none needs nothing and always fits.
+     * The measured size is checked as well, as both of the library's branches do.
+     *
+     * `computeSizePriorityFix`, the branch a document takes unless it turns feature 23 off, tests
+     * `minIntrinsicWidth` first. That reads what an earlier measure pass left, and this renderer
+     * measures once, so it is not applied — `docs/OPCODES.md` says so.
+     */
+    private fun chooseFittingChild(node: LayoutNode, minW: Float, maxW: Float, minH: Float, maxH: Float) {
+        var chosen = false
+        for (child in node.children) {
+            if (chosen) {
+                child.visibility = Visibility.GONE
+                continue
+            }
+            measure(child, minW, maxW, minH, maxH)
+            val needsW = child.widthDimension.rangeMin.takeIf { it >= 0f } ?: 0f
+            val needsH = child.heightDimension.rangeMin.takeIf { it >= 0f } ?: 0f
+            val fits = needsW <= maxW && needsH <= maxH && child.width <= maxW && child.height <= maxH
+            child.visibility = if (fits) Visibility.VISIBLE else Visibility.GONE
+            chosen = chosen || fits
+        }
+        // A box with nothing it can show is not an empty box: it is not there.
+        if (!chosen && node.children.isNotEmpty()) node.visibility = Visibility.GONE
     }
 
     private fun visibleChildren(node: LayoutNode): List<LayoutNode> = node.children.filter { !it.isGone }
@@ -504,6 +543,7 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
                 val index = context.ints[node.stateIndexId] ?: 0
                 node.children.getOrNull(index)?.let { measure(it, minW, maxW, minH, maxH) }
             }
+            LayoutNode.Kind.FIT_BOX -> chooseFittingChild(node, minW, maxW, minH, maxH)
             else -> for (child in node.children) measure(child, minW, maxW, minH, maxH)
         }
     }

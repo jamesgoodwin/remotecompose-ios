@@ -170,7 +170,7 @@ because the format has no generic length prefix to skip by.
 | Id | Opcode | Status | Notes |
 | --: | --- | --- | --- |
 | 93 | `LAYOUT_CUSTOM` | supported |  |
-| 176 | `LAYOUT_FIT_BOX` | partial | measured as a Box; the fit scaling is not applied |
+| 176 | `LAYOUT_FIT_BOX` | partial | the first child that fits is shown and the rest are hidden, so a document can carry several versions of one thing and let the room choose — nothing is scaled, the name being about choosing. What a version needs is the minimum of its `MODIFIER_WIDTH_IN`/`MODIFIER_HEIGHT_IN`, as `computeSizeOriginal` compares. `computeSizePriorityFix`, the branch a document takes unless it turns feature 23 off, tests `minIntrinsicWidth` first; that reads what an earlier measure pass left and this renderer measures once, so it is not applied |
 | 200 | `LAYOUT_ROOT` | supported |  |
 | 201 | `LAYOUT_CONTENT` | supported |  |
 | 202 | `LAYOUT_BOX` | supported |  |

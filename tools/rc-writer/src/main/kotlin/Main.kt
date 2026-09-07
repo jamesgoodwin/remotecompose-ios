@@ -4010,7 +4010,7 @@ private fun buildWrapSample() {
  */
 private fun buildLayoutSample() {
     val platform = JvmRcPlatformServices()
-    val writer = RemoteComposeWriter(300, 420, "layout", platform)
+    val writer = RemoteComposeWriter(300, 460, "layout", platform)
 
     val ink = 0xFFF0F0F6.toInt()
     val faint = 0xFF9096AC.toInt()
@@ -4084,6 +4084,31 @@ private fun buildLayoutSample() {
         ),
         faint, 11f,
     )
+
+    // LAYOUT_FIT_BOX: three versions of the same line, and the first whose declared minimum fits
+    // the room is the one shown. Nothing is scaled — the box chooses.
+    label("LAYOUT_FIT_BOX — the first version that fits the room")
+    fun versions(width: Float) {
+        writer.startBox(RecordingModifier().width(width).height(26f).background(card), 1, 2)
+        writer.startFitBox(RecordingModifier().width(width).height(26f), 1, 2)
+        for ((needs, words) in listOf(
+            400f to "Departure 14:32 · Gate B12 · Bristol to Palma",
+            180f to "14:32 · Gate B12",
+            0f to "14:32",
+        )) {
+            writer.startBox(
+                RecordingModifier().widthIn(needs, 10000f).height(26f).padding(6f),
+                1, 2,
+            )
+            writer.getRcPaint().setColor(ink).setTextSize(12f).setStyle(0).commit()
+            writer.drawTextAnchored(writer.addText(words), 0f, 17f, -1f, 0f, 0)
+            writer.endBox()
+        }
+        writer.endFitBox()
+        writer.endBox()
+    }
+    versions(268f)
+    versions(120f)
 
     writer.endColumn()
 
