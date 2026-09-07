@@ -5,6 +5,7 @@ import com.example.remotecompose.parser.PaintState
 import com.example.remotecompose.runtime.ActionTrigger
 import com.example.remotecompose.runtime.DocumentAction
 import com.example.remotecompose.runtime.HitRegion
+import com.example.remotecompose.runtime.CubicEasing
 import com.example.remotecompose.runtime.RemoteContext
 
 /**
@@ -112,6 +113,9 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
         val out = mutableListOf<Opcode>()
         val windowWidth = context.windowWidth
         val windowHeight = context.windowHeight
+        // Before measuring: a component on its way out has to keep its place in the layout while
+        // it fades, so whether it counts as visible is decided here rather than after.
+        animateVisibility(root)
         if (root.kind == LayoutNode.Kind.ROOT) {
             engine.measureRoot(root, windowWidth, windowHeight)
         } else {
@@ -132,6 +136,58 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
      * The tree is built afresh every frame, so what identifies a component between frames is the
      * id the document gave it. Anything without a spec is left where it was laid out.
      */
+    /**
+     * `AnimateMeasure` for a component whose visibility changed: `getVisibility()` is `mVp` when
+     * it is arriving and `1 - mVp` when it is leaving, off the spec's own visibility duration and
+     * easing rather than the motion one.
+     *
+     * The component keeps its place in the layout until the fade is over, which is why this runs
+     * before the measure pass — a component excluded from layout has nothing left to fade.
+     *
+     * Only `FADE_IN` and `FADE_OUT` are acted on. The slides, the rotate and the particle
+     * animation are decoded and not applied; see `docs/OPCODES.md`.
+     */
+    private fun animateVisibility(root: LayoutNode) {
+        val now = context.animationTime
+        var running = false
+        fun visit(node: LayoutNode) {
+            val id = node.componentId
+            if (id != 0 && node.visibilityDuration > 0f) {
+                val wanted = node.visibility
+                val previous = context.visibilityStates[id]
+                if (previous == null) {
+                    // First seen: it is however it is, with nothing to animate from.
+                    context.visibilityStates[id] = RemoteContext.VisibilityState(wanted, wanted, now)
+                } else {
+                    if (previous.target != wanted) {
+                        previous.from = previous.target
+                        previous.target = wanted
+                        previous.startedAt = now
+                    }
+                    val elapsed = now - previous.startedAt
+                    val arriving = wanted != Visibility.GONE
+                    val animation = if (arriving) node.enterAnimation else node.exitAnimation
+                    if (previous.from != previous.target && animation in FADE_ANIMATIONS) {
+                        val fraction = (elapsed / node.visibilityDuration).coerceIn(0f, 1f)
+                        val vp = CubicEasing.preset(node.visibilityEasing).get(fraction)
+                        node.fadeAlpha = if (arriving) vp else 1f - vp
+                        if (elapsed < node.visibilityDuration) {
+                            running = true
+                            // Still on its way out, so it still occupies the layout.
+                            if (!arriving) node.visibility = Visibility.VISIBLE
+                        } else {
+                            previous.from = previous.target
+                            node.fadeAlpha = if (arriving) 1f else 0f
+                        }
+                    }
+                }
+            }
+            for (child in node.children) visit(child)
+        }
+        visit(root)
+        if (running) context.needsRepaint = true
+    }
+
     private fun animateMeasures(root: LayoutNode) {
         val now = context.animationTime
         var running = false
@@ -159,5 +215,10 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
         }
         visit(root)
         if (running) context.needsRepaint = true
+    }
+
+    private companion object {
+        /** `AnimationSpec.ANIMATION` ordinals: FADE_IN is 0 and FADE_OUT is 1. */
+        val FADE_ANIMATIONS = setOf(0, 1)
     }
 }

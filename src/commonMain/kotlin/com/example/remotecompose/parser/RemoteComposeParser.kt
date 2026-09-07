@@ -290,6 +290,11 @@ object RemoteComposeParser {
                         tree.current?.let { node ->
                             node.motionDuration = resolveFloat(op.motionDuration).takeUnless { it.isNaN() } ?: 0f
                             node.motionEasing = op.motionEasingType
+                            node.visibilityDuration =
+                                resolveFloat(op.visibilityDuration).takeUnless { it.isNaN() } ?: 0f
+                            node.visibilityEasing = op.visibilityEasingType
+                            node.enterAnimation = op.enterAnimation
+                            node.exitAnimation = op.exitAnimation
                         }
                     }
 

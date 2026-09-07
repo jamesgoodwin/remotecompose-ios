@@ -52,6 +52,11 @@ class RemoteContext : FloatCollections {
      */
     class Ripple(val startedAt: Float, val x: Float, val y: Float)
 
+    /** What a component's visibility was, what it is heading for, and when it set off. */
+    class VisibilityState(var from: Int, var target: Int, var startedAt: Float)
+
+    internal val visibilityStates = mutableMapOf<Int, VisibilityState>()
+
     internal val ripples = mutableMapOf<Int, Ripple>()
 
     /** Where each animating component is on its way from its last layout to its current one. */

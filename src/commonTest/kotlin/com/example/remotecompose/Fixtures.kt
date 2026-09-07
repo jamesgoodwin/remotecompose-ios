@@ -37,6 +37,7 @@ val FIXTURES: Map<String, ByteArray> = mapOf(
     "shader" to SHADER_RC_BYTES,
     "showcase" to SHOWCASE_RC_BYTES,
     "textpath" to TEXTPATH_RC_BYTES,
+    "visibility" to VISIBILITY_RC_BYTES,
 )
 
 /** The bytes of `tools/rc-writer/[name].rc`. */

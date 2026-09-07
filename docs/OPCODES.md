@@ -21,7 +21,7 @@ because the format has no generic length prefix to skip by.
 | Id | Opcode | Status | Notes |
 | --: | --- | --- | --- |
 | 0 | `HEADER` | supported |  |
-| 14 | `ANIMATION_SPEC` | partial | a component that moved or resized is drawn on its way there; the enter and exit animations are not run |
+| 14 | `ANIMATION_SPEC` | partial | a component that moved or resized is drawn on its way there, and one appearing or disappearing fades; the slide, rotate and particle animations are not run |
 | 63 | `THEME` | supported | brackets the operations belonging to one mode |
 | 65 | `ROOT_CONTENT_BEHAVIOR` | decoded only | no document-level scaling or scroll mode |
 | 103 | `ROOT_CONTENT_DESCRIPTION` | decoded only | accessibility text is not surfaced |

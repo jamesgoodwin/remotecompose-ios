@@ -550,8 +550,14 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
         out += Opcode.MatrixSave
         out += Opcode.Translate(node.x, node.y)
         var layerRestores = 0
+        // `AnimateMeasure.getVisibility()`: a component part way in or out is drawn faded, which
+        // is the same compositing layer a graphics-layer alpha uses.
+        if (node.fadeAlpha < 1f) {
+            out += Opcode.SaveLayerAlpha(node.fadeAlpha)
+            layerRestores++
+        }
         node.modifiers.filterIsInstance<Modifier.GraphicsLayer>().firstOrNull()?.let { layer ->
-            layerRestores = paintGraphicsLayer(node, layer, out)
+            layerRestores += paintGraphicsLayer(node, layer, out)
         }
         var px = 0f
         var py = 0f

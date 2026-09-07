@@ -152,6 +152,19 @@ class LayoutNode(val kind: Kind) {
     var motionDuration: Float = 0f
     var motionEasing: Int = 0
 
+    /**
+     * The other half of an `ANIMATION_SPEC`: how long a component takes to come or go, on what
+     * curve, and which animation each way. `AnimationSpec.ANIMATION` goes on the wire as its
+     * ordinal, so 0 is `FADE_IN` and 1 is `FADE_OUT`.
+     */
+    var visibilityDuration: Float = 0f
+    var visibilityEasing: Int = 0
+    var enterAnimation: Int = -1
+    var exitAnimation: Int = -1
+
+    /** `AnimateMeasure.getVisibility()`: how far through coming or going this component is. */
+    var fadeAlpha: Float = 1f
+
     var textId: Int = 0
     var textPaint: PaintStyle? = null
     var textAlign: Int = 1

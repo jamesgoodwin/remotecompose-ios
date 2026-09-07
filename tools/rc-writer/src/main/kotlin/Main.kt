@@ -98,6 +98,10 @@ fun main(args: Array<String>) {
         buildPatternSample()
         return
     }
+    if (args.getOrNull(0) == "visibility") {
+        buildVisibilitySample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2451,4 +2455,68 @@ private fun buildCoverageSample() {
     val bytes = writer.encodeToByteArray()
     File("sample.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to sample.rc")
+}
+
+/**
+ * A card that comes and goes: `MODIFIER_VISIBILITY` reads an int the buttons write, and the
+ * `ANIMATION_SPEC` beside it says the card fades rather than blinking in and out.
+ */
+private fun buildVisibilitySample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 220, "visibility", platform)
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 1.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    // The value the buttons write and the card reads. 1 is VISIBLE, 0 is GONE.
+    val shown = writer.addInteger(1).toInt()
+
+    writer.startColumn(RecordingModifier().fillMaxSize().background(0xFFF5F5F7.toInt()).padding(16f).spacedBy(10f), 1, 4)
+
+    text(writer.addText("Visibility"), 0xFF1B1B1F.toInt(), 20f, 700f)
+
+    // The card itself: visible or gone by the int, and fading either way over 400ms. The enter
+    // and exit animations are FADE_IN and FADE_OUT, which are ordinals 0 and 1 on the wire.
+    writer.startBox(
+        RecordingModifier()
+            .fillMaxWidth().height(64f)
+            .visibility(shown)
+            .animationSpec(
+                1, 0.4f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                0.4f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_IN,
+                androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_OUT,
+            )
+            .clip(RoundedRectShape(12f, 12f, 12f, 12f))
+            .background(0xFF6750A4.toInt()),
+        1, 2,
+    )
+    text(writer.addText("Now you see me"), 0xFFFFFFFF.toInt(), 15f, 700f)
+    writer.endBox()
+
+    // Something below it, so that the card going away is visible as a change in the layout too.
+    text(writer.addText("and this sits underneath"), 0xFF5F5A66.toInt(), 12f)
+
+    writer.startRow(RecordingModifier().fillMaxWidth().spacedBy(8f), 1, 2)
+    for ((label, value) in listOf("Hide" to 0, "Show" to 1)) {
+        writer.startBox(
+            RecordingModifier().width(120f).height(36f)
+                .clip(RoundedRectShape(18f, 18f, 18f, 18f))
+                .background(0xFFE8DEF8.toInt())
+                .then(RippleElement())
+                .onClick(ValueIntegerChange(shown, value)),
+            1, 2,
+        )
+        text(writer.addText(label), 0xFF21005D.toInt(), 13f, 700f)
+        writer.endBox()
+    }
+    writer.endRow()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("visibility.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to visibility.rc")
 }
