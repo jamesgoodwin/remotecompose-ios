@@ -201,4 +201,21 @@ class EasingCurveTest {
         animation.targetValue = 0f
         assertEquals(0f, animation.targetValue, 0.01f, "no period, no carrying forward")
     }
+
+    @Test
+    fun theWrapPeriodIsWhateverTheDocumentSaysItIs() {
+        // Nothing about this is angles: the period comes off the wire, so a value that lives on
+        // 0..100 rolls over the same way a dial does.
+        fun carriedTarget(period: Float, from: Float, to: Float): Float {
+            val animation = FloatAnimation(
+                floatArrayOf(1f, Float.fromBits((1 shl 8) or CubicEasing.CUBIC_LINEAR), period),
+            )
+            animation.initialValue = from
+            animation.targetValue = to
+            return animation.targetValue
+        }
+        assertEquals(360f, carriedTarget(360f, 354f, 0f), 0.01f, "a dial")
+        assertEquals(100f, carriedTarget(100f, 94f, 0f), 0.01f, "a percentage")
+        assertEquals(12f, carriedTarget(12f, 10f, 0f), 0.01f, "hours on a clock face")
+    }
 }
