@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 148 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 150 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -85,6 +85,8 @@ because the format has no generic length prefix to skip by.
 | 214 | `CONTAINER_END` | supported |  |
 | 215 | `LOOP_START` | supported |  |
 | 198 | `UPDATE_DYNAMIC_FLOAT_LIST` | supported |  |
+| 142 | `REFERENCED_OPERATIONS` | supported | a block kept under an id rather than run where it is written; the document collects every one as it loads, so an include may name a block written after it |
+| 245 | `INCLUDE_REFERENCED_OPERATIONS` | supported | puts the block here, with the remap context forked so each inclusion declares its own ids |
 | 244 | `MACRO_FOR_EACH` | supported | over an id list, which is the only kind that has entry ids |
 | 246 | `MACRO_DEFINE` | supported |  |
 | 247 | `MACRO_CALL` | supported |  |
@@ -228,9 +230,8 @@ because the format has no generic length prefix to skip by.
 ## Not decoded
 
 A document using any of these fails to parse. They fall into groups: sound (`PLAY_SOUND`,
-`DATA_SOUND`, `SOUND_EXPRESSION`), the rest of the loom system (`REFERENCED_OPERATIONS`,
-`INCLUDE_REFERENCED_OPERATIONS`), accessibility semantics,
-and the extension range.
+`DATA_SOUND`, `SOUND_EXPRESSION`), the rest of the loom system (`IMPULSE_START`,
+`IMPULSE_PROCESS`, `PARTICLE_PROCESS`), accessibility semantics, and the extension range.
 
 `UPDATE` (195) is in this table but cannot appear in a document: the constant is declared in
 `Operations`, and no class in remote-core 1.0.0-alpha18 answers to it — nothing registers a
@@ -244,7 +245,6 @@ implements it.
 | 132 | `MATRIX_SET` |
 | 139 | `DRAW_CONTENT` |
 | 141 | `PLAY_SOUND` |
-| 142 | `REFERENCED_OPERATIONS` |
 | 150 | `COMPONENT_VALUE` |
 | 162 | `PARTICLE_PROCESS` |
 | 164 | `IMPULSE_START` |
@@ -256,7 +256,6 @@ implements it.
 | 206 | `SOUND_EXPRESSION` |
 | 236 | `RUN_ACTION` |
 | 238 | `LAYOUT_COMPUTE` |
-| 245 | `INCLUDE_REFERENCED_OPERATIONS` |
 | 250 | `ACCESSIBILITY_SEMANTICS` |
 | 251 | `EXTENSION_RANGE_RESERVED_4` |
 | 252 | `EXTENSION_RANGE_RESERVED_3` |

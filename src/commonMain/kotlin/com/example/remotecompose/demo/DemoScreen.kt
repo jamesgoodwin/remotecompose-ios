@@ -40,7 +40,7 @@ import com.example.remotecompose.ui.RemoteComposeCanvas
  *
  * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint, 3 anim,
  *   4 actions, 5 text paths, 6 generated, 7 material, 8 list, 9 pattern, 10 coffee, 11 article,
- *   12 flight, 13 watch, 14 parallax, 15 carousel, 16 lazy list, 17 snap). Lets the
+ *   12 flight, 13 watch, 14 parallax, 15 carousel, 16 lazy list, 17 snap, 18 referenced). Lets the
  *   device hosts launch straight onto a page for scripted screenshots: Android reads an
  *   `--ei page N` intent extra, iOS an `RC_PAGE` environment variable.
  */
@@ -65,6 +65,7 @@ fun DemoScreen(initialPage: Int = 0) {
         "Carousel" to CAROUSEL_RC_BYTES,
         "Lazy list" to LAZYLIST_RC_BYTES,
         "Snap" to NOTCHES_RC_BYTES,
+        "Referenced" to REFERENCED_RC_BYTES,
     )
     var page by remember { mutableStateOf(initialPage.coerceIn(0, pages.lastIndex)) }
     val (label, bytes) = pages[page]
@@ -75,7 +76,7 @@ fun DemoScreen(initialPage: Int = 0) {
         // harness relies on to find it in a screenshot; the bar floats over the backdrop below.
         when (label) {
             // Both are dragged, and both are dark of their own accord.
-            "Parallax", "Carousel", "Lazy list", "Snap" -> RemoteComposeCanvas(
+            "Parallax", "Carousel", "Lazy list", "Snap", "Referenced" -> RemoteComposeCanvas(
                 bytes = bytes,
                 modifier = Modifier.fillMaxSize().background(Color(0xFF12101A)).padding(bottom = BAR_SPACE),
                 onAction = { go(1) },

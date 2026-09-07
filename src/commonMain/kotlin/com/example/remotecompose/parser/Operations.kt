@@ -124,6 +124,7 @@ internal object Operations {
     const val VALUE_INTEGER_CHANGE_ACTION = 212
     const val VALUE_STRING_CHANGE_ACTION = 213
     const val CONTAINER_END = 214
+    const val REFERENCED_OPERATIONS = 142
     const val LOOP_START = 215
     const val LAYOUT_STATE = 217
     const val VALUE_INTEGER_EXPRESSION_CHANGE_ACTION = 218
@@ -148,6 +149,7 @@ internal object Operations {
     const val LAYOUT_FLOW = 240
     const val SKIP = 241
     const val MACRO_FOR_EACH = 244
+    const val INCLUDE_REFERENCED_OPERATIONS = 245
     const val MACRO_DEFINE = 246
     const val MACRO_CALL = 247
     const val MACRO_ARGUMENT = 248

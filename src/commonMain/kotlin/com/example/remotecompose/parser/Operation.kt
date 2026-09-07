@@ -310,6 +310,25 @@ sealed interface Operation {
     data class UpdateDynamicFloatList(val arrayId: Int, val index: Float, val value: Float) : Operation
 
     /**
+     * `ReferencedOperations`: a block of operations kept under [id] rather than run where it is
+     * written, closed by a `ContainerEnd`.
+     *
+     * `CoreDocument` collects every one of these into a map as it loads, before anything is
+     * expanded, so an [IncludeReferencedOperations] may name one written after it. Unlike a
+     * pattern it takes no parameters and supplies no blocks: it is the same operations again.
+     */
+    data class ReferencedOperations(val id: Int) : Operation
+
+    /**
+     * `IncludeReferencedOperations`: puts the block [id] names here.
+     *
+     * `materialize` re-reads the block's bytes through a forked remap context marked as inside a
+     * macro, so each inclusion declares its own ids rather than sharing one set — which is what
+     * lets the same block be included twice and hold two different things.
+     */
+    data class IncludeReferencedOperations(val id: Int) : Operation
+
+    /**
      * `PatternDefine`: a named block of operations with parameters, the format's component.
      *
      * [paramIds] are the ids a call binds its arguments to, so the [body] is written in terms of

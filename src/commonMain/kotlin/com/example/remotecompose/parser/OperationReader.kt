@@ -390,6 +390,8 @@ internal object OperationReader {
             if (argCount > r.remaining / 4) throw RemoteComposeParseException("Pattern call $id passes $argCount arguments")
             Op.PatternCall(id, List(argCount) { r.readS32() })
         }
+        Operations.REFERENCED_OPERATIONS -> Op.ReferencedOperations(r.readS32())
+        Operations.INCLUDE_REFERENCED_OPERATIONS -> Op.IncludeReferencedOperations(r.readS32())
         Operations.MACRO_ARGUMENT -> Op.PatternArgument(r.readS32())
         Operations.MACRO_BLOCK -> Op.PatternBlock(r.readS32())
         Operations.LOOP_START -> Op.LoopStart(r.readS32(), r.readFloat32(), r.readFloat32(), r.readFloat32())

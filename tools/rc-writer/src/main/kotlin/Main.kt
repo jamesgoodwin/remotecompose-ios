@@ -154,6 +154,10 @@ fun main(args: Array<String>) {
         buildNotchesSample()
         return
     }
+    if (args.getOrNull(0) == "referenced") {
+        buildReferencedSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -3748,4 +3752,77 @@ private fun buildNotchesSample() {
     val bytes = writer.encodeToByteArray()
     File("notches.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to notches.rc; strip content $content, scrollable $scrollable")
+}
+
+/**
+ * A badge written once and drawn three times.
+ *
+ * `REFERENCED_OPERATIONS` keeps a block of operations under an id instead of running it where it
+ * is written, and `INCLUDE_REFERENCED_OPERATIONS` puts that block wherever it is named. The badge
+ * here — its rectangle, its text and the text's own record — is in the file once and appears on
+ * every card, which is the whole of what the pair is for.
+ *
+ * The block is re-read for each inclusion through a forked remap context, so what it declares
+ * belongs to that inclusion alone. The badge's label is therefore a different id on each card
+ * even though the string behind all three is the one in the file.
+ */
+private fun buildReferencedSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "referenced", platform)
+
+    val ink = 0xFFEDEDF5.toInt()
+    val faint = 0xFF8E8CA3.toInt()
+    val seal = 0xFF2E7D32.toInt()
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    // The block. Everything in it — the rectangle, the label and the label's own `DATA_TEXT` —
+    // is written here and nowhere else.
+    val badge = writer.nextId()
+    writer.startReferencedOperations(badge)
+    writer.getRcPaint().setColor(seal).setStyle(0).commit()
+    writer.drawRoundRect(0f, 0f, 96f, 20f, 10f, 10f)
+    writer.getRcPaint().setColor(0xFFE8F5E9.toInt()).setTextSize(12f).commit()
+    writer.drawTextAnchored(writer.addText("Verified"), 48f, 14f, 0f, 0f, 0)
+    writer.endReferencedOperations()
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFF14141C.toInt()).padding(16f).spacedBy(12f),
+        1, 4,
+    )
+    text(writer.addText("Referenced"), ink, 22f, 700f)
+
+    val cards = listOf(
+        "Harbour Lights" to "Nine hours, two crossings",
+        "Fen Causeway" to "Dry until the last mile",
+        "Cold Fell" to "Turn back at the cairn",
+    )
+    for ((title, note) in cards) {
+        writer.startColumn(
+            RecordingModifier().fillMaxWidth().height(76f)
+                .clip(RoundedRectShape(12f, 12f, 12f, 12f))
+                .background(0xFF20202C.toInt())
+                .padding(12f)
+                .spacedBy(4f),
+            1, 4,
+        )
+        text(writer.addText(title), ink, 16f, 700f)
+        text(writer.addText(note), faint, 11f)
+        // The badge, from the block. A box gives it somewhere of its own to draw.
+        writer.startBox(RecordingModifier().width(96f).height(20f), 1, 2)
+        writer.addIncludeReferencedOperations(badge)
+        writer.endBox()
+        writer.endColumn()
+    }
+
+    text(writer.addText("One block, drawn three times"), faint, 12f)
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("referenced.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to referenced.rc; block $badge included ${cards.size} times")
 }

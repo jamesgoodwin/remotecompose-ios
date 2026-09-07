@@ -197,6 +197,14 @@ object RemoteComposeParser {
         // Patterns, by id, and the block arguments of the call being expanded. A pattern may be
         // defined after it is called, so they are collected before the walk starts.
         val patterns = operations.filterIsInstance<Op.PatternDefine>().associateBy { it.id }
+        // `ReferencedOperations` blocks, by id. `CoreDocument` collects these as it loads, before
+        // anything is expanded, so an include may name a block written after it.
+        val referenced = HashMap<Int, IntRange>()
+        for ((i, op) in operations.withIndex()) {
+            if (op is Op.ReferencedOperations) {
+                referenced[op.id] = (i + 1) until (scopesOf(operations)[i] ?: operations.size)
+            }
+        }
         val activeCalls = ArrayDeque<ActiveCall>()
         var expansionDepth = 0
 
@@ -1495,6 +1503,26 @@ object RemoteComposeParser {
 
                     is Op.PatternDefine -> i = scopeEnds[i] ?: to
 
+                    // A block kept for later, not run where it is written.
+                    is Op.ReferencedOperations -> i = scopeEnds[i] ?: to
+
+                    is Op.IncludeReferencedOperations -> {
+                        // `IncludeReferencedOperations.materialize`: the block's operations are
+                        // read again here, inside a macro as far as ids are concerned, so two
+                        // inclusions of one block do not write into the same slots.
+                        val body = referenced[op.id]
+                        if (body != null && expansionDepth < MAX_EXPANSION_DEPTH) {
+                            // `getRemapContext().fork()`: the names the block gives itself are
+                            // this inclusion's, and go no further than it.
+                            val outerBindings = HashMap(itemBindings)
+                            expansionDepth++
+                            walk(operations, body.first, body.last + 1)
+                            expansionDepth--
+                            itemBindings.clear()
+                            itemBindings.putAll(outerBindings)
+                        }
+                    }
+
                     is Op.PatternCall -> {
                         // PatternInflation.materialize(): bind the arguments to the pattern's
                         // parameters, collect the blocks this call supplies, and walk the body.
@@ -1800,7 +1828,7 @@ object RemoteComposeParser {
                 is Op.ModifierClick, is Op.ModifierMultiClick, is Op.ModifierTouchDown, is Op.ModifierTouchUp,
                 is Op.ModifierTouchCancel, is Op.ModifierScroll, is Op.FloatFunctionDefine, is Op.ParticlesLoop,
                 is Op.ParticlesCompare, is Op.PatternForEach, is Op.PatternDefine, is Op.PatternCall,
-                is Op.PatternBlock -> open.addLast(i)
+                is Op.PatternBlock, is Op.ReferencedOperations -> open.addLast(i)
                 is Op.ContainerEnd -> open.removeLastOrNull()?.let { ends[it] = i }
                 else -> Unit
             }
