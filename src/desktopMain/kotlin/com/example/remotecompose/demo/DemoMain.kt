@@ -40,7 +40,9 @@ fun main(args: Array<String>) {
     val density = Density(1f)
     val textMeasurer = TextMeasurer(createFontFamilyResolver(), density, LayoutDirection.Ltr)
     // Optional third argument: the animation time in seconds at which to evaluate the document.
-    val timeMillis = (args.getOrNull(2)?.toFloatOrNull() ?: 0f).let { (it * 1000f).toLong() }
+    // Parsed as a Double: a Float cannot hold an epoch-scale number of seconds and a fraction of
+    // one at the same time, and a document read off the wall clock is rendered at exactly those.
+    val timeMillis = (args.getOrNull(2)?.toDoubleOrNull() ?: 0.0).let { (it * 1000.0).toLong() }
     val loaded = RemoteComposeParser.load(bytes, ComposeTextMetrics(textMeasurer))
     // Optional fifth argument: "dark" to paint the document's dark palette.
     if (args.getOrNull(4) == "dark") loaded.paintTheme = RemoteContext.THEME_DARK
@@ -88,6 +90,17 @@ fun main(args: Array<String>) {
             loaded.setNamedColor("statusColor", 0xFFB3261E.toInt())
         }
         loaded.frame(0L)
+    }
+    // A document that animates has to have been running to be caught part way through one: a
+    // single frame at a distant time leaves every animated value at the start of its transition,
+    // since that is the frame that first saw the change. Stepping up to the moment puts each of
+    // them where it would actually be.
+    if (timeMillis > 0L) {
+        var step = timeMillis - 1000L
+        while (step < timeMillis) {
+            loaded.frame(step)
+            step += 20L
+        }
     }
     val document = loaded.frame(timeMillis)
     println("Parsed real payload: ${document.header.width}x${document.header.height}, ${document.opcodes.size} opcode(s): ${document.opcodes}")

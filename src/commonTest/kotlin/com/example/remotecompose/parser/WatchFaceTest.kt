@@ -57,11 +57,42 @@ class WatchFaceTest {
     }
 
     @Test
-    fun theSecondHandSweepsRatherThanTicking() {
-        // One degree per sixth of a second, so a moment later it has moved but not jumped.
+    fun theSecondHandMovesSixDegreesPerSecond() {
         val before = at(moment).rotations[2]
         val after = at(moment + 2000L).rotations[2]
         assertEquals(12f, after - before, 0.1f)
+    }
+
+    /** The second hand's angle through one tick, from a document already running. */
+    private fun secondHandThroughATick(from: Long, offsets: List<Long>): List<Float> {
+        val document = RemoteComposeParser.load(bytes)
+        document.frame(from)
+        return offsets.map { offset ->
+            document.frame(from + offset).opcodes.filterIsInstance<Opcode.Rotate>()[2].degrees
+        }
+    }
+
+    @Test
+    fun theSecondHandOvershootsAndSettlesLikeAQuartzOne() {
+        // `TIME_IN_SEC` counts whole seconds, so the hand jumps rather than sweeping; the
+        // `ANIMATED_FLOAT` on it is what gives the jump its flick. Past the mark, then back.
+        val angles = secondHandThroughATick(1_709_821_810_000L, listOf(1000L, 1060L, 1090L, 1160L, 1300L))
+        val target = 66f
+        assertEquals(60f, angles[0], 0.1f, "on the old mark as the second turns over")
+        assertTrue(angles[2] > target, "past the new one on the way: ${angles[2]}")
+        assertTrue(angles[2] - target < 3f, "but only just: ${angles[2] - target}")
+        assertTrue(angles[3] < angles[2], "and coming back")
+        assertEquals(target, angles[4], 0.1f, "settled by the time the next tick is due")
+    }
+
+    @Test
+    fun theSecondHandGoesForwardOverTheMinute() {
+        // 59 seconds to 0 is 354 degrees to 0, which without the animation's wrap would be a
+        // swing backwards through the whole dial. With it the hand carries on to 360.
+        val angles = secondHandThroughATick(1_709_821_859_000L, listOf(1000L, 1060L, 1300L))
+        assertEquals(354f, angles[0], 0.1f)
+        assertTrue(angles[1] > 354f, "forward, not back: ${angles[1]}")
+        assertEquals(360f, angles[2], 0.1f, "arriving at the top of the dial")
     }
 
     @Test

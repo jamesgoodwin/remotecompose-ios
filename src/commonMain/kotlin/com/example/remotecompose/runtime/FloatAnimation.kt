@@ -165,14 +165,37 @@ class CubicEasing(private val x1: Float, private val y1: Float, private val x2: 
  * `[duration]` then, if present, a packed int whose low byte is the easing type, bit 9 says an
  * initial value follows, bit 8 says a wrap value follows, bits 10..11 are the directional snap
  * and bits 16.. the length of the curve spec that follows those values. Bounce, elastic and
- * spline curves are not implemented and fall back to the standard cubic; wrap-around and
- * directional snap are decoded but not applied.
+ * A wrap value makes the target live on a circle: the animation then goes the short way round,
+ * which is what stops a clock hand swinging backwards through the dial at the end of a minute.
+ * The directional snap is decoded but not applied.
  */
 class FloatAnimation(description: FloatArray) {
     val duration: Float
     val type: Int
     var initialValue: Float = Float.NaN
+
+    /**
+     * `setTargetValue`: where the value is heading. With a [wrap] the two ends are first brought
+     * into `0..wrap`, and a target that lies backwards by the short way round is pushed a whole
+     * turn forward instead — which is how a clock hand goes from 354 degrees to 360 rather than
+     * all the way back through zero.
+     */
     var targetValue: Float = Float.NaN
+        set(value) {
+            field = value
+            val period = wrap
+            if (period.isNaN()) return
+            initialValue = wrapInto(period, initialValue)
+            field = wrapInto(period, field)
+            if (initialValue.isNaN()) initialValue = field
+            val distance = wrapDistance(period, initialValue, field)
+            if (distance > 0f && field < initialValue) field += period
+        }
+
+    /** The period the value lives on, from the description; `NaN` when it does not wrap. */
+    var wrap: Float = Float.NaN
+        private set
+
     private val easing: Easing
 
     init {
@@ -190,7 +213,7 @@ class FloatAnimation(description: FloatArray) {
             val spec = 2
             var index = 2 + specLength
             if (hasInitial && index < description.size) initialValue = description[index++]
-            if (hasWrap) index++ // wrap value: decoded, not applied
+            if (hasWrap && index < description.size) wrap = description[index]
             if (spec + specLength <= description.size) {
                 curve = when {
                     easingType == CubicEasing.CUBIC_CUSTOM && specLength >= 4 -> CubicEasing(
@@ -204,6 +227,25 @@ class FloatAnimation(description: FloatArray) {
         }
         type = easingType
         easing = curve ?: CubicEasing.preset(easingType)
+    }
+
+    private companion object {
+        /** `wrap(period, value)`: into `0..period`, the remainder brought back up if negative. */
+        fun wrapInto(period: Float, value: Float): Float {
+            if (value.isNaN()) return value
+            val v = value % period
+            return if (v < 0f) v + period else v
+        }
+
+        /**
+         * `wrapDistance`: how far it is from one to the other the short way round. The real
+         * method takes the remainder over 360 whatever the period is, which is mirrored here.
+         */
+        fun wrapDistance(period: Float, from: Float, to: Float): Float {
+            var d = (to - from) % 360f
+            if (d < -period / 2f) d += period else if (d > period / 2f) d -= period
+            return d
+        }
     }
 
     /** `FloatAnimation.get`: the eased value [elapsed] seconds after the animation started. */

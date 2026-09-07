@@ -3122,7 +3122,22 @@ private fun buildWatchSample() {
 
     // The angles. A hand sweeps once per its own unit, and each carries the one below it so the
     // hour hand creeps rather than jumping on the hour.
-    val secondAngle = writer.floatExpression(Rc.Time.TIME_IN_SEC, 6f, Rc.FloatExpression.MUL)
+    // The second hand ticks rather than sweeping — TIME_IN_SEC counts whole seconds — so the
+    // interesting part is how it arrives. An overshooting curve over a fifth of a second gives it
+    // the flick and settle a quartz hand has, and the wrap of 360 is what takes it from 354
+    // degrees forward to 360 rather than backwards through the whole dial once a minute.
+    val secondAngle = writer.floatExpression(
+        floatArrayOf(Rc.Time.TIME_IN_SEC, 6f, Rc.FloatExpression.MUL),
+        androidx.compose.remote.core.operations.utilities.easing.FloatAnimation.packToFloatArray(
+            0.2f,
+            androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_CUSTOM,
+            // A steeper overshoot than CUBIC_OVERSHOOT's: a quarter of the step past the mark
+            // and back, which at this hand's length is about three pixels of flick.
+            floatArrayOf(0.34f, 2.0f, 0.64f, 1f),
+            Float.NaN,
+            360f,
+        ),
+    )
     val minuteAngle = writer.floatExpression(
         Rc.Time.TIME_IN_MIN, 6f, Rc.FloatExpression.MUL,
         Rc.Time.TIME_IN_SEC, 0.1f, Rc.FloatExpression.MUL, Rc.FloatExpression.ADD,

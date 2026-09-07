@@ -156,4 +156,49 @@ class EasingCurveTest {
         assertTrue(elastic.any { it > 101f }, "it goes past the target: ${elastic.max()}")
         assertTrue(elastic.last() in 95f..105f, "and settles onto it: ${elastic.last()}")
     }
+
+    /**
+     * `FloatAnimation`'s wrap: a value that lives on a circle. `setTargetValue` brings both ends
+     * into the period and pushes a target that lies backwards the short way round a whole turn
+     * forward instead, so a hand at 354 degrees heading for 0 goes on to 360.
+     */
+    @Test
+    fun aWrappedValueTakesTheShortWayRound() {
+        val description = floatArrayOf(
+            1f,
+            Float.fromBits((1 shl 8) or CubicEasing.CUBIC_LINEAR), // hasWrap, linear
+            360f,
+        )
+        val animation = FloatAnimation(description)
+        assertEquals(360f, animation.wrap)
+
+        animation.initialValue = 354f
+        animation.targetValue = 0f
+        assertEquals(354f, animation.initialValue, 0.01f)
+        assertEquals(360f, animation.targetValue, 0.01f, "carried forward rather than back")
+
+        // Half way through a linear second it is between the two rather than off round the dial.
+        assertEquals(357f, animation.get(0.5f), 0.5f)
+    }
+
+    @Test
+    fun aWrappedValueGoesBackwardsWhenThatIsTheShortWay() {
+        val animation = FloatAnimation(
+            floatArrayOf(1f, Float.fromBits((1 shl 8) or CubicEasing.CUBIC_LINEAR), 360f),
+        )
+        animation.initialValue = 10f
+        animation.targetValue = 350f
+        // Ten degrees back is shorter than three hundred and fifty forward.
+        assertEquals(350f, animation.targetValue, 0.01f)
+        assertTrue(animation.get(0.5f) in 170f..190f, "the long way is not taken: ${animation.get(0.5f)}")
+    }
+
+    @Test
+    fun anUnwrappedValueIsLeftAlone() {
+        val animation = FloatAnimation(floatArrayOf(1f))
+        assertTrue(animation.wrap.isNaN())
+        animation.initialValue = 354f
+        animation.targetValue = 0f
+        assertEquals(0f, animation.targetValue, 0.01f, "no period, no carrying forward")
+    }
 }

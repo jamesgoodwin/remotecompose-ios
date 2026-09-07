@@ -65,7 +65,7 @@ because the format has no generic length prefix to skip by.
 
 | Id | Opcode | Status | Notes |
 | --: | --- | --- | --- |
-| 81 | `ANIMATED_FLOAT` | partial | cubic, bounce, elastic and spline easing; directional snap is decoded only. Collection operators read a list (`A_DEREF`, `A_MAX`, `A_MIN`, `A_SUM`, `A_AVG`, `A_LEN`); `A_SPLINE` and the rest are not run |
+| 81 | `ANIMATED_FLOAT` | partial | cubic, bounce, elastic and spline easing, and wrap-around so a value on a circle goes the short way; directional snap is decoded only. Collection operators read a list (`A_DEREF`, `A_MAX`, `A_MIN`, `A_SUM`, `A_AVG`, `A_LEN`); `A_SPLINE` and the rest are not run |
 | 134 | `COLOR_EXPRESSIONS` | supported |  |
 | 135 | `TEXT_FROM_FLOAT` | supported |  |
 | 136 | `TEXT_MERGE` | supported |  |
