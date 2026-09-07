@@ -166,6 +166,16 @@ object RemoteComposeParser {
          * `mTextStyleId` — so 23 is the flags and 24 is the style this component inherits from,
          * where `TextStyle` calls them `flags` and `parentId`. The colour is key 3 for both.
          */
+        /** `ComponentValue.WIDTH`..`CONTENT_HEIGHT`. */
+        val COMPONENT_VALUE_WIDTH = 0
+        val COMPONENT_VALUE_HEIGHT = 1
+        val COMPONENT_VALUE_POS_X = 2
+        val COMPONENT_VALUE_POS_Y = 3
+        val COMPONENT_VALUE_POS_ROOT_X = 4
+        val COMPONENT_VALUE_POS_ROOT_Y = 5
+        val COMPONENT_VALUE_CONTENT_WIDTH = 6
+        val COMPONENT_VALUE_CONTENT_HEIGHT = 7
+
         val CORE_TEXT_FLAGS = 23
         val CORE_TEXT_STYLE_ID = 24
 
@@ -1192,7 +1202,13 @@ object RemoteComposeParser {
                         tree.openNode(node, paint)
                     }
 
-                    is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations -> tree.openContent(paint)
+                    is Op.LayoutContent, is Op.LayoutCanvasContent, is Op.CanvasOperations -> {
+                        // The content of a component is a component of its own upstream, with its
+                        // own id and its own measure — which is the one `getLastComponentId`
+                        // hands to a `COMPONENT_VALUE` written just after a component is started.
+                        if (op is Op.LayoutContent) tree.current?.contentComponentId = op.componentId
+                        tree.openContent(paint)
+                    }
 
                     is Op.ModifierClick, is Op.ModifierMultiClick -> tree.openActionList(ActionTrigger.CLICK, paint)
                     is Op.ModifierTouchDown -> tree.openActionList(ActionTrigger.TOUCH_DOWN, paint)
@@ -1527,6 +1543,40 @@ object RemoteComposeParser {
                     // A block kept for later, not run where it is written.
                     is Op.ReferencedOperations -> i = scopeEnds[i] ?: to
 
+                    is Op.ComponentValue -> {
+                        // `Component.updateVariables`: what the last layout left, since this
+                        // frame has not been measured yet. A component seen for the first time
+                        // has no bounds, so it publishes zero and asks to be drawn again — the
+                        // frame after it has a size to report.
+                        val bounds = context.componentBounds[op.componentId]
+                        val value = when (op.type) {
+                            COMPONENT_VALUE_WIDTH, COMPONENT_VALUE_CONTENT_WIDTH -> bounds?.get(2)
+                            COMPONENT_VALUE_HEIGHT, COMPONENT_VALUE_CONTENT_HEIGHT -> bounds?.get(3)
+                            COMPONENT_VALUE_POS_X -> bounds?.get(0)
+                            COMPONENT_VALUE_POS_Y -> bounds?.get(1)
+                            COMPONENT_VALUE_POS_ROOT_X -> bounds?.get(4)
+                            COMPONENT_VALUE_POS_ROOT_Y -> bounds?.get(5)
+                            else -> null
+                        } ?: 0f
+                        if (context.floats[op.valueId] != value) context.needsRepaint = true
+                        context.loadFloat(op.valueId, value)
+                    }
+
+                    is Op.LayoutCompute -> {
+                        // The block declares the float list it works in, so it is run once here
+                        // to bring that into being; the measure pass fills the bounds and runs it
+                        // again. `DataDynamicListFloat` only replaces a list whose length
+                        // changed, so the second run reads what the first one left.
+                        val end = scopeEnds[i] ?: to
+                        val from = i + 1
+                        val body = ops
+                        walk(body, from, end)
+                        tree.current?.modifiers?.add(
+                            Modifier.LayoutCompute(op.type, op.boundsId) { walk(body, from, end) },
+                        )
+                        i = end
+                    }
+
                     is Op.IncludeReferencedOperations -> {
                         // `IncludeReferencedOperations.materialize`: the block's operations are
                         // read again here, inside a macro as far as ids are concerned, so two
@@ -1849,7 +1899,7 @@ object RemoteComposeParser {
                 is Op.ModifierClick, is Op.ModifierMultiClick, is Op.ModifierTouchDown, is Op.ModifierTouchUp,
                 is Op.ModifierTouchCancel, is Op.ModifierScroll, is Op.FloatFunctionDefine, is Op.ParticlesLoop,
                 is Op.ParticlesCompare, is Op.PatternForEach, is Op.PatternDefine, is Op.PatternCall,
-                is Op.PatternBlock, is Op.ReferencedOperations -> open.addLast(i)
+                is Op.PatternBlock, is Op.ReferencedOperations, is Op.LayoutCompute -> open.addLast(i)
                 is Op.ContainerEnd -> open.removeLastOrNull()?.let { ends[it] = i }
                 else -> Unit
             }

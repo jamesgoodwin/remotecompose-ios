@@ -9,6 +9,7 @@ import com.example.remotecompose.demo.FLIGHT_RC_BYTES
 import com.example.remotecompose.demo.LAZYLIST_RC_BYTES
 import com.example.remotecompose.demo.NOTCHES_RC_BYTES
 import com.example.remotecompose.demo.REFERENCED_RC_BYTES
+import com.example.remotecompose.demo.LAYOUT_RC_BYTES
 import com.example.remotecompose.demo.WRAP_RC_BYTES
 import com.example.remotecompose.demo.LIST_RC_BYTES
 import com.example.remotecompose.demo.MATERIAL_RC_BYTES
@@ -49,6 +50,7 @@ val FIXTURES: Map<String, ByteArray> = mapOf(
     "notches" to NOTCHES_RC_BYTES,
     "referenced" to REFERENCED_RC_BYTES,
     "wrap" to WRAP_RC_BYTES,
+    "layout" to LAYOUT_RC_BYTES,
     "list" to LIST_RC_BYTES,
     "material" to MATERIAL_RC_BYTES,
     "named" to NAMED_RC_BYTES,

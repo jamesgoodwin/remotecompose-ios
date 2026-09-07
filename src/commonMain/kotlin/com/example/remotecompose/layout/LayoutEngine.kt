@@ -153,7 +153,14 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
         w = min(w, maxW); h = min(h, maxH)
         node.width = w
         node.height = h
+        applyLayoutCompute(node, Modifier.LayoutCompute.TYPE_MEASURE, maxWidthIn, maxHeightIn)
         internalLayout(node)
+        // A position is only settled once the parent has placed its children, so a component's
+        // own `TYPE_POSITION` block is run from here rather than from its own measure — and here
+        // the parent's size is known, where at the child's measure it is not yet.
+        for (child in node.children) {
+            applyLayoutCompute(child, Modifier.LayoutCompute.TYPE_POSITION, node.width, node.height)
+        }
         if (scroll != null) {
             // How far the content runs past the window, which is only known once the children
             // have been placed: measuring them says how big each is, not where it ends up.
@@ -195,7 +202,70 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
         return node.paddingTop + value + node.paddingBottom
     }
 
-    // --------------------------------------------------- wrap size (intrinsic)
+    /**
+     * `LayoutComputeOperation.applyToMeasure`: `[x, y, width, height, parentWidth, parentHeight]`
+     * go into the dynamic float list the operation names, the block runs over them, and what it
+     * wrote back is read out — the width and height for `TYPE_MEASURE`, the x and y for
+     * `TYPE_POSITION`, both for anything else.
+     *
+     * The library hands the block its parent's own `ComponentMeasure`. This measure pass has no
+     * such record: a parent's size is not settled until after its children are measured, so
+     * `TYPE_MEASURE` is given the room the parent offered instead, which is the parent's content
+     * box wherever the parent has a size of its own. `TYPE_POSITION` runs late enough to be given
+     * the real thing.
+     */
+    private fun applyLayoutCompute(node: LayoutNode, type: Int, parentWidth: Float, parentHeight: Float) {
+        val compute = node.modifiers.filterIsInstance<Modifier.LayoutCompute>()
+            .firstOrNull { it.type == type } ?: return
+        val bounds = context.floatLists[compute.boundsId] ?: return
+        if (bounds.size < 6) return
+        bounds[0] = node.x
+        bounds[1] = node.y
+        bounds[2] = node.width
+        bounds[3] = node.height
+        bounds[4] = if (parentWidth == unbounded) 0f else parentWidth
+        bounds[5] = if (parentHeight == unbounded) 0f else parentHeight
+        compute.run()
+        val after = context.floatLists[compute.boundsId] ?: return
+        if (after.size < 6) return
+        if (type != Modifier.LayoutCompute.TYPE_POSITION) {
+            node.width = after[2]
+            node.height = after[3]
+        }
+        if (type != Modifier.LayoutCompute.TYPE_MEASURE) {
+            node.x = after[0]
+            node.y = after[1]
+        }
+    }
+
+    /**
+     * `Component.mX`/`mY`/`mWidth`/`mHeight` and `getLocationInWindow`, by component id, for the
+     * `COMPONENT_VALUE`s of the next frame to read.
+     */
+    fun collectComponentBounds(
+        node: LayoutNode,
+        originX: Float = 0f,
+        originY: Float = 0f,
+        out: MutableMap<Int, FloatArray> = mutableMapOf(),
+    ): Map<Int, FloatArray> {
+        val x = originX + node.x
+        val y = originY + node.y
+        if (node.componentId != 0) {
+            out[node.componentId] = floatArrayOf(node.x, node.y, node.width, node.height, x, y)
+        }
+        if (node.contentComponentId != 0) {
+            val contentW = node.width - node.paddingLeft - node.paddingRight
+            val contentH = node.height - node.paddingTop - node.paddingBottom
+            out[node.contentComponentId] = floatArrayOf(
+                node.paddingLeft, node.paddingTop, contentW, contentH,
+                x + node.paddingLeft, y + node.paddingTop,
+            )
+        }
+        for (child in node.children) collectComponentBounds(child, x + node.paddingLeft, y + node.paddingTop, out)
+        return out
+    }
+
+    // --------------------------------------------------- wrap size (intrinsic)    // --------------------------------------------------- wrap size (intrinsic)
 
     private fun computeWrapSize(
         node: LayoutNode, minW: Float, maxW: Float, minH: Float, maxH: Float,

@@ -310,6 +310,26 @@ sealed interface Operation {
     data class UpdateDynamicFloatList(val arrayId: Int, val index: Float, val value: Float) : Operation
 
     /**
+     * `ComponentValue`: publishes one measurement of the component [componentId] under [valueId],
+     * so the rest of the document can read it as a float.
+     *
+     * `Component.updateVariables` runs before the frame is measured and writes what the last
+     * layout left, which is what keeps a value that feeds back into the layout from chasing
+     * itself round inside one frame.
+     */
+    data class ComponentValue(val type: Int, val componentId: Int, val valueId: Int) : Operation
+
+    /**
+     * `LayoutComputeOperation`: a modifier that lets the document work out its component's own
+     * size or place, closed by a `ContainerEnd`.
+     *
+     * `applyToMeasure` puts `[x, y, width, height, parentWidth, parentHeight]` into the dynamic
+     * float list [boundsId], runs the operations in the block over them, and reads back what they
+     * wrote: the width and height for `TYPE_MEASURE`, the x and y for `TYPE_POSITION`.
+     */
+    data class LayoutCompute(val type: Int, val boundsId: Int, val animateChanges: Boolean) : Operation
+
+    /**
      * `ReferencedOperations`: a block of operations kept under [id] rather than run where it is
      * written, closed by a `ContainerEnd`.
      *

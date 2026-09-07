@@ -127,6 +127,8 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
         hitRegions = engine.collectHitRegions(root)
         rippleTargets = engine.collectRippleTargets(root)
         context.scrollBounds = engine.collectScrollBounds(root)
+        context.componentBounds.clear()
+        context.componentBounds.putAll(engine.collectComponentBounds(root))
         return out
     }
 

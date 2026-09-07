@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 150 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 152 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -85,6 +85,7 @@ because the format has no generic length prefix to skip by.
 | 214 | `CONTAINER_END` | supported |  |
 | 215 | `LOOP_START` | supported |  |
 | 198 | `UPDATE_DYNAMIC_FLOAT_LIST` | supported |  |
+| 150 | `COMPONENT_VALUE` | supported | one measurement of a named component — its size, its place, its place in the window or its content size — published under a float id. `Component.updateVariables` runs before the frame is measured, so the value is the previous layout's and a document reading its own size settles on the next frame |
 | 142 | `REFERENCED_OPERATIONS` | supported | a block kept under an id rather than run where it is written; the document collects every one as it loads, so an include may name a block written after it |
 | 245 | `INCLUDE_REFERENCED_OPERATIONS` | supported | puts the block here, with the remap context forked so each inclusion declares its own ids |
 | 244 | `MACRO_FOR_EACH` | supported | over an id list, which is the only kind that has entry ids |
@@ -206,6 +207,7 @@ because the format has no generic length prefix to skip by.
 | 232 | `MODIFIER_HEIGHT_IN` | supported |  |
 | 235 | `MODIFIER_COLLAPSIBLE_PRIORITY` | supported |  |
 | 237 | `MODIFIER_ALIGN_BY` | decoded only | baseline alignment is not applied |
+| 238 | `LAYOUT_COMPUTE` | partial | `[x, y, width, height, parentWidth, parentHeight]` go into the block's float list, the block runs, and the width and height (`TYPE_MEASURE`) or the x and y (`TYPE_POSITION`) are read back. The parent's size given to a `TYPE_MEASURE` block is the room the parent offered rather than its own measure, which this renderer does not have while a child is being measured; the animate-changes flag is decoded and not applied |
 | 243 | `MODIFIER_DIMENSION_CONSTRAINTS` | supported |  |
 
 ### Touch and actions
@@ -245,7 +247,6 @@ implements it.
 | 132 | `MATRIX_SET` |
 | 139 | `DRAW_CONTENT` |
 | 141 | `PLAY_SOUND` |
-| 150 | `COMPONENT_VALUE` |
 | 162 | `PARTICLE_PROCESS` |
 | 164 | `IMPULSE_START` |
 | 165 | `IMPULSE_PROCESS` |
@@ -255,7 +256,6 @@ implements it.
 | 195 | `UPDATE` |
 | 206 | `SOUND_EXPRESSION` |
 | 236 | `RUN_ACTION` |
-| 238 | `LAYOUT_COMPUTE` |
 | 250 | `ACCESSIBILITY_SEMANTICS` |
 | 251 | `EXTENSION_RANGE_RESERVED_4` |
 | 252 | `EXTENSION_RANGE_RESERVED_3` |

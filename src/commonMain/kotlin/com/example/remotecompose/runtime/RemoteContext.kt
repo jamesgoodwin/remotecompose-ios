@@ -306,6 +306,16 @@ class RemoteContext : FloatCollections {
     internal var scrollBounds: Map<Int, LayoutEngine.ScrollBounds> = emptyMap()
 
     /**
+     * `Component.mX`/`mY`/`mWidth`/`mHeight` and `getLocationInWindow`, by component id, as the
+     * last frame's layout left them: `[x, y, width, height, rootX, rootY]`.
+     *
+     * `Component.updateVariables` runs before a frame is measured, so a `COMPONENT_VALUE` reports
+     * the previous layout — which is what stops a value that feeds back into the layout from
+     * having to settle inside one frame.
+     */
+    val componentBounds = mutableMapOf<Int, FloatArray>()
+
+    /**
      * `TouchExpression.apply` in its default mode: while the pointer is down the expression is
      * evaluated against the current pointer position and the delta since the press is added to
      * the value the variable had then; the result is clamped to `[min, max]` and stored under the

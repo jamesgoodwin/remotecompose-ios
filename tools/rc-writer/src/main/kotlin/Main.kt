@@ -1,6 +1,7 @@
 import androidx.compose.remote.creation.JvmRcPlatformServices
 import androidx.compose.remote.creation.Rc
 import androidx.compose.remote.creation.RcPaint
+import androidx.compose.remote.creation.RFloat
 import androidx.compose.remote.creation.RemoteComposeWriter
 import androidx.compose.remote.creation.RemotePath
 import androidx.compose.remote.creation.actions.HostAction
@@ -10,6 +11,7 @@ import androidx.compose.remote.creation.actions.ValueIntegerChange
 import androidx.compose.remote.creation.actions.ValueIntegerExpressionChange
 import androidx.compose.remote.creation.actions.ValueStringChange
 import androidx.compose.remote.creation.modifiers.RecordingModifier
+import androidx.compose.remote.creation.modifiers.ComponentLayoutComputeModifier
 import androidx.compose.remote.creation.modifiers.GraphicsLayerModifier
 import androidx.compose.remote.creation.modifiers.MarqueeModifier
 import androidx.compose.remote.creation.modifiers.RectShape
@@ -160,6 +162,10 @@ fun main(args: Array<String>) {
     }
     if (args.getOrNull(0) == "wrap") {
         buildWrapSample()
+        return
+    }
+    if (args.getOrNull(0) == "layout") {
+        buildLayoutSample()
         return
     }
     if (args.getOrNull(0) == "coffee") {
@@ -3973,3 +3979,100 @@ private fun buildWrapSample() {
     println("wrote ${bytes.size} bytes to wrap.rc")
 }
 
+
+
+/**
+ * The document working out its own layout.
+ *
+ * `LAYOUT_COMPUTE` is a modifier holding a block of expressions and a dynamic float list.
+ * `applyToMeasure` puts `[x, y, width, height, parentWidth, parentHeight]` into that list, runs
+ * the block, and reads back what it wrote — the width and height for `TYPE_MEASURE`, the x and y
+ * for `TYPE_POSITION`. `COMPONENT_VALUE` is the other direction: it publishes one measurement of
+ * a named component under a float id for the rest of the document to read.
+ *
+ * Between them a document can say things no modifier can: keep this box to an aspect ratio, put
+ * that one against the right edge of its parent, make this bar as wide as those words came out.
+ */
+private fun buildLayoutSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "layout", platform)
+
+    val ink = 0xFFF0F0F6.toInt()
+    val faint = 0xFF9096AC.toInt()
+    val card = 0xFF1D2029.toInt()
+
+    fun text(value: Int, colour: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, 0, colour, 0, size, 0f, 0f, 0, weight, "", 1, 1, -1, 0f, 0f, 1f, 0, 0, 0, false, false, arrayOf<String>(), floatArrayOf(), false, 0)
+        writer.endTextComponent()
+    }
+    fun label(value: String) = text(writer.addText(value), faint, 10f)
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFF0F1117.toInt()).padding(16f).spacedBy(6f),
+        1, 4,
+    )
+    text(writer.addText("Layout"), ink, 22f, 700f)
+
+    // TYPE_MEASURE: the box is as wide as the column and two fifths as tall, which is an aspect
+    // ratio no dimension modifier in the format can state.
+    label("TYPE_MEASURE — two fifths as tall as it is wide")
+    writer.startBox(
+        RecordingModifier().fillMaxWidth()
+            .then(ComponentLayoutComputeModifier(0) { it.setHeight((it.width as RFloat).times(0.4f)) })
+            .clip(RoundedRectShape(12f, 12f, 12f, 12f))
+            .background(0xFF283593.toInt()),
+        1, 2,
+    )
+    writer.getRcPaint().setColor(ink).setTextSize(12f).setStyle(0).commit()
+    writer.drawTextAnchored(writer.addText("width x 0.4"), 12f, 24f, -1f, 0f, 0)
+    writer.endBox()
+
+    // TYPE_POSITION: the inner box puts itself against the right edge of the outer one, from the
+    // two sizes rather than from an alignment.
+    label("TYPE_POSITION — against the right edge of its parent")
+    writer.startBox(RecordingModifier().fillMaxWidth().height(44f).background(card), 1, 2)
+    writer.startBox(
+        RecordingModifier().width(96f).height(44f)
+            .then(ComponentLayoutComputeModifier(1) { it.setX(it.parentWidth.minus(it.width as RFloat)) })
+            .clip(RoundedRectShape(10f, 10f, 10f, 10f))
+            .background(0xFF00695C.toInt()),
+        1, 2,
+    )
+    writer.getRcPaint().setColor(ink).setTextSize(12f).setStyle(0).commit()
+    writer.drawTextAnchored(writer.addText("pushed"), 48f, 27f, 0f, 0f, 0)
+    writer.endBox()
+    writer.endBox()
+
+    // COMPONENT_VALUE: the words are measured by the layout and the bar under them is drawn to
+    // whatever width they came out, which nothing in the document had to know in advance.
+    label("COMPONENT_VALUE — a rule as wide as the words above it")
+    writer.startTextComponent(
+        RecordingModifier(),
+        writer.addText("Measured, not stated"), 0, ink, 0,
+        17f, 0f, 0f, 0, 700f, "", 1, 1, -1, 0f, 0f, 1f, 0, 0, 0, false, false,
+        arrayOf<String>(), floatArrayOf(), false, 0,
+    )
+    val wordsWidth = writer.addComponentWidthValue()
+    val wordsHeight = writer.addComponentHeightValue()
+    writer.endTextComponent()
+
+    writer.startBox(RecordingModifier().fillMaxWidth().height(6f), 1, 2)
+    writer.getRcPaint().setColor(0xFFEF6C00.toInt()).setStyle(0).commit()
+    writer.drawRect(0f, 0f, wordsWidth, 4f)
+    writer.endBox()
+
+    // And read back as a number, so it can be seen as well as drawn.
+    text(
+        writer.textMerge(
+            writer.textMerge(writer.addText("that measured "), writer.createTextFromFloat(wordsWidth, 3, 0, 4 or 1)),
+            writer.textMerge(writer.addText(" by "), writer.createTextFromFloat(wordsHeight, 2, 0, 4 or 1)),
+        ),
+        faint, 11f,
+    )
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("layout.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to layout.rc")
+}

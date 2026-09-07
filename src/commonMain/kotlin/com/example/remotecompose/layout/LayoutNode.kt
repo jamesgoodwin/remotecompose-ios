@@ -82,6 +82,20 @@ sealed class Modifier {
      * is to scroll and how big the content is into them, and the touch expression reads [maxId]
      * as its upper bound. Without that write a drag has nothing to stop it.
      */
+    /**
+     * `LayoutComputeOperation`: the document works out this component's own size or place.
+     *
+     * [run] is the block between the operation and its `ContainerEnd`, which the parser hands
+     * over as a closure because running it means walking operations — the measure pass has no
+     * other way in. The block reads and writes the dynamic float list [boundsId].
+     */
+    class LayoutCompute(val type: Int, val boundsId: Int, val run: () -> Unit) : Modifier() {
+        companion object {
+            const val TYPE_MEASURE = 0
+            const val TYPE_POSITION = 1
+        }
+    }
+
     class Scroll(
         val direction: Int,
         val positionExpressionId: Int,
@@ -149,6 +163,9 @@ class LayoutNode(val kind: Kind) {
     // TEXT
     /** The id the document gave this component, which is what identifies it between frames. */
     var componentId: Int = 0
+
+    /** `LAYOUT_CONTENT`'s own id: the content box inside this component's padding. */
+    var contentComponentId: Int = 0
 
     /** The id of the `AnimationSpec` this component animates by, or -1 for none. */
     var animationId: Int = -1
