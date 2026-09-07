@@ -193,7 +193,10 @@ green on Desktop tests and visually checked on one device.
    Deliberately not supported, and listed as such in `docs/OPCODES.md`: painting a shader
    (`DATA_SHADER` decodes, uniforms and all, but drawing with it needs a runtime shader compiler
    this renderer does not have), the two-body form of `PARTICLE_COMPARE`, FitBox scaling,
-   intrinsic min/max dimensions, scroll, and touch velocity easing, wrap and notch stops.
+   intrinsic min/max dimensions, and touch velocity easing, wrap and notch stops. Scroll was on
+   this list and came off it: the coffee page needed a menu taller than its window, so
+   `MODIFIER_SCROLL` is partial now — the window, the offset and dragging, without the velocity
+   easing and notch stops it shares with `TOUCH_EXPRESSION`.
 9. **Cross-platform pixel test harness (done).** `tools/capture-screens.sh` drives a demo page
    onto the Android emulator and the iOS Simulator, screenshots both, and hands them to the
    `pixelHarness` task, which renders the same document headlessly and compares. The comparison
