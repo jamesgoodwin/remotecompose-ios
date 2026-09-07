@@ -114,6 +114,10 @@ fun main(args: Array<String>) {
         buildAttributesSample()
         return
     }
+    if (args.getOrNull(0) == "hostactions") {
+        buildHostActionsSample()
+        return
+    }
     if (args.getOrNull(0) == "coffee") {
         buildCoffeeSample()
         return
@@ -2655,4 +2659,49 @@ private fun buildAttributesSample() {
     val bytes = writer.encodeToByteArray()
     File("attributes.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to attributes.rc")
+}
+
+/**
+ * The three ways a document asks the host to do something: `HOST_ACTION` by number,
+ * `HOST_METADATA_ACTION` with a string beside it, and `HOST_NAMED_ACTION` named by a string and
+ * carrying a typed value. One `HostAction` class in the writer produces all three.
+ */
+private fun buildHostActionsSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 200, "hostactions", platform)
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 1.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    // The string a metadata action hands over, and the float a named one carries.
+    val metadata = writer.addText("sku-4417")
+    val amount = writer.addFloatConstant(12.5f)
+    val amountId = androidx.compose.remote.core.operations.Utils.idFromNan(amount)
+
+    writer.startColumn(RecordingModifier().fillMaxSize().background(0xFFFFFFFF.toInt()).padding(16f).spacedBy(10f), 1, 4)
+
+    val buttons = listOf(
+        Triple("Plain", HostAction(7), 0xFF1E88E5.toInt()),
+        Triple("With metadata", HostAction(9, metadata), 0xFF43A047.toInt()),
+        Triple("Named", HostAction("addToCart", 0, amountId), 0xFFE53935.toInt()),
+    )
+    for ((label, action, color) in buttons) {
+        writer.startBox(
+            RecordingModifier().fillMaxWidth().height(40f)
+                .clip(RoundedRectShape(20f, 20f, 20f, 20f))
+                .background(color)
+                .onClick(action),
+            1, 2,
+        )
+        text(writer.addText(label), 0xFFFFFFFF.toInt(), 14f, 700f)
+        writer.endBox()
+    }
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("hostactions.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to hostactions.rc")
 }

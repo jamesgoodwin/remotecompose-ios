@@ -307,6 +307,13 @@ object RemoteComposeParser {
                     // Action-list entries: collected onto the enclosing component's trigger, and
                     // run on gesture rather than while evaluating (each operation's runAction).
                     is Op.HostAction -> tree.addAction(DocumentAction.Host(op.actionId))
+
+                    // `runAction(actionId, getText(metadataId))`: the same action with a string.
+                    is Op.HostMetadataAction ->
+                        tree.addAction(DocumentAction.Host(op.actionId, textPool[op.metadataId] ?: ""))
+
+                    is Op.HostNamedAction ->
+                        tree.addAction(DocumentAction.HostNamed(op.textId, op.type, op.valueId))
                     is Op.ValueFloatChange -> tree.addAction(DocumentAction.SetFloat(op.valueId, op.value))
                     // `NamedVariable.apply`: loadVariableName(name, id, type). The value itself
                     // is written by whatever record follows; this only says what it is called.

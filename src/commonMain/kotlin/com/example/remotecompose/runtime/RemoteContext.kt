@@ -199,6 +199,12 @@ class RemoteContext : FloatCollections {
     var onHostAction: ((Int, String) -> Unit)? = null
 
     /**
+     * `runNamedAction(textId, value)`: a host action identified by a name rather than a number,
+     * carrying one value — a Float, an Int, a String, a FloatArray, or null for `NONE_TYPE`.
+     */
+    var onNamedAction: ((String, Any?) -> Unit)? = null
+
+    /**
      * `RemoteContext.overrideFloat`/`overrideInteger`/`overrideText`: an action's write to a
      * value id. Constants only apply on the first evaluation pass, so an override survives every
      * later frame until another action changes it.
@@ -235,6 +241,18 @@ class RemoteContext : FloatCollections {
 
     fun runHostAction(actionId: Int, metadata: String) {
         onHostAction?.invoke(actionId, metadata)
+    }
+
+    /** `HostNamedActionOperation.runAction`: reads the value as its type, then hands it over. */
+    fun runNamedAction(nameId: Int, type: Int, valueId: Int) {
+        val value: Any? = when (type) {
+            NAMED_ACTION_FLOAT -> getFloat(valueId).takeUnless { it.isNaN() }
+            NAMED_ACTION_INT -> ints[valueId]
+            NAMED_ACTION_STRING -> texts[valueId]
+            NAMED_ACTION_FLOAT_ARRAY -> floatLists[valueId]
+            else -> null
+        }
+        onNamedAction?.invoke(texts[nameId] ?: "", value)
     }
 
     /** Per-`TouchExpression` state: the value and expression result when the pointer went down. */
@@ -489,6 +507,13 @@ class RemoteContext : FloatCollections {
         const val THEME_LIGHT = -3
 
         const val ID_CONTINUOUS_SEC = 1
+        /** `HostNamedActionOperation` value types. */
+        const val NAMED_ACTION_NONE = -1
+        const val NAMED_ACTION_FLOAT = 0
+        const val NAMED_ACTION_INT = 1
+        const val NAMED_ACTION_STRING = 2
+        const val NAMED_ACTION_FLOAT_ARRAY = 3
+
         /** `NamedVariable` types. 6 is both `FLOAT_ARRAY_TYPE` and `PATH_TYPE` upstream. */
         const val NAMED_STRING = 0
         const val NAMED_FLOAT = 1

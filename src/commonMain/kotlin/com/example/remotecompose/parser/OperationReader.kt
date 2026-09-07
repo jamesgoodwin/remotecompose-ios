@@ -419,6 +419,8 @@ internal object OperationReader {
         Operations.CONTAINER_END -> Op.ContainerEnd
         Operations.MODIFIER_CLICK -> Op.ModifierClick
         Operations.HOST_ACTION -> Op.HostAction(r.readS32())
+        Operations.HOST_NAMED_ACTION -> Op.HostNamedAction(r.readS32(), r.readS32(), r.readS32())
+        Operations.HOST_METADATA_ACTION -> Op.HostMetadataAction(r.readS32(), r.readS32())
         Operations.MODIFIER_PADDING -> Op.ModifierPadding(r.readFloat32(), r.readFloat32(), r.readFloat32(), r.readFloat32())
         Operations.MODIFIER_BACKGROUND -> Op.ModifierBackground(
             colorIdFlag = r.readS32(), colorId = r.readS32(), reserved1 = r.readS32(), reserved2 = r.readS32(),

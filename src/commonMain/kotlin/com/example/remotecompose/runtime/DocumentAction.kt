@@ -10,6 +10,12 @@ sealed interface DocumentAction {
     /** `HostActionOperation`: hands [actionId] and optional [metadata] to the host application. */
     data class Host(val actionId: Int, val metadata: String? = null) : DocumentAction
 
+    /**
+     * `HostNamedActionOperation`: hands the host an action named by a string, carrying one value
+     * read as [type] — a float, an int, a string, a float list, or nothing at all.
+     */
+    data class HostNamed(val nameId: Int, val type: Int, val valueId: Int) : DocumentAction
+
     /** `ValueFloatChangeActionOperation`: `context.overrideFloat(targetId, value)`. */
     data class SetFloat(val targetId: Int, val value: Float) : DocumentAction
 

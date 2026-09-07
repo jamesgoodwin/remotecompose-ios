@@ -601,6 +601,19 @@ sealed interface Operation {
      * `MEASURE_HEIGHT` 1, the four bounds edges `LEFT` 2 / `RIGHT` 3 / `TOP` 4 / `BOTTOM` 5, and
      * `TEXT_LENGTH` 6; the high byte carries the monospace and max-height measuring flags.
      */
+    /**
+     * `HostNamedActionOperation` (opcode `HOST_NAMED_ACTION`): `[textId][type][valueId]`. Runs a
+     * host action named by the text at [textId], carrying the value at [valueId] read as [type]:
+     * `FLOAT_TYPE` 0, `INT_TYPE` 1, `STRING_TYPE` 2, `FLOAT_ARRAY_TYPE` 3, `NONE_TYPE` -1.
+     */
+    data class HostNamedAction(val textId: Int, val type: Int, val valueId: Int) : Operation
+
+    /**
+     * `HostActionMetadataOperation` (opcode `HOST_METADATA_ACTION`): `[actionId][metadataId]`,
+     * `runAction(actionId, getText(metadataId))` — the plain host action with a string beside it.
+     */
+    data class HostMetadataAction(val actionId: Int, val metadataId: Int) : Operation
+
     data class TextAttribute(val id: Int, val textId: Int, val type: Int) : Operation
 
     /**

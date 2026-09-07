@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 141 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 143 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
 
@@ -36,6 +36,8 @@ because the format has no generic length prefix to skip by.
 | --: | --- | --- | --- |
 | 170 | `ATTRIBUTE_TEXT` | partial | a measurement of the text, or its length; the monospace and max-height measuring flags are not applied |
 | 171 | `ATTRIBUTE_IMAGE` | supported | the width or height `DATA_BITMAP` declared |
+| 210 | `HOST_NAMED_ACTION` | supported | an action named by a string, carrying a float, int, string or float list |
+| 216 | `HOST_METADATA_ACTION` | supported | a numbered action with a string beside it |
 | 137 | `NAMED_VARIABLE` | supported | gives a pool value a name, and `RemoteComposeDocument.setNamed*` is the host putting one in by it |
 | 45 | `DATA_SHADER` | decoded only | uniforms are kept; painting one needs a runtime shader compiler |
 | 80 | `DATA_FLOAT` | supported |  |
@@ -222,7 +224,7 @@ because the format has no generic length prefix to skip by.
 
 A document using any of these fails to parse. They fall into groups: sound (`PLAY_SOUND`,
 `DATA_SOUND`, `SOUND_EXPRESSION`), the rest of the loom system (`REFERENCED_OPERATIONS`,
-`INCLUDE_REFERENCED_OPERATIONS`), the remaining attribute reader (`ATTRIBUTE_TIME`), host-named and metadata actions, accessibility semantics,
+`INCLUDE_REFERENCED_OPERATIONS`), the remaining attribute reader (`ATTRIBUTE_TIME`), accessibility semantics,
 and the extension range.
 
 `UPDATE` (195) is in this table but cannot appear in a document: the constant is declared in
@@ -250,8 +252,6 @@ implements it.
 | 191 | `WAKE_IN` |
 | 195 | `UPDATE` |
 | 206 | `SOUND_EXPRESSION` |
-| 210 | `HOST_NAMED_ACTION` |
-| 216 | `HOST_METADATA_ACTION` |
 | 236 | `RUN_ACTION` |
 | 238 | `LAYOUT_COMPUTE` |
 | 239 | `CORE_TEXT` |

@@ -60,6 +60,14 @@ class RemoteComposeDocument internal constructor(
         set(value) { context.onHostAction = value }
 
     /**
+     * `HOST_NAMED_ACTION`: an action the document names with a string rather than a number, and
+     * which carries one value with it — a Float, Int, String, FloatArray, or null.
+     */
+    var onNamedAction: ((String, Any?) -> Unit)?
+        get() = context.onNamedAction
+        set(value) { context.onNamedAction = value }
+
+    /**
      * Evaluates the document at wall-clock time [nowMillis] and returns its flattened opcodes.
      * The first call fixes the document's load time, so passing `0` first and `t` next yields an
      * animation time of `t` milliseconds.
@@ -165,6 +173,7 @@ class RemoteComposeDocument internal constructor(
     private fun run(action: DocumentAction) {
         when (action) {
             is DocumentAction.Host -> context.runHostAction(action.actionId, action.metadata ?: "")
+            is DocumentAction.HostNamed -> context.runNamedAction(action.nameId, action.type, action.valueId)
             is DocumentAction.SetFloat -> context.overrideFloat(action.targetId, context.resolveFloat(action.value))
             is DocumentAction.SetInteger -> context.overrideInteger(action.targetId, action.value)
             is DocumentAction.SetText -> context.overrideText(action.targetId, action.sourceId)
