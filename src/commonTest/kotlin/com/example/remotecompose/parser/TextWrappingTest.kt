@@ -66,6 +66,131 @@ class TextWrappingTest {
     private fun blockContaining(word: String): Block =
         blocks().first { block -> block.lines.any { word in it } }
 
+    /** The expanding paragraph's lines, as they stand. */
+    private fun essay(document: RemoteComposeDocument): List<String> {
+        val frame = document.frame(0L)
+        val drawn = frame.opcodes.filterIsInstance<Opcode.DrawText>()
+            .mapNotNull { frame.strings[it.stringIndex] }
+        val from = drawn.indexOfFirst { it.startsWith("A document is a list") }
+        return drawn.drop(from).takeWhile { !it.startsWith("Show ") }
+    }
+
+    /**
+     * Presses the one button on the page, wherever the layout has just put it, and lets the
+     * `ANIMATION_SPEC` that follows finish: the words swap at once, the heights ease.
+     */
+    private fun press(document: RemoteComposeDocument, atMillis: Long = 2000L) {
+        val button = document.hitRegions.single()
+        document.click((button.left + button.right) / 2f, (button.top + button.bottom) / 2f)
+        // The frame after the tap is where the new layout is worked out and the animation is
+        // aimed at it; a later one is where it has arrived.
+        document.frame(0L)
+        document.frame(atMillis)
+    }
+
+    /** How far down the page the paragraph under the expander has been pushed. */
+    private fun topOfTheParagraphBelow(document: RemoteComposeDocument, atMillis: Long): Float {
+        val frame = document.frame(atMillis)
+        val at = frame.opcodes.indexOfFirst {
+            it is Opcode.DrawText && frame.strings[it.stringIndex]?.startsWith("The document says") == true
+        }
+        return frame.opcodes.take(at).filterIsInstance<Opcode.Translate>().fold(0f) { sum, t -> sum + t.dy }
+    }
+
+    @Test
+    fun aParagraphCanBeExpandedAndTheWordsAreBrokenAgain() {
+        // One int chooses between two versions of the same words through `LAYOUT_STATE`: three
+        // lines and an ellipsis, or all of them. Nothing is re-sent — the breaks are worked out
+        // again from the width the version that is showing has.
+        val document = RemoteComposeParser.load(bytes)
+        document.frame(0L)
+        val collapsed = essay(document)
+        assertEquals(3, collapsed.size, "three lines: $collapsed")
+        assertTrue(collapsed.last().endsWith("…"), "and it says it was cut")
+
+        press(document)
+        val opened = essay(document)
+        assertTrue(opened.size > collapsed.size, "more lines once opened: ${opened.size}")
+        assertTrue(opened.none { it.endsWith("…") }, "and nothing cut off: $opened")
+    }
+
+    @Test
+    fun theOpenedParagraphSaysTheWholeOfWhatTheClosedOneStarted() {
+        // The same string either way, so the difference is where it was broken and not what it
+        // says. The lines the closed one showed are the opened one's first lines, less the cut.
+        val document = RemoteComposeParser.load(bytes)
+        document.frame(0L)
+        val collapsed = essay(document)
+        press(document)
+        val opened = essay(document)
+        assertEquals(collapsed.dropLast(1), opened.take(collapsed.size - 1), "broken the same way up to the cut")
+        assertTrue(
+            opened.joinToString(" ").endsWith("the width asks for."),
+            "and it runs to the end: ${opened.last()}",
+        )
+    }
+
+    @Test
+    fun theButtonSaysWhicheverThingTheTapWouldDo() {
+        // The button is a `LAYOUT_STATE` over the same int, so the one showing is the one that
+        // does the opposite of what the paragraph is doing.
+        val document = RemoteComposeParser.load(bytes)
+        document.frame(0L)
+        assertTrue("Show more" in texts(), "closed")
+        press(document)
+        val opened = document.frame(0L).let { frame ->
+            frame.opcodes.filterIsInstance<Opcode.DrawText>().mapNotNull { frame.strings[it.stringIndex] }
+        }
+        assertTrue("Show less" in opened, "open: $opened")
+        assertTrue("Show more" !in opened, "and only the one")
+    }
+
+    @Test
+    fun openingItPushesWhatIsUnderItDownThePage() {
+        // The reflow is a layout change and not a reveal: everything below moves.
+        val document = RemoteComposeParser.load(bytes)
+        document.frame(0L)
+        val closed = topOfTheParagraphBelow(document, 0L)
+        press(document)
+        assertTrue(topOfTheParagraphBelow(document, 2000L) > closed + 40f, "pushed down from $closed")
+    }
+
+    @Test
+    fun theCardEasesToItsNewHeightRatherThanArrivingAtIt() {
+        // `ANIMATION_SPEC`'s motion half: a component that has been re-measured is drawn on its
+        // way there. The card is laid out at its open height on the frame after the tap and drawn
+        // at its closed one, and the page below rides down with it over the third of a second the
+        // spec asks for.
+        val document = RemoteComposeParser.load(bytes)
+        document.frame(0L)
+        val closed = topOfTheParagraphBelow(document, 0L)
+
+        val button = document.hitRegions.single()
+        document.click((button.left + button.right) / 2f, (button.top + button.bottom) / 2f)
+        val path = listOf(0L, 80L, 170L, 260L, 340L, 1000L).map { topOfTheParagraphBelow(document, it) }
+        assertEquals(closed, path.first(), 0.5f, "where it was, on the frame of the tap")
+        assertEquals(path.sorted(), path, "and downwards from there: $path")
+        assertTrue(path[2] > closed + 10f, "part way by the middle of it: ${path[2]}")
+        assertTrue(path[2] < path.last() - 10f, "and not yet arrived")
+        assertEquals(path[4], path.last(), 0.5f, "settled by the third of a second it asked for")
+    }
+
+    @Test
+    fun theButtonRidesDownWithTheCardRatherThanJumping() {
+        // The button is outside the card, so the card's clip does not take it away while it
+        // opens; a spec of its own is what keeps it under the card's edge on the way.
+        val document = RemoteComposeParser.load(bytes)
+        document.frame(0L)
+        fun buttonTop(): Float = document.hitRegions.single().top
+        val closed = buttonTop()
+        val b = document.hitRegions.single()
+        document.click((b.left + b.right) / 2f, (b.top + b.bottom) / 2f)
+        val path = listOf(0L, 100L, 200L, 1000L).map { document.frame(it); buttonTop() }
+        assertEquals(closed, path.first(), 0.5f)
+        assertEquals(path.sorted(), path, "down the page: $path")
+        assertTrue(path.last() > closed + 40f, "and well below where it started")
+    }
+
     @Test
     fun aParagraphIsDrawnAsOneRunPerLine() {
         // The library gives the host a laid-out block; here each line is its own draw, so a

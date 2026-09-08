@@ -3890,7 +3890,7 @@ private fun buildReferencedSample() {
  */
 private fun buildWrapSample() {
     val platform = JvmRcPlatformServices()
-    val writer = RemoteComposeWriter(300, 560, "wrap", platform)
+    val writer = RemoteComposeWriter(300, 760, "wrap", platform)
 
     val ink = 0xFFF2F2F7.toInt()
     val faint = 0xFF9AA0B4.toInt()
@@ -3947,6 +3947,80 @@ private fun buildWrapSample() {
     )
     paragraph("Wrapping", size = 22f, weight = 700f)
 
+    // Expand and collapse: one int chooses between two versions of the same words — three lines
+    // with an ellipsis, or all of them — and between the two buttons that write it. Nothing is
+    // re-sent and nothing is measured by the host; the line breaks are worked out again from the
+    // width the chosen version has, which is what makes it reflow rather than merely uncover.
+    val expanded = writer.addInteger(0).toInt()
+    val essay =
+        "A document is a list of operations rather than a picture, so the words in it are still " +
+            "words when they arrive: this one can be broken again at a different height without " +
+            "anything being sent for a second time. Collapsed it is three lines and an ellipsis, " +
+            "and opened it is however many the width asks for."
+
+    label("Tap to expand — the same words, broken again")
+    // The card eases to its new height rather than snapping to it: `ANIMATION_SPEC`'s motion half
+    // draws a component that has been re-measured on its way there. It clips, so the words are
+    // uncovered as it opens rather than spilling out of it.
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth()
+            .animationSpec(
+                1, 0.34f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                0.34f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_IN,
+                androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_OUT,
+            )
+            .clip(RoundedRectShape(10f, 10f, 10f, 10f))
+            .background(card).padding(8f).spacedBy(6f),
+        1, 4,
+    )
+    writer.startStateLayout(RecordingModifier().fillMaxWidth(), expanded)
+    paragraph(essay, overflow = overflowEllipsis, maxLines = 3, modifier = RecordingModifier().fillMaxWidth())
+    paragraph(essay, modifier = RecordingModifier().fillMaxWidth())
+    writer.endStateLayout()
+    writer.endColumn()
+
+    // The button is a state layout too, so the one showing is the one that does the opposite of
+    // what the text is doing. It sits outside the card rather than in it, so that the card's clip
+    // does not take it away while the card is opening; its own spec is what slides it.
+    writer.startStateLayout(
+        RecordingModifier().animationSpec(
+            3, 0.34f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+            0.34f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+            androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_IN,
+            androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_OUT,
+        ),
+        expanded,
+    )
+    for ((title, value) in listOf("Show more" to 1, "Show less" to 0)) {
+        writer.startBox(
+            RecordingModifier().width(104f).height(28f)
+                .clip(RoundedRectShape(14f, 14f, 14f, 14f))
+                .background(0xFF2A3040.toInt())
+                .then(RippleElement())
+                .onClick(ValueIntegerChange(expanded, value)),
+            1, 2,
+        )
+        paragraph(title, size = 12f, weight = 700f)
+        writer.endBox()
+    }
+    writer.endStateLayout()
+
+    // Everything under the card moves when it opens. A measure animation is worked out after the
+    // tree has been laid out, so a component without a spec of its own is already at its new
+    // place; one column around the rest of the page gives it all a single spec to slide by.
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth()
+            .animationSpec(
+                2, 0.34f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                0.34f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_IN,
+                androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_OUT,
+            )
+            .spacedBy(4f),
+        1, 4,
+    )
+
     label("A paragraph, broken where it runs out of room")
     paragraph(
         "The document says how wide the text may be and how many lines it may take; where the " +
@@ -3990,6 +4064,8 @@ private fun buildWrapSample() {
         lineHeightMultiplier = 1.5f,
         modifier = RecordingModifier().fillMaxWidth().background(card).padding(8f),
     )
+
+    writer.endColumn()
 
     writer.endColumn()
 

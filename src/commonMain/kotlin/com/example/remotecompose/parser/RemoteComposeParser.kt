@@ -1207,6 +1207,11 @@ object RemoteComposeParser {
                         node.horizontalPositioning = op.horizontalPositioning
                         node.verticalPositioning = op.verticalPositioning
                         node.stateIndexId = op.stateIndex
+                        // A state layout is a component like any other: it carries the id an
+                        // `ANIMATION_SPEC` is keyed by and a `COMPONENT_VALUE` reports on, which
+                        // is what lets one that changes size be drawn on its way there.
+                        node.componentId = op.componentId
+                        node.animationId = op.animationId
                         tree.openNode(node, paint)
                     }
 
