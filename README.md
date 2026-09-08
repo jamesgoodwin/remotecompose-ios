@@ -264,6 +264,20 @@ Upload the file that script produced rather than a rebuild of it. Kotlin/Native 
 reproducibly, so assembling again gives a different zip and the checksum just committed stops
 matching it.
 
+Give each release a new version rather than replacing one. SwiftPM defends against a published tag
+being repointed, in two ways that both look like a broken build to whoever hits them:
+
+- it records version to revision the first time it resolves a package, in
+  `~/Library/org.swift.swiftpm/security/fingerprints`, and refuses afterwards with *does not match
+  previously recorded value*
+- it caches the binary artifact under the download URL, in
+  `~/Library/Caches/org.swift.swiftpm/artifacts`, so the same URL with new bytes hands back the old
+  ones and fails the checksum
+
+Neither affects a machine that has never resolved the package, which is why replacing v0.1.0 before
+anyone depended on it was safe. It is not safe afterwards, and nothing about the failure tells the
+person hitting it to delete those two directories.
+
 The repository has to be public before SwiftPM can fetch the asset; a private release asset needs
 credentials SwiftPM will not send.
 
