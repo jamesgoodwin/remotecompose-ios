@@ -27,8 +27,9 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
         // `adb shell am start -n <package>/.MainActivity --ei page N` launches straight onto a
-        // payload page for scripted screenshots; see DemoScreen.
-        val initialPage = intent.getIntExtra("page", 0)
+        // payload page for scripted screenshots; see DemoScreen. Without it the app opens on the
+        // list, which is what -1 asks for.
+        val initialPage = intent.getIntExtra("page", -1)
         setContent {
             DemoScreen(initialPage = initialPage)
         }

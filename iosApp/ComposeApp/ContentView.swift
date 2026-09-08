@@ -5,11 +5,12 @@ import RemoteComposeShared
 /// `RealRemoteComposeParser` and rendered by our own `OpcodeExecutor`) in a UIKit view controller
 /// built by Kotlin's `ComposeUIViewController`.
 ///
-/// `RC_PAGE` in the process environment picks the payload shown first, so scripted screenshots can
-/// launch straight onto a page: `SIMCTL_CHILD_RC_PAGE=2 xcrun simctl launch <udid> <bundle id>`.
+/// `RC_PAGE` in the process environment opens straight onto a payload, so scripted screenshots can
+/// skip the list: `SIMCTL_CHILD_RC_PAGE=2 xcrun simctl launch <udid> <bundle id>`. Without it the
+/// app opens on the list, which is what -1 asks for.
 struct ContentView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
-        let page = Int32(ProcessInfo.processInfo.environment["RC_PAGE"] ?? "0") ?? 0
+        let page = Int32(ProcessInfo.processInfo.environment["RC_PAGE"] ?? "-1") ?? -1
         return MainViewControllerKt.MainViewController(initialPage: page)
     }
 

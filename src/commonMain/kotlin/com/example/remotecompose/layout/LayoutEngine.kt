@@ -805,11 +805,15 @@ class LayoutEngine(private val context: RemoteContext, private val textMetrics: 
      * A child measured inside a narrow box has already been cut down to it, so its laid-out width
      * says nothing; what a text would take on one line is what it kept from measuring, and a
      * container's is the furthest its children would reach.
+     *
+     * A component with no children has none: a box holding only canvas draws has no intrinsic
+     * size upstream either, and reporting its own width here would make it wider than itself by
+     * the marquee's spacing and set it sliding for no reason.
      */
     private fun intrinsicWidth(node: LayoutNode): Float = when (node.kind) {
         LayoutNode.Kind.TEXT -> node.textWidth
         else -> node.children.filterNot { it.isGone }
-            .maxOfOrNull { it.x + intrinsicWidth(it) } ?: node.width
+            .maxOfOrNull { it.x + intrinsicWidth(it) } ?: 0f
     }
 
     /** `BorderModifierOperation.defaultDrawing`. */    /** `BorderModifierOperation.defaultDrawing`. */

@@ -3,14 +3,20 @@ package com.example.remotecompose.demo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,159 +32,192 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.remotecompose.model.RemoteAction
 import com.example.remotecompose.parser.RemoteComposeDocument
-import kotlinx.coroutines.delay
 import com.example.remotecompose.ui.RemoteComposeCanvas
+import kotlinx.coroutines.delay
 
 /**
- * The app entry point on both platforms (see `MainActivity.kt` / `MainViewController.kt`): shows
- * one real `.rc` payload at a time, with a bar along the bottom to move between them.
+ * One document in the demo: what to call it, what it is for, and how it wants to be shown.
  *
- * Nothing else navigates. Taps and drags inside a page belong to the document, which is the only
- * way an interactive one is usable: the pages with buttons to press and lists to drag were
- * unreachable while any tap the document did not claim moved to the next page.
+ * [oneToOne] draws the document at its own size in the middle of the screen rather than scaling
+ * it to fill. That is what the pixel harness compares against, so the documents it covers are
+ * shown that way.
+ */
+private class Demo(
+    val name: String,
+    val about: String,
+    val bytes: ByteArray,
+    val background: Color? = null,
+    val followsSystemTheme: Boolean = false,
+    val oneToOne: Boolean = false,
+    val feed: (suspend (RemoteComposeDocument) -> Unit)? = null,
+)
+
+private val DEMOS = listOf(
+    Demo("Coverage", "One drawing per opcode, which the golden test pins", SAMPLE_RC_BYTES, oneToOne = true),
+    Demo("Showcase", "The format's drawing and layout on one page", SHOWCASE_RC_BYTES, oneToOne = true),
+    Demo("Paint", "Every paint attribute: strokes, caps, joins, gradients", PAINT_RC_BYTES, oneToOne = true),
+    Demo("Anim", "Values that move with the clock, and the curves they move on", ANIM_RC_BYTES, oneToOne = true),
+    Demo("Actions", "Buttons that write the document's own values", ACTIONS_RC_BYTES, oneToOne = true),
+    Demo("Text paths", "Glyphs placed along a curve, one at a time", TEXTPATH_RC_BYTES, oneToOne = true),
+    Demo("Generated", "Functions, path expressions, particles and matrices", ADVANCED_RC_BYTES, oneToOne = true),
+    Demo("Material", "A Material screen, scaled to the window it is shown in", MATERIAL_RC_BYTES, background = Color(0xFFFEF7FF)),
+    Demo("List", "One row body over a list, with its bars read from a float list", LIST_RC_BYTES, oneToOne = true),
+    Demo("Pattern", "A card written once and called three times, each with its own contents", PATTERN_RC_BYTES, oneToOne = true),
+    Demo("Coffee", "A shop: themed colours, a scrolling menu, rows that expand", COFFEE_RC_BYTES, followsSystemTheme = true),
+    Demo("Article", "A progress bar the document works out from its own scroll", ARTICLE_RC_BYTES, background = Color(0xFFFFFBFE)),
+    Demo("Flight", "Every value fed by name from outside, and eased on the way in", FLIGHT_RC_BYTES, background = Color(0xFFFFFBFE), feed = ::runFlightFeed),
+    Demo("Watch", "Hands and a date from the clock alone, in two palettes", WATCH_RC_BYTES, followsSystemTheme = true),
+    Demo("Parallax", "A photograph moving slower than the words over it", PARALLAX_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("Carousel", "Cards that fling, shrinking and dimming away from the middle", CAROUSEL_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("Lazy list", "Five hundred rows, of which only the ones in view are built", LAZYLIST_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("Snap", "The four ways a released scroll can be told where to stop", NOTCHES_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("Referenced", "One block of operations, drawn on three cards", REFERENCED_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("Wrapping", "Line breaking, ellipsis and justification, and text that expands", WRAP_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("Layout", "A document working out its own size, place and measurements", LAYOUT_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("Marquee", "Text too long for its box, slid rather than left clipped", MARQUEE_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("Run action", "Actions that run because a component was painted", RUNACTION_RC_BYTES, background = Color(0xFF12101A)),
+)
+
+/**
+ * The app entry point on both platforms (see `MainActivity.kt` / `ContentView.swift`): a list of
+ * the documents, and one of them full screen once it is tapped.
  *
- * @param initialPage Which payload to show first (0 coverage, 1 showcase, 2 paint, 3 anim,
- *   4 actions, 5 text paths, 6 generated, 7 material, 8 list, 9 pattern, 10 coffee, 11 article,
- *   12 flight, 13 watch, 14 parallax, 15 carousel, 16 lazy list, 17 snap, 18 referenced, 19 wrapping, 20 layout, 21 marquee, 22 run action). Lets the
- *   device hosts launch straight onto a page for scripted screenshots: Android reads an
- *   `--ei page N` intent extra, iOS an `RC_PAGE` environment variable.
+ * Nothing else navigates. Taps and drags inside a document belong to the document, which is the
+ * only way an interactive one is usable, so the way back is a bar floating over the page rather
+ * than anything the document could swallow.
+ *
+ * @param initialPage Opens straight onto that document, for scripted screenshots: Android reads
+ *   an `--ei page N` intent extra, iOS an `RC_PAGE` environment variable. Anything outside the
+ *   list — which is what both hosts pass when nothing was asked for — shows the list instead.
  */
 @Composable
-fun DemoScreen(initialPage: Int = 0) {
-    val pages = listOf(
-        "Coverage" to SAMPLE_RC_BYTES,
-        "Showcase" to SHOWCASE_RC_BYTES,
-        "Paint" to PAINT_RC_BYTES,
-        "Anim" to ANIM_RC_BYTES,
-        "Actions" to ACTIONS_RC_BYTES,
-        "Text paths" to TEXTPATH_RC_BYTES,
-        "Generated" to ADVANCED_RC_BYTES,
-        "Material" to MATERIAL_RC_BYTES,
-        "List" to LIST_RC_BYTES,
-        "Pattern" to PATTERN_RC_BYTES,
-        "Coffee" to COFFEE_RC_BYTES,
-        "Article" to ARTICLE_RC_BYTES,
-        "Flight" to FLIGHT_RC_BYTES,
-        "Watch" to WATCH_RC_BYTES,
-        "Parallax" to PARALLAX_RC_BYTES,
-        "Carousel" to CAROUSEL_RC_BYTES,
-        "Lazy list" to LAZYLIST_RC_BYTES,
-        "Snap" to NOTCHES_RC_BYTES,
-        "Referenced" to REFERENCED_RC_BYTES,
-        "Wrapping" to WRAP_RC_BYTES,
-        "Layout" to LAYOUT_RC_BYTES,
-        "Marquee" to MARQUEE_RC_BYTES,
-        "Run action" to RUNACTION_RC_BYTES,
-    )
-    var page by remember { mutableStateOf(initialPage.coerceIn(0, pages.lastIndex)) }
-    val (label, bytes) = pages[page]
-    val go = { step: Int -> page = (page + step + pages.size) % pages.size }
+fun DemoScreen(initialPage: Int = -1) {
+    var open by remember { mutableStateOf(initialPage.takeIf { it in DEMOS.indices }) }
+    val index = open
+    if (index == null) {
+        DemoList(onOpen = { open = it })
+    } else {
+        DemoPage(demo = DEMOS[index], onBack = { open = null })
+    }
+}
+
+/** The documents, by name and by what each is for. */
+@Composable
+private fun DemoList(onOpen: (Int) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0E1116))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+    ) {
+        Spacer(Modifier.height(72.dp))
+        BasicText(
+            text = "RemoteCompose",
+            style = TextStyle(color = Color(0xFFF2F3F8), fontSize = 28.sp, fontWeight = FontWeight.Bold),
+        )
+        Spacer(Modifier.height(4.dp))
+        BasicText(
+            text = "Documents written by the Android writer, drawn here",
+            style = TextStyle(color = Color(0xFF8A90A6), fontSize = 13.sp),
+        )
+        Spacer(Modifier.height(20.dp))
+        for ((index, demo) in DEMOS.withIndex()) {
+            DemoRow(demo, onClick = { onOpen(index) })
+            Spacer(Modifier.height(8.dp))
+        }
+        Spacer(Modifier.height(48.dp))
+    }
+}
+
+@Composable
+private fun DemoRow(demo: Demo, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF1B1F27))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+    ) {
+        BasicText(
+            text = demo.name,
+            style = TextStyle(color = Color(0xFFF2F3F8), fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+        )
+        Spacer(Modifier.height(3.dp))
+        BasicText(
+            text = demo.about,
+            style = TextStyle(color = Color(0xFF8A90A6), fontSize = 12.sp),
+        )
+    }
+}
+
+/**
+ * One document, with the whole screen to itself and a bar floating over the bottom of it.
+ *
+ * The bar takes no room away from the document: the pixel harness finds a page in a screenshot by
+ * expecting it centred at its own size, and one laid out around a bar would not be.
+ */
+@Composable
+private fun DemoPage(demo: Demo, onBack: () -> Unit) {
+    var document by remember(demo) { mutableStateOf<RemoteComposeDocument?>(null) }
+    // Where a `HOST_ACTION` lands. It used to turn the page, which made a document with a button
+    // on it unusable — pressing the button left.
+    var heard by remember(demo) { mutableStateOf<String?>(null) }
+    if (demo.feed != null) {
+        LaunchedEffect(document) { document?.let { demo.feed.invoke(it) } }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // The document keeps the whole screen and stays centred in it, which is what the pixel
-        // harness relies on to find it in a screenshot; the bar floats over the backdrop below.
-        when (label) {
-            // Both are dragged, and both are dark of their own accord.
-            "Parallax", "Carousel", "Lazy list", "Snap", "Referenced", "Wrapping", "Layout", "Marquee", "Run action" -> RemoteComposeCanvas(
-                bytes = bytes,
-                modifier = Modifier.fillMaxSize().background(Color(0xFF12101A)).padding(bottom = BAR_SPACE),
-                onAction = { go(1) },
+        if (demo.oneToOne) {
+            RealPayloadDemoScreen(demo.bytes)
+        } else {
+            RemoteComposeCanvas(
+                bytes = demo.bytes,
+                modifier = Modifier.fillMaxSize()
+                    .let { if (demo.background != null) it.background(demo.background) else it },
+                dark = if (demo.followsSystemTheme) isSystemInDarkTheme() else false,
+                onDocument = { document = it },
+                onAction = { action ->
+                    heard = when (action) {
+                        is RemoteAction.Click -> "host action ${action.actionId}"
+                        is RemoteAction.Custom -> action.identifier
+                    }
+                },
             )
-            // Runs on the clock alone, and has a palette for each mode.
-            "Watch" -> RemoteComposeCanvas(
-                bytes = bytes,
-                modifier = Modifier.fillMaxSize().padding(bottom = BAR_SPACE),
-                dark = isSystemInDarkTheme(),
-                onAction = { go(1) },
-            )
-            // The one page where the host has something to say: the document names its values
-            // and this feeds them, the way a real one would from a network.
-            "Flight" -> {
-                var document by remember { mutableStateOf<RemoteComposeDocument?>(null) }
-                LaunchedEffect(document) { document?.let { runFlightFeed(it) } }
-                RemoteComposeCanvas(
-                    bytes = bytes,
-                    modifier = Modifier.fillMaxSize().background(Color(0xFFFFFBFE)).padding(bottom = BAR_SPACE),
-                    onDocument = { document = it },
-                    onAction = { go(1) },
-                )
-            }
-            // Scrolls under the finger, so it goes through the interactive host like the others.
-            "Article" -> RemoteComposeCanvas(
-                bytes = bytes,
-                modifier = Modifier.fillMaxSize().background(Color(0xFFFFFBFE)).padding(bottom = BAR_SPACE),
-                onAction = { go(1) },
-            )
-            "Coffee" -> RemoteComposeCanvas(
-                bytes = bytes,
-                modifier = Modifier.fillMaxSize().padding(bottom = BAR_SPACE),
-                dark = isSystemInDarkTheme(),
-                onAction = { go(1) },
-            )
-            // Shown through the public composable rather than the 1:1 screenshot host, so the
-            // document is scaled to the screen and its buttons are the size a finger expects.
-            "Material" -> RemoteComposeCanvas(
-                bytes = bytes,
-                modifier = Modifier.fillMaxSize().background(Color(0xFFFEF7FF)).padding(bottom = BAR_SPACE),
-                onAction = { go(1) },
-            )
-            else -> RealPayloadDemoScreen(bytes)
         }
-        NavigationBar(
-            label = label,
-            position = "${page + 1}/${pages.size}",
-            onBack = { go(-1) },
-            onForward = { go(1) },
+        BackBar(
+            label = heard ?: demo.name,
+            onBack = onBack,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 28.dp),
         )
     }
 }
 
-/** How much room to leave a full-screen page so the bar does not sit over its content. */
-private val BAR_SPACE = 76.dp
-
-/** Which page is showing, and the two ways to leave it. */
+/** The way back, and which document is showing. */
 @Composable
-private fun NavigationBar(
-    label: String,
-    position: String,
-    onBack: () -> Unit,
-    onForward: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun BackBar(label: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(22.dp))
-            .background(Color(0xE6202A2F)),
+            .background(Color(0xE6202A2F))
+            .clickable(onClick = onBack)
+            .padding(end = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
-        Arrow("‹", onBack)
-        Box(modifier = Modifier.width(150.dp), contentAlignment = Alignment.Center) {
+        // A tap target wide enough for a thumb, whatever the glyph inside measures.
+        Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
             BasicText(
-                text = "$label  ·  $position",
-                style = TextStyle(
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center,
-                ),
+                text = "‹",
+                style = TextStyle(color = Color.White, fontSize = 22.sp, textAlign = TextAlign.Center),
             )
         }
-        Arrow("›", onForward)
-    }
-}
-
-/** A tap target wide enough for a thumb, whatever the glyph inside measures. */
-@Composable
-private fun Arrow(glyph: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.size(44.dp).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
         BasicText(
-            text = glyph,
-            style = TextStyle(color = Color.White, fontSize = 22.sp, textAlign = TextAlign.Center),
+            text = label,
+            style = TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium),
         )
     }
 }

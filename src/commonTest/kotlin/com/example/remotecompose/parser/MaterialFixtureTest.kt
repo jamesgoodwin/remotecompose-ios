@@ -39,7 +39,7 @@ class MaterialFixtureTest {
         assertTrue("Flat white" in texts)
         assertTrue(texts.any { it.startsWith("Oat milk") })
         // Every button label is there, and the snackbar's is not.
-        for (label in listOf("−", "+", "Add to cart", "Details", "Clear", "Next demo")) {
+        for (label in listOf("−", "+", "Add to cart", "Details", "Clear", "Tell the host")) {
             assertTrue(label in texts, "$label is on screen")
         }
         assertTrue("Added to your cart" !in texts)

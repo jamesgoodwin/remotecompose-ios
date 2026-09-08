@@ -297,8 +297,8 @@ private fun buildCoffeeSample() {
     }
     writer.endColumn()
 
-    // A way out of the page, and a demonstration that a host action still reaches the host from
-    // inside all of this.
+    // A host action, to show that one still reaches the host from inside all of this. What the
+    // demo app does with it is show it in the bar at the bottom.
     writer.startBox(
         RecordingModifier().fillMaxWidth().height(36f)
             .clip(RoundedRectShape(18f, 18f, 18f, 18f))
@@ -307,7 +307,7 @@ private fun buildCoffeeSample() {
             .onClick(HostAction(11)),
         1, 2,
     )
-    text(writer.addText("Next demo"), accent, 13f, 700f)
+    text(writer.addText("Tell the host"), accent, 13f, 700f)
     writer.endBox()
 
     writer.endColumn()
@@ -478,7 +478,7 @@ private fun buildListSample() {
  * It is the interactive parts that make it a demo rather than a picture: the stepper's buttons
  * write the quantity through expression actions, so the count, the line total and the width of
  * the progress bar all follow; "Add to cart" sets a flag that a conditional block reads to show
- * the snackbar; and "Next demo" leaves through a host action rather than handling itself.
+ * the snackbar; and "Tell the host" hands a host action out rather than handling itself.
  */
 private fun buildMaterialSample() {
     val platform = JvmRcPlatformServices()
@@ -596,7 +596,7 @@ private fun buildMaterialSample() {
 
     writer.startRow(RecordingModifier().fillMaxWidth().spacedBy(8f), 1, 2)
     button("Clear", secondaryContainer, onSecondaryContainer, null, 24f, ValueFloatChange(addedId, 0f), ValueFloatChange(quantityId, 1f))
-    button("Next demo", null, primary, null, 16f, HostAction(7))
+    button("Tell the host", null, primary, null, 16f, HostAction(7))
     writer.endRow()
 
     // A progress track whose fill follows the quantity: 1 of 8 cups.
