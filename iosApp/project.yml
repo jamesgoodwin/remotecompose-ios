@@ -1,6 +1,6 @@
 name: RemoteComposeDemo
 options:
-  bundleIdPrefix: com.example.remotecompose
+  bundleIdPrefix: io.github.jamesgoodwin.remotecompose
   deploymentTarget:
     iOS: "16.0"
 
@@ -22,7 +22,7 @@ targets:
           UIApplicationSupportsMultipleScenes: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.remotecompose.demo
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.jamesgoodwin.remotecompose.demo
         PRODUCT_NAME: RemoteComposeDemo
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2"

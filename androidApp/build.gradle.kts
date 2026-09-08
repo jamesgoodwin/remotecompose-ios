@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.remotecompose.androidapp"
+    namespace = "io.github.jamesgoodwin.remotecompose.androidapp"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.remotecompose.androidapp"
+        applicationId = "io.github.jamesgoodwin.remotecompose.androidapp"
         minSdk = 24
         targetSdk = 35
         versionCode = 1

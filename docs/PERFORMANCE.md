@@ -131,11 +131,11 @@ Kotlin, which was the question.
 # Kotlin/Native, both configurations — release needs linking first
 ./gradlew linkDebugTestIosSimulatorArm64 linkReleaseTestIosSimulatorArm64
 xcrun simctl spawn <device> build/bin/iosSimulatorArm64/releaseTest/test.kexe \
-  --ktest_filter=com.example.remotecompose.PipelineBenchmarkTest.benchmark
+  --ktest_filter=io.github.jamesgoodwin.remotecompose.PipelineBenchmarkTest.benchmark
 
 # ART — testBuildType = "release" in build.gradle.kts switches which variant this builds
 ./gradlew connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.example.remotecompose.PipelineBenchmarkTest
+  -Pandroid.testInstrumentationRunnerArguments.class=io.github.jamesgoodwin.remotecompose.PipelineBenchmarkTest
 adb logcat -d -s System.out:I | grep RCBENCH
 ```
 

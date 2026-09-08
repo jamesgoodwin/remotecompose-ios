@@ -13,7 +13,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ios-remote-compose"
+rootProject.name = "remotecompose-ios"
 
 include(":tools:rc-writer")
 include(":fixtures")

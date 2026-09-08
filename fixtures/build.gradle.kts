@@ -17,7 +17,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.remotecompose.fixtures"
+    namespace = "io.github.jamesgoodwin.remotecompose.fixtures"
     compileSdk = 35
     defaultConfig {
         minSdk = 24

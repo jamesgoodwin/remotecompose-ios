@@ -21,8 +21,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ADB="${ADB:-$HOME/Library/Android/sdk/platform-tools/adb}"
-ANDROID_PACKAGE=com.example.remotecompose.androidapp
-IOS_BUNDLE=com.example.remotecompose.demo
+ANDROID_PACKAGE=io.github.jamesgoodwin.remotecompose.androidapp
+IOS_BUNDLE=io.github.jamesgoodwin.remotecompose.demo
 OUT=build/pixel-harness
 mkdir -p "$OUT"
 

@@ -9,11 +9,11 @@ plugins {
     id("com.android.library") version "8.5.2"
 }
 
-group = "com.example.remotecompose"
+group = "io.github.jamesgoodwin"
 version = "0.1.0"
 
 android {
-    namespace = "com.example.remotecompose"
+    namespace = "io.github.jamesgoodwin.remotecompose"
     compileSdk = 35
     defaultConfig {
         minSdk = 24
@@ -149,12 +149,12 @@ tasks.register<JavaExec>("pixelHarness") {
     dependsOn("desktopMainClasses")
     val compilation = kotlin.targets.getByName("desktop").compilations.getByName("main")
     classpath = compilation.output.allOutputs + compilation.runtimeDependencyFiles!!
-    mainClass.set("com.example.remotecompose.harness.HarnessMainKt")
+    mainClass.set("io.github.jamesgoodwin.remotecompose.harness.HarnessMainKt")
 }
 
 tasks.register<JavaExec>("runDesktopDemo") {
     dependsOn("desktopMainClasses")
     val compilation = kotlin.targets.getByName("desktop").compilations.getByName("main")
     classpath = compilation.output.allOutputs + compilation.runtimeDependencyFiles!!
-    mainClass.set("com.example.remotecompose.harness.RenderMainKt")
+    mainClass.set("io.github.jamesgoodwin.remotecompose.harness.RenderMainKt")
 }

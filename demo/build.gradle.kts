@@ -22,7 +22,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.remotecompose.demo"
+    namespace = "io.github.jamesgoodwin.remotecompose.demo"
     compileSdk = 35
     defaultConfig {
         minSdk = 24
