@@ -132,6 +132,9 @@ targets: [
 ]
 ```
 
+That resolves against a tagged release with the XCFramework attached to it, and against nothing
+else — the binary is not in the repository. See "Releasing it" below for cutting one.
+
 ```swift
 import RemoteCompose
 
@@ -173,8 +176,7 @@ has nowhere to go finds out. UIKit callers can take
 `document.makeViewController()` and skip the SwiftUI wrapper.
 
 The framework is iOS 14 and up — Compose Multiplatform's floor, which is what its binaries
-declare. `tools/release-xcframework.sh <tag>` builds the XCFramework, writes the URL and checksum
-into `Package.swift`, and stops short of uploading anything.
+declare.
 
 One entry is worth adding to the app's own `Info.plist`:
 
@@ -186,6 +188,26 @@ Without it iOS caps Compose at 60Hz on a display that can do 120, and an animati
 exactly where that shows. It has to be the app's plist rather than the framework's, so no library
 can set it for you; this one says so once on the console rather than refusing to start, which is
 what Compose Multiplatform does by default.
+
+## Releasing it
+
+`Package.swift` names a release asset and a checksum, so the package resolves against a GitHub
+release and nothing else. The zip is 38MB and `build/` is ignored, so it is never committed — it is
+built and uploaded:
+
+```bash
+tools/release-xcframework.sh v0.1.0     # assembles, zips, writes the url and checksum
+git commit -am "Point the package at v0.1.0"
+git push
+gh release create v0.1.0 build/XCFrameworks/RemoteComposeShared.xcframework.zip --title v0.1.0
+```
+
+Upload the file that script produced rather than a rebuild of it. Kotlin/Native does not link
+reproducibly, so assembling again gives a different zip and the checksum just committed stops
+matching it.
+
+The repository has to be public before SwiftPM can fetch the asset; a private release asset needs
+credentials SwiftPM will not send.
 
 ## Fixtures
 
