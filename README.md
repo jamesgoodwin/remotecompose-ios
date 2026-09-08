@@ -32,8 +32,9 @@ it.
 
 ## Status
 
-**Experimental.** It renders every document in `tools/rc-writer/` on all three platforms and has
-387 tests, but it has not been used in anything that ships and its API is not stable.
+**Experimental.** It renders every document in `tools/rc-writer/` on all three platforms, and the
+test suite runs on desktop and on Kotlin/Native — but it has not been used in anything that ships
+and its API is not stable.
 
 154 of the format's 172 opcodes are decoded, of which 132 are acted on in full. `docs/OPCODES.md`
 lists every one and says which of three things it is:
@@ -126,7 +127,7 @@ on every target, and `PayloadDriftTest` fails if the two ever disagree.
 ## Tests
 
 ```bash
-./gradlew desktopTest                 # 387 tests
+./gradlew desktopTest
 ./gradlew iosSimulatorArm64Test       # the same suite, on Kotlin/Native
 ./gradlew :androidApp:connectedCheck
 ```
