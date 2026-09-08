@@ -2,12 +2,15 @@
 # Captures one demo page from the Android emulator and the iOS Simulator, then compares both
 # against a headless render of the same document (see HarnessMain).
 #
-#   tools/capture-screens.sh <page> [more pages...]
+#   tools/capture-screens.sh <fixture> [more fixtures...]
 #
-# A page is the index DemoScreen shows: 0 coverage, 1 showcase, 2 paint, 3 anim, 4 actions,
-# 5 text paths, 6 generated, 8 list, 9 pattern. Page 3 (anim) moves with the clock and page 7 (material) is scaled
-# to the screen by RemoteComposeCanvas, so neither is pixel-comparable this way and both are
-# refused rather than silently compared.
+# A fixture is the name of a file in tools/rc-writer, without the .rc: sample, showcase, paint,
+# actions, textpath, advanced, list, pattern. The demo app is asked for it by that name, so
+# reordering the list in DemoScreen does not move anything here.
+#
+# Not every fixture can be compared this way, and the ones that cannot are refused rather than
+# silently mismatched: anim moves with the clock, coffee wraps its text and follows the clock, and
+# material is a document meant to be scaled to the screen.
 #
 # Environment:
 #   ANDROID_SERIAL  adb device to use (default: the only attached one)
@@ -23,66 +26,59 @@ IOS_BUNDLE=com.example.remotecompose.demo
 OUT=build/pixel-harness
 mkdir -p "$OUT"
 
-fixture_for_page() {
+fixture_for_name() {
   case "$1" in
-    0) echo tools/rc-writer/sample.rc ;;
-    1) echo tools/rc-writer/showcase.rc ;;
-    2) echo tools/rc-writer/paint.rc ;;
-    4) echo tools/rc-writer/actions.rc ;;
-    5) echo tools/rc-writer/textpath.rc ;;
-    6) echo tools/rc-writer/advanced.rc ;;
-    8) echo tools/rc-writer/list.rc ;;
-    9) echo tools/rc-writer/pattern.rc ;;
-    10) echo "page 10 (coffee) wraps its text and follows the clock, so neither its layout nor its content is the same twice" >&2; return 1 ;;
-    3) echo "page 3 (anim) changes with the clock, so it has no fixed reference" >&2; return 1 ;;
-    7) echo "page 7 (material) is scaled to the screen, so it is not pixel-comparable" >&2; return 1 ;;
-    *) echo "unknown page $1" >&2; return 1 ;;
+    sample|showcase|paint|actions|textpath|advanced|list|pattern)
+      echo "tools/rc-writer/$1.rc" ;;
+    anim) echo "anim changes with the clock, so it has no fixed reference" >&2; return 1 ;;
+    coffee) echo "coffee wraps its text and follows the clock, so neither its layout nor its content is the same twice" >&2; return 1 ;;
+    material) echo "material is meant to be scaled to the screen, so it is not pixel-comparable" >&2; return 1 ;;
+    *) echo "no comparison for $1" >&2; return 1 ;;
   esac
 }
 
 capture_android() {
-  local page=$1 out=$2
+  local name=$1 out=$2
   "$ADB" shell am force-stop "$ANDROID_PACKAGE" >/dev/null
   # Unscaled, because the comparison is pixel-for-pixel: the app itself draws a page scaled up
   # to the screen, and comparing a resampled render to a resampled screenshot would compare the
   # resampling.
-  "$ADB" shell am start -n "$ANDROID_PACKAGE/.MainActivity" --ei page "$page" --ez oneToOne true >/dev/null
+  "$ADB" shell am start -n "$ANDROID_PACKAGE/.MainActivity" --es demo "$name" --ez oneToOne true >/dev/null
   sleep 3
   "$ADB" exec-out screencap -p > "$out"
 }
 
 capture_ios() {
-  local page=$1 out=$2 udid=${IOS_UDID:-booted}
+  local name=$1 out=$2 udid=${IOS_UDID:-booted}
   xcrun simctl terminate "$udid" "$IOS_BUNDLE" >/dev/null 2>&1 || true
-  SIMCTL_CHILD_RC_PAGE="$page" SIMCTL_CHILD_RC_ONE_TO_ONE=1 xcrun simctl launch "$udid" "$IOS_BUNDLE" >/dev/null
+  SIMCTL_CHILD_RC_DEMO="$name" SIMCTL_CHILD_RC_ONE_TO_ONE=1 xcrun simctl launch "$udid" "$IOS_BUNDLE" >/dev/null
   sleep 4
   xcrun simctl io "$udid" screenshot --type=png "$out" >/dev/null 2>&1
 }
 
-# Differences that are real, understood, and not this renderer's to fix. Page 5's orange bar is
+# Differences that are real, understood, and not this renderer's to fix. textpath's orange bar is
 # sized by TEXT_MEASURE, so it is as wide as the platform measures "measure me": 70 pixels here
 # and 67 on Android, which is 8 pixels of edge. A document that asks for the width of a string
 # gets a different answer where the fonts are different, and that is the document working.
-allowance_for_page() {
+allowance_for_name() {
   case "$1" in
-    5) echo 8 ;;
+    textpath) echo 8 ;;
     *) echo 0 ;;
   esac
 }
 
 status=0
-for page in "$@"; do
-  fixture=$(fixture_for_page "$page") || { status=1; continue; }
-  name=$(basename "$fixture" .rc)
-  allow=$(allowance_for_page "$page")
-  echo "=== page $page ($name)"
+for name in "$@"; do
+  fixture=$(fixture_for_name "$name") || { status=1; continue; }
+  allow=$(allowance_for_name "$name")
+  echo "=== $name"
   candidates=()
   if [ "${SKIP_ANDROID:-0}" != "1" ]; then
-    capture_android "$page" "$OUT/$name-android-screen.png"
+    capture_android "$name" "$OUT/$name-android-screen.png"
     candidates+=("android=$OUT/$name-android-screen.png")
   fi
   if [ "${SKIP_IOS:-0}" != "1" ]; then
-    capture_ios "$page" "$OUT/$name-ios-screen.png"
+    capture_ios "$name" "$OUT/$name-ios-screen.png"
     candidates+=("ios=$OUT/$name-ios-screen.png")
   fi
   ./gradlew -q pixelHarness --args="$fixture ${candidates[*]} --allow-shape-pixels $allow" || status=1

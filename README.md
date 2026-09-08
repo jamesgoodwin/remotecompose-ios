@@ -80,9 +80,9 @@ adb shell am start -n com.example.remotecompose.androidapp/.MainActivity
 # ios: open iosApp/RemoteComposeDemo.xcodeproj
 xcrun simctl launch booted com.example.remotecompose.demo
 
-# either one, straight onto a document rather than the list, for scripted screenshots
-adb shell am start -n com.example.remotecompose.androidapp/.MainActivity --ei page 13
-SIMCTL_CHILD_RC_PAGE=13 xcrun simctl launch booted com.example.remotecompose.demo
+# either one, straight onto a document rather than the list, named by its fixture
+adb shell am start -n com.example.remotecompose.androidapp/.MainActivity --es demo watch
+SIMCTL_CHILD_RC_DEMO=watch xcrun simctl launch booted com.example.remotecompose.demo
 ```
 
 ## Using it
@@ -137,8 +137,9 @@ on every target, and `PayloadDriftTest` fails if the two ever disagree.
 ./gradlew :androidApp:connectedCheck
 ```
 
-`tools/capture-screens.sh` is a third kind of check: it drives a page onto the Android emulator
-and the iOS Simulator, screenshots both, renders the same document headlessly and compares them.
+`tools/capture-screens.sh <fixture>...` is a third kind of check: it drives a document onto the
+Android emulator and the iOS Simulator, screenshots both, renders the same document headlessly and
+compares them.
 The comparison allows for two rasterizers disagreeing — a channel range within a small radius,
 with glyph pixels counted against a share rather than matched — and every threshold in it was
 measured on renders that agree rather than picked.

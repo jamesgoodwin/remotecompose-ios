@@ -26,14 +26,15 @@ class MainActivity : ComponentActivity() {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
-        // `adb shell am start -n <package>/.MainActivity --ei page N` launches straight onto a
-        // payload page for scripted screenshots; see DemoScreen. Without it the app opens on the
-        // list, which is what -1 asks for. `--ez oneToOne true` draws that page unscaled, which
-        // is what the pixel harness compares against.
-        val initialPage = intent.getIntExtra("page", -1)
+        // `adb shell am start -n <package>/.MainActivity --es demo watch` launches straight onto
+        // a payload for scripted screenshots; see DemoScreen. The name is the fixture's, so it
+        // survives the demo list being reordered. Without it the app opens on the list.
+        // `--ez oneToOne true` draws that page unscaled, which is what the pixel harness
+        // compares against.
+        val initialDemo = intent.getStringExtra("demo")
         val oneToOne = intent.getBooleanExtra("oneToOne", false)
         setContent {
-            DemoScreen(initialPage = initialPage, oneToOne = oneToOne)
+            DemoScreen(initialDemo = initialDemo, oneToOne = oneToOne)
         }
     }
 }

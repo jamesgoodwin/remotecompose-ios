@@ -41,6 +41,7 @@ import kotlinx.coroutines.delay
  * is reachable by one, but nothing offers it.
  */
 private class Demo(
+    val id: String,
     val name: String,
     val about: String,
     val bytes: ByteArray,
@@ -51,31 +52,31 @@ private class Demo(
 )
 
 private val DEMOS = listOf(
+    Demo("watch", "Watch", "Hands and a date from the clock alone, in two palettes", WATCH_RC_BYTES, followsSystemTheme = true),
+    Demo("carousel", "Carousel", "Cards that fling, shrinking and dimming away from the middle", CAROUSEL_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("coffee", "Coffee", "A shop: themed colours, a scrolling menu, rows that expand", COFFEE_RC_BYTES, followsSystemTheme = true),
+    Demo("flight", "Flight", "Every value fed by name from outside, and eased on the way in", FLIGHT_RC_BYTES, background = Color(0xFFFFFBFE), feed = ::runFlightFeed),
+    Demo("lazylist", "Lazy list", "Five hundred rows, of which only the ones in view are built", LAZYLIST_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("material", "Material", "A Material screen: a stepper, a snackbar, real tokens", MATERIAL_RC_BYTES, background = Color(0xFFFEF7FF)),
+    Demo("wrap", "Wrapping", "Line breaking, ellipsis and justification, and text that expands", WRAP_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("notches", "Snap", "The four ways a released scroll can be told where to stop", NOTCHES_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("layout", "Layout", "A document working out its own size, place and measurements", LAYOUT_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("parallax", "Parallax", "A photograph moving slower than the words over it", PARALLAX_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("advanced", "Generated", "Functions, path expressions, particles and matrices", ADVANCED_RC_BYTES),
+    Demo("article", "Article", "A progress bar the document works out from its own scroll", ARTICLE_RC_BYTES, background = Color(0xFFFFFBFE)),
+    Demo("textpath", "Text paths", "Glyphs placed along a curve, one at a time", TEXTPATH_RC_BYTES),
+    Demo("runaction", "Run action", "Actions that run because a component was painted", RUNACTION_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("marquee", "Marquee", "Text too long for its box, slid rather than left clipped", MARQUEE_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("pattern", "Pattern", "A card written once and called three times, each with its own contents", PATTERN_RC_BYTES),
+    Demo("referenced", "Referenced", "One block of operations, drawn on three cards", REFERENCED_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("list", "List", "One row body over a list, with its bars read from a float list", LIST_RC_BYTES),
+    Demo("anim", "Anim", "Values that move with the clock, and the curves they move on", ANIM_RC_BYTES),
+    Demo("actions", "Actions", "Buttons that write the document's own values", ACTIONS_RC_BYTES),
+    Demo("paint", "Paint", "Every paint attribute: strokes, caps, joins, gradients", PAINT_RC_BYTES),
+    Demo("showcase", "Showcase", "The format's drawing and layout on one page", SHOWCASE_RC_BYTES),
     // Not offered: one drawing per opcode, overlapping, which is a fixture for the golden test
     // and the pixel harness rather than anything to look at.
-    Demo("Coverage", "One drawing per opcode", SAMPLE_RC_BYTES, listed = false),
-    Demo("Showcase", "The format's drawing and layout on one page", SHOWCASE_RC_BYTES),
-    Demo("Paint", "Every paint attribute: strokes, caps, joins, gradients", PAINT_RC_BYTES),
-    Demo("Anim", "Values that move with the clock, and the curves they move on", ANIM_RC_BYTES),
-    Demo("Actions", "Buttons that write the document's own values", ACTIONS_RC_BYTES),
-    Demo("Text paths", "Glyphs placed along a curve, one at a time", TEXTPATH_RC_BYTES),
-    Demo("Generated", "Functions, path expressions, particles and matrices", ADVANCED_RC_BYTES),
-    Demo("Material", "A Material screen, scaled to the window it is shown in", MATERIAL_RC_BYTES, background = Color(0xFFFEF7FF)),
-    Demo("List", "One row body over a list, with its bars read from a float list", LIST_RC_BYTES),
-    Demo("Pattern", "A card written once and called three times, each with its own contents", PATTERN_RC_BYTES),
-    Demo("Coffee", "A shop: themed colours, a scrolling menu, rows that expand", COFFEE_RC_BYTES, followsSystemTheme = true),
-    Demo("Article", "A progress bar the document works out from its own scroll", ARTICLE_RC_BYTES, background = Color(0xFFFFFBFE)),
-    Demo("Flight", "Every value fed by name from outside, and eased on the way in", FLIGHT_RC_BYTES, background = Color(0xFFFFFBFE), feed = ::runFlightFeed),
-    Demo("Watch", "Hands and a date from the clock alone, in two palettes", WATCH_RC_BYTES, followsSystemTheme = true),
-    Demo("Parallax", "A photograph moving slower than the words over it", PARALLAX_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("Carousel", "Cards that fling, shrinking and dimming away from the middle", CAROUSEL_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("Lazy list", "Five hundred rows, of which only the ones in view are built", LAZYLIST_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("Snap", "The four ways a released scroll can be told where to stop", NOTCHES_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("Referenced", "One block of operations, drawn on three cards", REFERENCED_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("Wrapping", "Line breaking, ellipsis and justification, and text that expands", WRAP_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("Layout", "A document working out its own size, place and measurements", LAYOUT_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("Marquee", "Text too long for its box, slid rather than left clipped", MARQUEE_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("Run action", "Actions that run because a component was painted", RUNACTION_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("sample", "Coverage", "One drawing per opcode", SAMPLE_RC_BYTES, listed = false),
 )
 
 /**
@@ -87,30 +88,31 @@ private val DEMOS = listOf(
  * left edge. Everything else on the screen belongs to the document, which is the only way an
  * interactive one is usable.
  *
- * @param initialPage Opens straight onto that document, for scripted screenshots: Android reads
- *   an `--ei page N` intent extra, iOS an `RC_PAGE` environment variable. Anything outside the
- *   list — which is what both hosts pass when nothing was asked for — shows the list instead.
+ * @param initialDemo Opens straight onto the document of that name — the name of its fixture in
+ *   `tools/rc-writer`, so `watch` is `watch.rc` — for scripted screenshots: Android reads an
+ *   `--es demo <name>` intent extra, iOS an `RC_DEMO` environment variable. A name that is not
+ *   one of them, which is what both hosts pass when nothing was asked for, shows the list.
  * @param oneToOne Draws the document at its own size in the middle of the screen instead of
  *   filling it. Only the pixel harness asks for this: it finds a document in a screenshot by
  *   expecting it unscaled, since comparing a resampled render to a resampled screenshot would
  *   compare the resampling.
  */
 @Composable
-fun DemoScreen(initialPage: Int = -1, oneToOne: Boolean = false) {
-    var open by remember { mutableStateOf(initialPage.takeIf { it in DEMOS.indices }) }
-    val index = open
-    if (index == null) {
+fun DemoScreen(initialDemo: String? = null, oneToOne: Boolean = false) {
+    var open by remember { mutableStateOf(DEMOS.firstOrNull { it.id == initialDemo }) }
+    val demo = open
+    if (demo == null) {
         DemoList(onOpen = { open = it })
     } else {
         BackGesture(enabled = true, onBack = { open = null }) {
-            DemoPage(demo = DEMOS[index], oneToOne = oneToOne)
+            DemoPage(demo = demo, oneToOne = oneToOne)
         }
     }
 }
 
 /** The documents, by name and by what each is for. */
 @Composable
-private fun DemoList(onOpen: (Int) -> Unit) {
+private fun DemoList(onOpen: (Demo) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -129,9 +131,9 @@ private fun DemoList(onOpen: (Int) -> Unit) {
             style = TextStyle(color = Color(0xFF8A90A6), fontSize = 13.sp),
         )
         Spacer(Modifier.height(20.dp))
-        for ((index, demo) in DEMOS.withIndex()) {
+        for (demo in DEMOS) {
             if (!demo.listed) continue
-            DemoRow(demo, onClick = { onOpen(index) })
+            DemoRow(demo, onClick = { onOpen(demo) })
             Spacer(Modifier.height(8.dp))
         }
         Spacer(Modifier.height(48.dp))
