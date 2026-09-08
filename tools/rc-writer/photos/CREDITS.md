@@ -28,9 +28,15 @@ which keeps all five inside about 75 kB.
 
 ## Parallax scene (page 14)
 
-One photograph behind the text, moving at two fifths of the scroll. It is cropped to 300x400 and
-drawn taller than the 260-tall frame that clips it, so there is room for it to lag without either
-edge coming into view.
+One photograph behind the text, moving at two fifths of the scroll. It is drawn 300 by 400
+document units — taller than the 260-tall frame that clips it, so there is room for it to lag
+without either edge coming into view.
+
+The file itself is 900x1200, three times those units. A document's assets are authored in its own
+coordinates, so a host that scales a 300-wide document up to a 1080-wide screen magnifies them by
+the same amount; at 300x400 this photograph was being blown up three and a half times and looked
+it. Cropped 3:4 from the full-height original at an offset matched against the earlier crop, so
+the composition is the one that was there before.
 
 | Photographer | Licence | Source |
 | --- | --- | --- |
