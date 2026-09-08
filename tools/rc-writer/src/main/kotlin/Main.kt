@@ -3994,10 +3994,13 @@ private fun buildWrapSample() {
     )
     for ((title, value) in listOf("Show more" to 1, "Show less" to 0)) {
         writer.startBox(
-            RecordingModifier().width(104f).height(28f)
+            // Padding counts towards a stated width, so the box is written 92 wide to come out
+            // the 104 it was before with the words held off its left edge.
+            RecordingModifier().width(92f).height(28f)
                 .clip(RoundedRectShape(14f, 14f, 14f, 14f))
                 .background(0xFF2A3040.toInt())
                 .then(RippleElement())
+                .padding(12f, 0f, 0f, 0f)
                 .onClick(ValueIntegerChange(expanded, value)),
             1, 2,
         )
