@@ -1019,6 +1019,11 @@ internal class LayoutEngine(private val context: RemoteContext, private val text
      * Hit rectangles for every component carrying an action list, in window coordinates and in
      * paint order, so a later (visually higher) component wins a hit test. A child's origin is
      * its parent's origin plus that parent's padding, matching how [paint] translates.
+     *
+     * A scrolling parent shifts its children by the same offset [paint] draws them at. Without
+     * that, the region a component is hit-tested against stays where the component was before the
+     * list moved: a row swiped aside to reveal a button leaves the button's rectangle behind, and
+     * the tap that should press it lands on nothing while a tap on empty space presses it.
      */
     fun collectHitRegions(node: LayoutNode, originX: Float = 0f, originY: Float = 0f, out: MutableList<HitRegion> = mutableListOf()): List<HitRegion> {
         if (node.isGone) return out
@@ -1027,7 +1032,14 @@ internal class LayoutEngine(private val context: RemoteContext, private val text
         if (node.actions.isNotEmpty()) {
             out += HitRegion(x, y, x + node.width, y + node.height, node.actions.mapValues { it.value.toList() })
         }
-        for (child in node.children) collectHitRegions(child, x + node.paddingLeft, y + node.paddingTop, out)
+        var childX = x + node.paddingLeft
+        var childY = y + node.paddingTop
+        node.modifiers.filterIsInstance<Modifier.Scroll>().firstOrNull()?.let { scroll ->
+            val position = context.getFloat(scroll.positionExpressionId).takeUnless { it.isNaN() } ?: 0f
+            val offset = min(position, scroll.maxScroll)
+            if (scroll.direction == 0) childY -= offset else childX -= offset
+        }
+        for (child in node.children) collectHitRegions(child, childX, childY, out)
         return out
     }
 

@@ -144,6 +144,10 @@ fun main(args: Array<String>) {
         buildCarouselSample()
         return
     }
+    if (args.getOrNull(0) == "swipe") {
+        buildSwipeSample()
+        return
+    }
     if (args.getOrNull(0) == "lazylist") {
         buildLazyListSample()
         return
@@ -3478,6 +3482,122 @@ private fun buildCarouselSample() {
  * hundred times a frame. What it saves is the building — which is the part that grows a tree,
  * measures it and fills an opcode list.
  */
+/**
+ * Swipe a row aside, tap Delete, watch the list close the gap — with nothing on the host side.
+ *
+ * Each row is a horizontally scrolling `Row` two children wide: the card, exactly the width of the
+ * window, and a red panel behind it. The content is therefore `actionWidth` longer than the window,
+ * which is the whole scroll range. `NotchScrollModifier` with two notches means a released swipe
+ * lands open or shut and never halfway, which is what makes it feel like a control rather than a
+ * scroll.
+ *
+ * Delete is `ValueIntegerChange` on the row's own visibility int, so the tap is an operation the
+ * document carries; `AnimationSpec` fades the row out and the rows below it slide up because the
+ * column re-measures without it. The host is told nothing and does nothing.
+ */
+private fun buildSwipeSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 420, "swipe", platform)
+
+    val pad = 16f
+    val window = 300f - pad * 2
+    val rowHeight = 56f
+    val actionWidth = 88f
+    val ink = 0xFF1B1B1F.toInt()
+    val faint = 0xFF6F6A78.toInt()
+    val danger = 0xFFB3261E.toInt()
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    // Invented senders, and deliberately not people: a demo fixture is public, and a name in one
+    // is a name in every clone of the repository.
+    val rows = listOf(
+        "Dispatch" to "Your parcel is out for delivery",
+        "Library" to "Two books are due back on Friday",
+        "Allotment" to "Bring a trowel on Saturday",
+        "Weather" to "Rain expected after four",
+    )
+
+    // One visibility int and one scroll position per row. Both live in the document.
+    val shown = rows.map { writer.addInteger(1).toInt() }
+    val scroll = rows.map { writer.addFloatConstant(0f) }
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFFF4F2F7.toInt()).padding(pad).spacedBy(8f),
+        1, 4,
+    )
+
+    text(writer.addText("Inbox"), ink, 22f, 700f)
+    text(writer.addText("Swipe a row left, then tap Delete"), faint, 12f)
+
+    for (i in rows.indices) {
+        val (who, subject) = rows[i]
+        writer.startBox(
+            RecordingModifier().fillMaxWidth().height(rowHeight)
+                .visibility(shown[i])
+                .animationSpec(
+                    1, 0.35f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                    0.35f, androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD,
+                    androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_IN,
+                    androidx.compose.remote.core.operations.layout.animation.AnimationSpec.ANIMATION.FADE_OUT,
+                )
+                .clip(RoundedRectShape(12f, 12f, 12f, 12f)),
+            1, 2,
+        )
+        writer.startRow(
+            RecordingModifier().fillMaxWidth().height(rowHeight)
+                // Notches one panel apart, written as a literal rather than a division of the
+                // content: the content is a window plus a panel, which is not a whole number of
+                // panels, so dividing it would put the stops in the wrong places.
+                .then(NotchScrollModifier(1, scroll[i], 7) { _ -> floatArrayOf(1f, actionWidth) }),
+            1, 2,
+        )
+        writer.startColumn(
+            // The padding adds to the width a modifier declares, so the card is written 24
+            // narrower to come out exactly a window wide. The panel then begins at the window's
+            // right edge and the scroll range is exactly the panel.
+            RecordingModifier().width(window - 24f).height(rowHeight)
+                .background(0xFFFFFFFF.toInt()).padding(12f).spacedBy(3f),
+            1, 4,
+        )
+        text(writer.addText(who), ink, 14f, 700f)
+        text(writer.addText(subject), faint, 12f)
+        writer.endColumn()
+        writer.startBox(
+            RecordingModifier().width(actionWidth).height(rowHeight)
+                .background(danger)
+                .then(RippleElement())
+                .onClick(ValueIntegerChange(shown[i], 0)),
+            1, 2,
+        )
+        text(writer.addText("Delete"), 0xFFFFFFFF.toInt(), 13f, 700f)
+        writer.endBox()
+        writer.endRow()
+        writer.endBox()
+    }
+
+    // So the demo can be played more than once. One click, five writes.
+    writer.startBox(
+        RecordingModifier().fillMaxWidth().height(38f)
+            .clip(RoundedRectShape(19f, 19f, 19f, 19f))
+            .background(0xFFE8DEF8.toInt())
+            .then(RippleElement())
+            .onClick(*shown.map { ValueIntegerChange(it, 1) }.toTypedArray()),
+        1, 2,
+    )
+    text(writer.addText("Restore all"), 0xFF21005D.toInt(), 13f, 700f)
+    writer.endBox()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("swipe.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to swipe.rc")
+}
+
 private fun buildLazyListSample() {
     val platform = JvmRcPlatformServices()
     val writer = RemoteComposeWriter(300, 420, "lazylist", platform)
