@@ -5,8 +5,10 @@ import platform.UIKit.UIViewController
 
 /**
  * Entry point called from Swift (`ContentView.swift`) to host the round-trip demo in a UIKit view
- * controller. [initialPage] selects the payload shown first; see [DemoScreen].
+ * controller. [initialPage] opens straight onto a payload and [oneToOne] draws it unscaled; see
+ * [DemoScreen].
  */
-fun MainViewController(initialPage: Int = 0): UIViewController = ComposeUIViewController {
-    DemoScreen(initialPage = initialPage)
-}
+fun MainViewController(initialPage: Int = -1, oneToOne: Boolean = false): UIViewController =
+    ComposeUIViewController {
+        DemoScreen(initialPage = initialPage, oneToOne = oneToOne)
+    }

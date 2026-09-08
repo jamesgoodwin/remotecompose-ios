@@ -43,7 +43,10 @@ fixture_for_page() {
 capture_android() {
   local page=$1 out=$2
   "$ADB" shell am force-stop "$ANDROID_PACKAGE" >/dev/null
-  "$ADB" shell am start -n "$ANDROID_PACKAGE/.MainActivity" --ei page "$page" >/dev/null
+  # Unscaled, because the comparison is pixel-for-pixel: the app itself draws a page scaled up
+  # to the screen, and comparing a resampled render to a resampled screenshot would compare the
+  # resampling.
+  "$ADB" shell am start -n "$ANDROID_PACKAGE/.MainActivity" --ei page "$page" --ez oneToOne true >/dev/null
   sleep 3
   "$ADB" exec-out screencap -p > "$out"
 }
@@ -51,7 +54,7 @@ capture_android() {
 capture_ios() {
   local page=$1 out=$2 udid=${IOS_UDID:-booted}
   xcrun simctl terminate "$udid" "$IOS_BUNDLE" >/dev/null 2>&1 || true
-  SIMCTL_CHILD_RC_PAGE="$page" xcrun simctl launch "$udid" "$IOS_BUNDLE" >/dev/null
+  SIMCTL_CHILD_RC_PAGE="$page" SIMCTL_CHILD_RC_ONE_TO_ONE=1 xcrun simctl launch "$udid" "$IOS_BUNDLE" >/dev/null
   sleep 4
   xcrun simctl io "$udid" screenshot --type=png "$out" >/dev/null 2>&1
 }

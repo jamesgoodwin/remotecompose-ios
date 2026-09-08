@@ -98,6 +98,12 @@ kotlin {
 
         val androidMain by getting {
             dependsOn(commonMain)
+            dependencies {
+                // For `BackHandler`, so the demo's back is the system's own rather than a
+                // control drawn over the page. Compose Multiplatform only gained a common one
+                // in 1.8; this project is on 1.7, so it is an expect/actual.
+                implementation("androidx.activity:activity-compose:1.9.2")
+            }
         }
     }
 }

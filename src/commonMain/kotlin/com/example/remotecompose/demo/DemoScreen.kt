@@ -3,16 +3,13 @@ package com.example.remotecompose.demo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -29,7 +26,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.remotecompose.model.RemoteAction
@@ -40,9 +36,9 @@ import kotlinx.coroutines.delay
 /**
  * One document in the demo: what to call it, what it is for, and how it wants to be shown.
  *
- * [oneToOne] draws the document at its own size in the middle of the screen rather than scaling
- * it to fill. That is what the pixel harness compares against, so the documents it covers are
- * shown that way.
+ * [listed] is false for a document that exists to be compared rather than looked at. It keeps its
+ * place in the list so that the indices the hosts and the pixel harness use do not move, and it
+ * is reachable by one, but nothing offers it.
  */
 private class Demo(
     val name: String,
@@ -50,21 +46,23 @@ private class Demo(
     val bytes: ByteArray,
     val background: Color? = null,
     val followsSystemTheme: Boolean = false,
-    val oneToOne: Boolean = false,
+    val listed: Boolean = true,
     val feed: (suspend (RemoteComposeDocument) -> Unit)? = null,
 )
 
 private val DEMOS = listOf(
-    Demo("Coverage", "One drawing per opcode, which the golden test pins", SAMPLE_RC_BYTES, oneToOne = true),
-    Demo("Showcase", "The format's drawing and layout on one page", SHOWCASE_RC_BYTES, oneToOne = true),
-    Demo("Paint", "Every paint attribute: strokes, caps, joins, gradients", PAINT_RC_BYTES, oneToOne = true),
-    Demo("Anim", "Values that move with the clock, and the curves they move on", ANIM_RC_BYTES, oneToOne = true),
-    Demo("Actions", "Buttons that write the document's own values", ACTIONS_RC_BYTES, oneToOne = true),
-    Demo("Text paths", "Glyphs placed along a curve, one at a time", TEXTPATH_RC_BYTES, oneToOne = true),
-    Demo("Generated", "Functions, path expressions, particles and matrices", ADVANCED_RC_BYTES, oneToOne = true),
+    // Not offered: one drawing per opcode, overlapping, which is a fixture for the golden test
+    // and the pixel harness rather than anything to look at.
+    Demo("Coverage", "One drawing per opcode", SAMPLE_RC_BYTES, listed = false),
+    Demo("Showcase", "The format's drawing and layout on one page", SHOWCASE_RC_BYTES),
+    Demo("Paint", "Every paint attribute: strokes, caps, joins, gradients", PAINT_RC_BYTES),
+    Demo("Anim", "Values that move with the clock, and the curves they move on", ANIM_RC_BYTES),
+    Demo("Actions", "Buttons that write the document's own values", ACTIONS_RC_BYTES),
+    Demo("Text paths", "Glyphs placed along a curve, one at a time", TEXTPATH_RC_BYTES),
+    Demo("Generated", "Functions, path expressions, particles and matrices", ADVANCED_RC_BYTES),
     Demo("Material", "A Material screen, scaled to the window it is shown in", MATERIAL_RC_BYTES, background = Color(0xFFFEF7FF)),
-    Demo("List", "One row body over a list, with its bars read from a float list", LIST_RC_BYTES, oneToOne = true),
-    Demo("Pattern", "A card written once and called three times, each with its own contents", PATTERN_RC_BYTES, oneToOne = true),
+    Demo("List", "One row body over a list, with its bars read from a float list", LIST_RC_BYTES),
+    Demo("Pattern", "A card written once and called three times, each with its own contents", PATTERN_RC_BYTES),
     Demo("Coffee", "A shop: themed colours, a scrolling menu, rows that expand", COFFEE_RC_BYTES, followsSystemTheme = true),
     Demo("Article", "A progress bar the document works out from its own scroll", ARTICLE_RC_BYTES, background = Color(0xFFFFFBFE)),
     Demo("Flight", "Every value fed by name from outside, and eased on the way in", FLIGHT_RC_BYTES, background = Color(0xFFFFFBFE), feed = ::runFlightFeed),
@@ -82,24 +80,31 @@ private val DEMOS = listOf(
 
 /**
  * The app entry point on both platforms (see `MainActivity.kt` / `ContentView.swift`): a list of
- * the documents, and one of them full screen once it is tapped.
+ * the documents, and one of them filling the screen once it is tapped.
  *
- * Nothing else navigates. Taps and drags inside a document belong to the document, which is the
- * only way an interactive one is usable, so the way back is a bar floating over the page rather
- * than anything the document could swallow.
+ * Nothing else navigates, and there is nothing drawn over a page to navigate by: the way back is
+ * the platform's own, which on Android is the system gesture and on iOS the swipe in from the
+ * left edge. Everything else on the screen belongs to the document, which is the only way an
+ * interactive one is usable.
  *
  * @param initialPage Opens straight onto that document, for scripted screenshots: Android reads
  *   an `--ei page N` intent extra, iOS an `RC_PAGE` environment variable. Anything outside the
  *   list — which is what both hosts pass when nothing was asked for — shows the list instead.
+ * @param oneToOne Draws the document at its own size in the middle of the screen instead of
+ *   filling it. Only the pixel harness asks for this: it finds a document in a screenshot by
+ *   expecting it unscaled, since comparing a resampled render to a resampled screenshot would
+ *   compare the resampling.
  */
 @Composable
-fun DemoScreen(initialPage: Int = -1) {
+fun DemoScreen(initialPage: Int = -1, oneToOne: Boolean = false) {
     var open by remember { mutableStateOf(initialPage.takeIf { it in DEMOS.indices }) }
     val index = open
     if (index == null) {
         DemoList(onOpen = { open = it })
     } else {
-        DemoPage(demo = DEMOS[index], onBack = { open = null })
+        BackGesture(enabled = true, onBack = { open = null }) {
+            DemoPage(demo = DEMOS[index], oneToOne = oneToOne)
+        }
     }
 }
 
@@ -125,6 +130,7 @@ private fun DemoList(onOpen: (Int) -> Unit) {
         )
         Spacer(Modifier.height(20.dp))
         for ((index, demo) in DEMOS.withIndex()) {
+            if (!demo.listed) continue
             DemoRow(demo, onClick = { onOpen(index) })
             Spacer(Modifier.height(8.dp))
         }
@@ -155,23 +161,27 @@ private fun DemoRow(demo: Demo, onClick: () -> Unit) {
 }
 
 /**
- * One document, with the whole screen to itself and a bar floating over the bottom of it.
- *
- * The bar takes no room away from the document: the pixel harness finds a page in a screenshot by
- * expecting it centred at its own size, and one laid out around a bar would not be.
+ * One document, with the screen to itself: scaled up until it fits, and nothing drawn over it
+ * except what a host action briefly says.
  */
 @Composable
-private fun DemoPage(demo: Demo, onBack: () -> Unit) {
+private fun DemoPage(demo: Demo, oneToOne: Boolean) {
     var document by remember(demo) { mutableStateOf<RemoteComposeDocument?>(null) }
-    // Where a `HOST_ACTION` lands. It used to turn the page, which made a document with a button
-    // on it unusable — pressing the button left.
+    // Where a `HOST_ACTION` lands, and only for as long as it takes to read: it used to turn the
+    // page, which made a document with a button on it unusable — pressing the button left.
     var heard by remember(demo) { mutableStateOf<String?>(null) }
+    LaunchedEffect(heard) {
+        if (heard != null) {
+            delay(2200)
+            heard = null
+        }
+    }
     if (demo.feed != null) {
         LaunchedEffect(document) { document?.let { demo.feed.invoke(it) } }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (demo.oneToOne) {
+        if (oneToOne) {
             RealPayloadDemoScreen(demo.bytes)
         } else {
             RemoteComposeCanvas(
@@ -188,37 +198,18 @@ private fun DemoPage(demo: Demo, onBack: () -> Unit) {
                 },
             )
         }
-        BackBar(
-            label = heard ?: demo.name,
-            onBack = onBack,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 28.dp),
-        )
-    }
-}
-
-/** The way back, and which document is showing. */
-@Composable
-private fun BackBar(label: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(22.dp))
-            .background(Color(0xE6202A2F))
-            .clickable(onClick = onBack)
-            .padding(end = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        // A tap target wide enough for a thumb, whatever the glyph inside measures.
-        Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+        heard?.let { label ->
             BasicText(
-                text = "‹",
-                style = TextStyle(color = Color.White, fontSize = 22.sp, textAlign = TextAlign.Center),
+                text = label,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 40.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xE6202A2F))
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                style = TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium),
             )
         }
-        BasicText(
-            text = label,
-            style = TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium),
-        )
     }
 }
 
