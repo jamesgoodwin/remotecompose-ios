@@ -5,8 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import com.example.remotecompose.demo.DemoScreen
 
 /**
@@ -14,13 +12,9 @@ import com.example.remotecompose.demo.DemoScreen
  * render byte-identical input through the shared `OpcodeExecutor` — the point being a direct
  * visual cross-check, not two different demos.
  *
- * The status bar is hidden, since a document is meant to have the screen — iOS hides its own
- * through `UIStatusBarHidden` in `project.yml`. The navigation bars are not: hidden bars come with
- * `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`, and hiding those would spend the first swipe in from
- * an edge on showing them rather than on going back.
- *
- * The pixel harness hides both, so that a screenshot compares the rendered content without a bar
- * over it on one platform and not the other. Nothing navigates in that mode.
+ * Which system bars are hidden is [HideSystemBars]'s to decide, from what is on screen rather
+ * than from the intent this was started with — an activity keeps that intent for as long as it
+ * lives, so a flag read once here outlives the page it was meant for.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,10 +28,6 @@ class MainActivity : ComponentActivity() {
         // compares against.
         val initialDemo = intent.getStringExtra("demo")
         val oneToOne = intent.getBooleanExtra("oneToOne", false)
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(if (oneToOne) WindowInsetsCompat.Type.systemBars() else WindowInsetsCompat.Type.statusBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
         setContent {
             DemoScreen(initialDemo = initialDemo, oneToOne = oneToOne)
         }

@@ -98,15 +98,20 @@ private val DEMOS = listOf(
  * @param oneToOne Draws the document at its own size in the middle of the screen instead of
  *   filling it. Only the pixel harness asks for this: it finds a document in a screenshot by
  *   expecting it unscaled, since comparing a resampled render to a resampled screenshot would
- *   compare the resampling.
+ *   compare the resampling. It applies to [initialDemo] and to nothing else — an activity keeps
+ *   the intent it was started with, so a flag that applied to whatever came next would outlive
+ *   the page it was meant for.
  */
 @Composable
 fun DemoScreen(initialDemo: String? = null, oneToOne: Boolean = false) {
-    var open by remember { mutableStateOf(DEMOS.firstOrNull { it.id == initialDemo }) }
+    val launched = remember(initialDemo) { DEMOS.firstOrNull { it.id == initialDemo } }
+    var open by remember { mutableStateOf(launched) }
     // One scroll position for the list, so the copy of it behind a page being dragged away is
     // where the real one is rather than back at the top.
     val listScroll = rememberScrollState()
     val demo = open
+    val unscaled = oneToOne && demo != null && demo === launched
+    HideSystemBars(alsoNavigation = unscaled)
     if (demo == null) {
         DemoList(scroll = listScroll, onOpen = { open = it })
     } else {
@@ -118,7 +123,7 @@ fun DemoScreen(initialDemo: String? = null, oneToOne: Boolean = false) {
                 if (progress > 0f) DemoList(scroll = listScroll, onOpen = {})
                 DemoPage(
                     demo = demo,
-                    oneToOne = oneToOne,
+                    oneToOne = oneToOne && demo === launched,
                     modifier = Modifier.graphicsLayer {
                         // The page draws back from the edge the gesture came from and shrinks a
                         // little, which is the shape of both platforms' own back.
