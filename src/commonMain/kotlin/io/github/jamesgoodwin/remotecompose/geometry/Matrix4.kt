@@ -16,7 +16,7 @@ import kotlin.math.tan
  * [rotateZ] about a pivot and [rotateAroundAxis] multiply on the left, and [scale] multiplies
  * the diagonal in place.
  */
-class Matrix4 {
+internal class Matrix4 {
 
     val values = FloatArray(16)
 

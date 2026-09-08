@@ -19,7 +19,7 @@ import androidx.compose.ui.graphics.Color
  *   on an Android `Paint`. Cleared by a `SHADER` attribute with id 0.
  * @property blendMode `PaintBundle.BLEND_MODE_*` ordinal, or null for the default source-over.
  */
-data class PaintStyle(
+public data class PaintStyle(
     val color: Color,
     val style: PaintStyleKind,
     val strokeWidth: Float = 0f,
@@ -33,35 +33,35 @@ data class PaintStyle(
     val gradient: GradientSpec? = null,
     val blendMode: Int? = null,
 ) {
-    companion object {
+    public companion object {
         /** `android.graphics.Paint`'s default text size. */
-        const val DEFAULT_TEXT_SIZE_PX = 12f
+        public const val DEFAULT_TEXT_SIZE_PX: Float = 12f
     }
 }
 
 /** `PaintBundle.STYLE_FILL` / `STYLE_STROKE` / `STYLE_FILL_AND_STROKE`, in ordinal order. */
-enum class PaintStyleKind {
+public enum class PaintStyleKind {
     FILL,
     STROKE,
     FILL_AND_STROKE,
 }
 
 /** `android.graphics.Paint.Cap` ordinals as written by `PaintBundle.setStrokeCap`. */
-enum class StrokeCapKind {
+public enum class StrokeCapKind {
     BUTT,
     ROUND,
     SQUARE,
 }
 
 /** `android.graphics.Paint.Join` ordinals as written by `PaintBundle.setStrokeJoin`. */
-enum class StrokeJoinKind {
+public enum class StrokeJoinKind {
     MITER,
     ROUND,
     BEVEL,
 }
 
 /** `PaintBundle.FONT_TYPE_*` ordinals as written by `PaintBundle.setTextStyle`. */
-enum class FontFamilyKind {
+public enum class FontFamilyKind {
     DEFAULT,
     SANS_SERIF,
     SERIF,
@@ -75,11 +75,11 @@ enum class FontFamilyKind {
  * @property stops Optional per-color positions in `0..1`; null means evenly spaced.
  * @property tileMode `android.graphics.Shader.TileMode` ordinal: 0 clamp, 1 repeat, 2 mirror.
  */
-sealed interface GradientSpec {
-    val colors: List<Color>
-    val stops: List<Float>?
+public sealed interface GradientSpec {
+    public val colors: List<Color>
+    public val stops: List<Float>?
 
-    data class Linear(
+    public data class Linear(
         override val colors: List<Color>,
         override val stops: List<Float>?,
         val startX: Float, val startY: Float,
@@ -87,7 +87,7 @@ sealed interface GradientSpec {
         val tileMode: Int,
     ) : GradientSpec
 
-    data class Radial(
+    public data class Radial(
         override val colors: List<Color>,
         override val stops: List<Float>?,
         val centerX: Float, val centerY: Float,
@@ -95,7 +95,7 @@ sealed interface GradientSpec {
         val tileMode: Int,
     ) : GradientSpec
 
-    data class Sweep(
+    public data class Sweep(
         override val colors: List<Color>,
         override val stops: List<Float>?,
         val centerX: Float, val centerY: Float,
@@ -107,17 +107,17 @@ sealed interface GradientSpec {
  * subset of `androidx.compose.ui.graphics.Path` construction calls the renderer needs to support:
  * move, line, quadratic and cubic Bézier, and close.
  */
-sealed interface PathCommand {
-    data class MoveTo(val x: Float, val y: Float) : PathCommand
-    data class LineTo(val x: Float, val y: Float) : PathCommand
-    data class QuadraticTo(
+public sealed interface PathCommand {
+    public data class MoveTo(val x: Float, val y: Float) : PathCommand
+    public data class LineTo(val x: Float, val y: Float) : PathCommand
+    public data class QuadraticTo(
         val x1: Float, val y1: Float,
         val x2: Float, val y2: Float,
     ) : PathCommand
-    data class CubicTo(
+    public data class CubicTo(
         val x1: Float, val y1: Float,
         val x2: Float, val y2: Float,
         val x3: Float, val y3: Float,
     ) : PathCommand
-    data object Close : PathCommand
+    public data object Close : PathCommand
 }

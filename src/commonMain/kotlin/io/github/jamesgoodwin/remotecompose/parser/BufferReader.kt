@@ -4,7 +4,7 @@ package io.github.jamesgoodwin.remotecompose.parser
  * Thrown when a `.rc` byte stream cannot be interpreted: the reader ran past the end of the
  * buffer, or a record referenced a resource that was never defined.
  */
-class RemoteComposeParseException(message: String) : Exception(message)
+internal class RemoteComposeParseException(message: String) : Exception(message)
 
 /**
  * Sequential, forward-only cursor over a `.rc` payload, matching `WireBuffer` in `remote-core`:
@@ -14,7 +14,7 @@ class RemoteComposeParseException(message: String) : Exception(message)
  * Reading past the end of the buffer throws [RemoteComposeParseException] rather than an
  * unchecked index exception.
  */
-class BufferReader(private val buffer: ByteArray) {
+internal class BufferReader(private val buffer: ByteArray) {
 
     /** Current absolute offset into the buffer, in bytes. */
     var position: Int = 0

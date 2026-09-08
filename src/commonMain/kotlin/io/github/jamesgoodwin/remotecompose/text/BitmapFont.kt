@@ -5,7 +5,7 @@ package io.github.jamesgoodwin.remotecompose.text
  * the margins that space it from its neighbours. `BitmapFontData.Glyph` (remote-core
  * 1.0.0-alpha18); a [bitmapId] of -1 is a glyph that only advances, such as a space.
  */
-data class BitmapGlyph(
+internal data class BitmapGlyph(
     val chars: String,
     val bitmapId: Int,
     val marginLeft: Int,
@@ -17,7 +17,7 @@ data class BitmapGlyph(
 )
 
 /** Where one glyph of a laid-out run sits: its bitmap fills `(left, top, right, bottom)`. */
-data class BitmapGlyphPlacement(
+internal data class BitmapGlyphPlacement(
     val glyph: BitmapGlyph,
     val left: Float,
     val top: Float,
@@ -29,7 +29,7 @@ data class BitmapGlyphPlacement(
  * A laid-out run: where each drawn glyph goes, and where the run ends. Glyphs that only advance
  * carry no placement but still move [width] along.
  */
-data class BitmapTextRun(val placements: List<BitmapGlyphPlacement>, val width: Float)
+internal data class BitmapTextRun(val placements: List<BitmapGlyphPlacement>, val width: Float)
 
 /**
  * A font whose glyphs are bitmaps rather than outlines: `BitmapFontData` (remote-core
@@ -38,7 +38,7 @@ data class BitmapTextRun(val placements: List<BitmapGlyphPlacement>, val width: 
  * Glyphs are matched by prefix, shortest first, exactly as `BitmapFontData` sorts its array
  * before `lookupGlyph` scans it — so where a font has both "a" and "ab", "a" wins.
  */
-class BitmapFont(glyphs: List<BitmapGlyph>, val kerning: Map<String, Int> = emptyMap()) {
+internal class BitmapFont(glyphs: List<BitmapGlyph>, val kerning: Map<String, Int> = emptyMap()) {
 
     val glyphs: List<BitmapGlyph> = glyphs.sortedBy { it.chars.length }
 

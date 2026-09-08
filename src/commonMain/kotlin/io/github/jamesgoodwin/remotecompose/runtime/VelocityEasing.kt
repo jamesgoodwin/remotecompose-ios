@@ -16,7 +16,7 @@ import kotlin.math.sqrt
  * The real class also adapts the profile to a supplied `Easing`. `TouchExpression.touchUp` passes
  * none, which is the only caller here, so that path is not transcribed.
  */
-class VelocityEasing {
+internal class VelocityEasing {
 
     /**
      * `VelocityEasing.Stage`: velocity going from one value to another in a straight line.

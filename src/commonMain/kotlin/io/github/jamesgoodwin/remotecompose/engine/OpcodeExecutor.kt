@@ -53,14 +53,14 @@ import kotlin.math.roundToInt
  * that single draw call instead of aborting the rest of the stream — the executor never lets an
  * exception propagate out of [render].
  */
-object OpcodeExecutor {
+public object OpcodeExecutor {
 
     /**
      * Renders [opcodes] into [drawScope], resolving pool references (strings, bitmaps, variables)
      * against [context]'s document and recording `OP_ACTION_CLICK` targets into
      * [RenderContext.interactiveRegions] for the composable layer to hit-test later.
      */
-    fun render(drawScope: DrawScope, opcodes: List<Opcode>, context: RenderContext) {
+    public fun render(drawScope: DrawScope, opcodes: List<Opcode>, context: RenderContext) {
         context.beginFrame()
 
         val canvas = drawScope.drawContext.canvas

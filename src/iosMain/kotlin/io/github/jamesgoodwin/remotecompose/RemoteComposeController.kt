@@ -32,7 +32,7 @@ import platform.posix.memcpy
  * Not thread-safe, and not meant to be: make it, configure it and read from it on the main thread,
  * which is where UIKit hands you a view controller anyway.
  */
-class RemoteComposeController(data: NSData) {
+public class RemoteComposeController(data: NSData) {
 
     private val bytes: ByteArray = data.toByteArray()
 
@@ -51,7 +51,7 @@ class RemoteComposeController(data: NSData) {
     private val pending = mutableListOf<Pair<String, Any>>()
 
     /** Which of the document's two palettes to paint. Changing it repaints. */
-    var dark: Boolean by mutableStateOf(false)
+    public var dark: Boolean by mutableStateOf(false)
 
     /**
      * `HOST_ACTION`: the id the document declared, and the URL it carried, if any.
@@ -59,20 +59,20 @@ class RemoteComposeController(data: NSData) {
      * Objective-C blocks cannot be `sealed`, so the [RemoteAction] hierarchy is flattened to its
      * fields here rather than exported as a class Swift would have to switch over.
      */
-    var onAction: ((actionId: Int, targetUrl: String?) -> Unit)? = null
+    public var onAction: ((actionId: Int, targetUrl: String?) -> Unit)? = null
 
     /** `HOST_NAMED_ACTION`: a name and one value — a Float, Int, String, FloatArray, or null. */
-    var onNamedAction: ((name: String, value: Any?) -> Unit)? = null
+    public var onNamedAction: ((name: String, value: Any?) -> Unit)? = null
 
     /** The names this document expects a host to fill in, empty until the first frame is drawn. */
-    val namedValues: List<String> get() = document?.namedValues?.keys?.toList() ?: emptyList()
+    public val namedValues: List<String> get() = document?.namedValues?.keys?.toList() ?: emptyList()
 
     /**
      * The view controller that draws this document, sized to whatever it is put inside.
      *
      * Call it once and keep the result; each call makes a new controller with its own frame loop.
      */
-    fun makeViewController(): UIViewController {
+    public fun makeViewController(): UIViewController {
         warnIfFrameRateIsCapped()
         return ComposeUIViewController(
             // Compose Multiplatform otherwise throws at launch when the *host app's* Info.plist
@@ -125,19 +125,19 @@ class RemoteComposeController(data: NSData) {
      * value that has nowhere to go finds out. Before the document is parsed there is nothing to
      * check against, so the value is queued and this returns true.
      */
-    fun setNamedFloat(name: String, value: Float): Boolean = set(name, value)
+    public fun setNamedFloat(name: String, value: Float): Boolean = set(name, value)
 
     /** `setNamedIntegerOverride`; see [setNamedFloat] for the return. */
-    fun setNamedInteger(name: String, value: Int): Boolean = set(name, value)
+    public fun setNamedInteger(name: String, value: Int): Boolean = set(name, value)
 
     /** `setNamedLongOverride`; see [setNamedFloat] for the return. */
-    fun setNamedLong(name: String, value: Long): Boolean = set(name, value)
+    public fun setNamedLong(name: String, value: Long): Boolean = set(name, value)
 
     /** `setNamedColorOverride`, as 0xAARRGGBB; see [setNamedFloat] for the return. */
-    fun setNamedColor(name: String, argb: Int): Boolean = set(name, RemoteColor(argb))
+    public fun setNamedColor(name: String, argb: Int): Boolean = set(name, RemoteColor(argb))
 
     /** `setNamedStringOverride`; see [setNamedFloat] for the return. */
-    fun setNamedString(name: String, value: String): Boolean = set(name, value)
+    public fun setNamedString(name: String, value: String): Boolean = set(name, value)
 
     private fun set(name: String, value: Any): Boolean {
         val loaded = document ?: run {

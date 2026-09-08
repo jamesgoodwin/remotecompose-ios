@@ -14,7 +14,7 @@ import kotlin.math.hypot
  * The real class fits any number of dimensions at once; the easing path is the only caller here
  * and always fits one, so this carries a single value per point.
  */
-class MonotonicSpline(private val t: DoubleArray, private val y: DoubleArray) {
+internal class MonotonicSpline(private val t: DoubleArray, private val y: DoubleArray) {
 
     private val tangent = DoubleArray(t.size)
 

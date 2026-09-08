@@ -44,6 +44,12 @@ it.
 the test suite runs on all three — but it has not been used in anything that ships and its API is
 not stable.
 
+The API is at least deliberate: the library builds with Kotlin's `explicitApi()`, so every public
+declaration says so and says its type, and everything that is not API is `internal`. That is 29
+public declarations, and it is what the framework exports — 306 Objective-C interfaces rather than
+the 556 it exported when nothing had ever been asked whether it was API. Most of what is left is
+Compose's own types, which come with having a Compose-shaped API.
+
 154 of the format's 172 opcodes are decoded, of which 132 are acted on in full. `docs/OPCODES.md`
 lists every one and says which of three things it is:
 

@@ -41,7 +41,7 @@ import kotlin.system.exitProcess
  * [ImageDiff.locateDocument], which relies on the demo host drawing it opaque and centred on the
  * flat backdrop that host uses. Exits non-zero if any comparison fails.
  */
-fun main(args: Array<String>) {
+public fun main(args: Array<String>) {
     val positional = mutableListOf<String>()
     var outDir = File("build/pixel-harness")
     var textFraction = ImageDiff.DEFAULT_TEXT_FRACTION

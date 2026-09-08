@@ -30,6 +30,11 @@ android {
 }
 
 kotlin {
+    // Every public declaration must say so, and say its type. The framework exported 532
+    // Objective-C interfaces because nothing had ever been asked whether it was API; this is what
+    // stops that happening again, and it only applies to main source sets, not tests.
+    explicitApi()
+
     jvm("desktop") {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {

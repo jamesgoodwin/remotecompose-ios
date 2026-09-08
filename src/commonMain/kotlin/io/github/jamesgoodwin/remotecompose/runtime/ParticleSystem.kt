@@ -6,7 +6,7 @@ package io.github.jamesgoodwin.remotecompose.runtime
  * before its equations run and before its body draws, so the body reads whichever particle is
  * current.
  */
-class ParticleSystem(val varIds: List<Int>, particleCount: Int) {
+internal class ParticleSystem(val varIds: List<Int>, particleCount: Int) {
 
     val values: Array<FloatArray> = Array(particleCount) { FloatArray(varIds.size) }
 

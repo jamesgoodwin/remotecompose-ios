@@ -62,7 +62,7 @@ import io.github.jamesgoodwin.remotecompose.runtime.RemoteContext
  *   fails, nothing is emitted.
  */
 @Composable
-fun RemoteComposeCanvas(
+public fun RemoteComposeCanvas(
     bytes: ByteArray,
     modifier: Modifier = Modifier,
     dark: Boolean = false,
@@ -185,7 +185,7 @@ internal fun Modifier.documentGestures(
  * with the wall clock. A static document is evaluated once and never again.
  */
 @Composable
-fun rememberDocumentFrames(loaded: RemoteComposeDocument): State<RemoteDocument> {
+public fun rememberDocumentFrames(loaded: RemoteComposeDocument): State<RemoteDocument> {
     val frame = remember(loaded) { mutableStateOf(loaded.frame(currentTimeMillis())) }
     LaunchedEffect(loaded) {
         var drawnAt = currentTimeMillis()

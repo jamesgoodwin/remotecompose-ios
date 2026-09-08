@@ -11,7 +11,7 @@ package io.github.jamesgoodwin.remotecompose.runtime
  * The calendar is the usual days-to-civil conversion: shift the era to start in March so that the
  * leap day falls at the end of a year, which makes the month lengths a straight line.
  */
-class TimeSnapshot(val millis: Long) {
+internal class TimeSnapshot(val millis: Long) {
 
     private val days: Long = floorDiv(millis, MILLIS_PER_DAY)
     private val millisIntoDay: Long = millis - days * MILLIS_PER_DAY

@@ -52,7 +52,7 @@ class NamedVariableTest {
     fun theDocumentSaysWhatAHostMayFillIn() {
         val document = loaded()
         assertEquals(setOf("title", "amount", "accent", "count"), document.namedValues.keys)
-        assertEquals(RemoteContext.NAMED_COLOR, document.namedValues.getValue("accent").type)
+        assertEquals(NamedValueKind.COLOR, document.namedValues.getValue("accent"))
     }
 
     @Test
@@ -91,7 +91,7 @@ class NamedVariableTest {
         // what lets a document declare more inputs than it happens to show.
         val document = loaded()
         assertTrue(document.setNamedInteger("count", 12))
-        assertEquals(12, document.context.ints[document.namedValues.getValue("count").id])
+        assertEquals(12, document.context.ints[document.namedValueEntries.getValue("count").id])
     }
 
     @Test

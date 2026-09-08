@@ -7,7 +7,7 @@ import androidx.compose.ui.graphics.ImageBitmap
  * Decoding to an [ImageBitmap] is deferred until first access via [get] and memoized, since a
  * document may declare more images than a given draw pass actually uses.
  */
-class BitmapPool private constructor(private val rawEntries: Map<Int, ByteArray>) {
+internal class BitmapPool private constructor(private val rawEntries: Map<Int, ByteArray>) {
 
     private val decodedCache = mutableMapOf<Int, ImageBitmap?>()
 

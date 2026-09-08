@@ -18,7 +18,7 @@ import io.github.jamesgoodwin.remotecompose.text.TextMetricsProvider
  * The Compose [TextStyle] for a paint, at an explicit [fontSize]; callers pick the unit that
  * makes the result exactly `paint.textSize` document pixels in their own density.
  */
-fun PaintStyle.toTextStyle(fontSize: TextUnit, brush: Brush? = null): TextStyle {
+internal fun PaintStyle.toTextStyle(fontSize: TextUnit, brush: Brush? = null): TextStyle {
     val weight = FontWeight(fontWeight.coerceIn(1, 1000))
     val fontStyle = if (fontItalic) FontStyle.Italic else FontStyle.Normal
     val family = when (fontFamily) {
@@ -38,7 +38,7 @@ fun PaintStyle.toTextStyle(fontSize: TextUnit, brush: Brush? = null): TextStyle 
  * Real font metrics through a Compose [TextMeasurer]. Measures at a 1:1 density so `sp` equals
  * document pixels, which is the space every opcode coordinate lives in.
  */
-class ComposeTextMetrics(private val textMeasurer: TextMeasurer) : TextMetricsProvider {
+public class ComposeTextMetrics(private val textMeasurer: TextMeasurer) : TextMetricsProvider {
     private val unitDensity = Density(density = 1f, fontScale = 1f)
 
     override fun measure(text: String, paint: PaintStyle): TextMetrics {

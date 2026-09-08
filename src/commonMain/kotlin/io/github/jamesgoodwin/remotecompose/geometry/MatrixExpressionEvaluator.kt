@@ -10,7 +10,7 @@ package io.github.jamesgoodwin.remotecompose.geometry
  * stack. `IDENTITY` pushes a new matrix, `MUL` multiplies the top two into one, and the
  * expression's value is the bottom matrix.
  */
-object MatrixExpressionEvaluator {
+internal object MatrixExpressionEvaluator {
 
     const val OFFSET = 3276800
     const val LAST_OP = 3276854

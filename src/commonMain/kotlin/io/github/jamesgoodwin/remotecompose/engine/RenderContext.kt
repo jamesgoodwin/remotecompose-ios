@@ -32,9 +32,9 @@ import io.github.jamesgoodwin.remotecompose.model.RemoteDocument
  *   come from `rememberTextMeasurer()` in the composable layer — constructing one directly is
  *   expensive and not itself Composable.
  */
-class RenderContext(
-    var document: RemoteDocument,
-    val textMeasurer: TextMeasurer,
+public class RenderContext(
+    public var document: RemoteDocument,
+    public val textMeasurer: TextMeasurer,
 ) {
     private val _interactiveRegions = mutableListOf<InteractiveRegion>()
 
@@ -49,15 +49,15 @@ class RenderContext(
      * via [beginFrame] + internal appends, since a document's action targets can move opcode-to-
      * opcode as bound variables change.
      */
-    val interactiveRegions: List<InteractiveRegion> get() = _interactiveRegions
+    public val interactiveRegions: List<InteractiveRegion> get() = _interactiveRegions
 
     /** Clears [interactiveRegions] ahead of a new render pass. Called by [OpcodeExecutor.render]. */
-    fun beginFrame() {
+    public fun beginFrame() {
         _interactiveRegions.clear()
     }
 
     /** Appends a hit-testable region. Called by [OpcodeExecutor] while decoding `OP_ACTION_CLICK`. */
-    fun recordInteractiveRegion(region: InteractiveRegion) {
+    public fun recordInteractiveRegion(region: InteractiveRegion) {
         _interactiveRegions += region
     }
 
@@ -71,7 +71,7 @@ class RenderContext(
      * itself is done unfiltered at one to one, where there is nothing to interpolate. Returns
      * null for an empty or out-of-bounds region, which draws nothing.
      */
-    fun croppedBitmap(id: Int, bitmap: ImageBitmap, offset: IntOffset, size: IntSize): ImageBitmap? {
+    public fun croppedBitmap(id: Int, bitmap: ImageBitmap, offset: IntOffset, size: IntSize): ImageBitmap? {
         if (size.width <= 0 || size.height <= 0) return null
         if (offset.x < 0 || offset.y < 0) return null
         if (offset.x + size.width > bitmap.width || offset.y + size.height > bitmap.height) return null
@@ -103,7 +103,7 @@ private data class CropKey(val id: Int, val x: Int, val y: Int, val width: Int, 
  * @property targetUrl Resolved string-pool value for the opcode's target URL, or `null` if the
  *   opcode used the "no URL" sentinel.
  */
-data class InteractiveRegion(
+public data class InteractiveRegion(
     val bounds: Rect,
     val actionId: Int,
     val targetUrl: String?,

@@ -15,10 +15,10 @@ import io.github.jamesgoodwin.remotecompose.text.TextMetricsProvider
  * [frame] re-evaluates the time-dependent operations and flattens the result, and the gesture
  * entry points run the action lists the components declare.
  */
-class RemoteComposeDocument internal constructor(
-    val header: Header,
-    val operations: List<Operation>,
-    val context: RemoteContext,
+public class RemoteComposeDocument internal constructor(
+    public val header: Header,
+    internal val operations: List<Operation>,
+    internal val context: RemoteContext,
     private val textMetrics: TextMetricsProvider,
 ) {
     /** Decoded lazily after the first frame has collected every `DATA_BITMAP`. */
@@ -27,7 +27,7 @@ class RemoteComposeDocument internal constructor(
     private val touchExpressions: List<Operation.TouchExpression> = operations.filterIsInstance<Operation.TouchExpression>()
 
     /** Hit rectangles of the most recent [frame], in document coordinates and in paint order. */
-    var hitRegions: List<HitRegion> = emptyList()
+    public var hitRegions: List<HitRegion> = emptyList()
         private set
 
     private var rippleTargets: List<io.github.jamesgoodwin.remotecompose.layout.LayoutEngine.RippleTarget> = emptyList()
@@ -36,16 +36,23 @@ class RemoteComposeDocument internal constructor(
      * True after a [frame] that read a time variable, advanced an animation, or followed a
      * gesture that changed a value: the host should schedule another frame.
      */
-    val needsRepaint: Boolean get() = context.needsRepaint
+    public val needsRepaint: Boolean get() = context.needsRepaint
 
     /**
-     * The mode to paint in: [RemoteContext.THEME_LIGHT] or [RemoteContext.THEME_DARK].
+     * Which of the document's two palettes to paint.
      *
-     * A document carries a palette for each, so changing this changes what the next frame draws.
+     * A document carries one for each mode, so changing this changes what the next frame draws.
      * The constants a mode declares were skipped while the other mode was showing, so they are
      * applied again on the frame after a change.
      */
-    var paintTheme: Int
+    public var dark: Boolean
+        get() = paintTheme == RemoteContext.THEME_DARK
+        set(value) {
+            paintTheme = if (value) RemoteContext.THEME_DARK else RemoteContext.THEME_LIGHT
+        }
+
+    /** The mode as the wire format spells it, including [RemoteContext.THEME_UNSPECIFIED]. */
+    internal var paintTheme: Int
         get() = context.paintTheme
         set(value) {
             if (context.paintTheme == value) return
@@ -55,7 +62,7 @@ class RemoteComposeDocument internal constructor(
         }
 
     /** Called with the action id and metadata of every `HOST_ACTION` the document runs. */
-    var onHostAction: ((Int, String) -> Unit)?
+    public var onHostAction: ((Int, String) -> Unit)?
         get() = context.onHostAction
         set(value) { context.onHostAction = value }
 
@@ -63,7 +70,7 @@ class RemoteComposeDocument internal constructor(
      * `HOST_NAMED_ACTION`: an action the document names with a string rather than a number, and
      * which carries one value with it — a Float, Int, String, FloatArray, or null.
      */
-    var onNamedAction: ((String, Any?) -> Unit)?
+    public var onNamedAction: ((String, Any?) -> Unit)?
         get() = context.onNamedAction
         set(value) { context.onNamedAction = value }
 
@@ -72,7 +79,7 @@ class RemoteComposeDocument internal constructor(
      * The first call fixes the document's load time, so passing `0` first and `t` next yields an
      * animation time of `t` milliseconds.
      */
-    fun frame(nowMillis: Long): RemoteDocument {
+    public fun frame(nowMillis: Long): RemoteDocument {
         context.beginFrame(nowMillis)
         val opcodes = RemoteComposeParser.build(operations, context, textMetrics)
         hitRegions = RemoteComposeParser.hitRegions
@@ -92,17 +99,17 @@ class RemoteComposeDocument internal constructor(
      * A `WAKE_IN` is how a document that changes rarely says so, instead of being drawn at every
      * frame. Reading the answer records it, so a later `WAKE_IN` can only bring the wake forward.
      */
-    fun nextRepaintDelayMillis(): Int = context.takeRepaintDelayMillis()
+    public fun nextRepaintDelayMillis(): Int = context.takeRepaintDelayMillis()
 
     /**
      * `CoreDocument.onClick`: runs the click actions of the topmost component containing
      * ([x], [y]) in document coordinates. Returns true when a component handled the tap, so the
      * host can decide what to do with an unhandled one.
      */
-    fun click(x: Float, y: Float): Boolean = dispatch(ActionTrigger.CLICK, x, y)
+    public fun click(x: Float, y: Float): Boolean = dispatch(ActionTrigger.CLICK, x, y)
 
     /** `CoreDocument.touchDown`: arms every touch expression and runs any touch-down actions. */
-    fun touchDown(x: Float, y: Float): Boolean {
+    public fun touchDown(x: Float, y: Float): Boolean {
         context.touchDown(x, y, touchExpressions)
         startRipple(x, y)
         return dispatch(ActionTrigger.TOUCH_DOWN, x, y)
@@ -121,7 +128,7 @@ class RemoteComposeDocument internal constructor(
     }
 
     /** `CoreDocument.touchDrag`: moves the pointer variables so touch expressions follow it. */
-    fun touchDrag(x: Float, y: Float) {
+    public fun touchDrag(x: Float, y: Float) {
         context.touchDrag(x, y)
     }
 
@@ -133,13 +140,13 @@ class RemoteComposeDocument internal constructor(
      * under its own momentum and glides to a stop — so a caller with no velocity to report
      * leaves them at zero and the value simply stays where it was put.
      */
-    fun touchUp(x: Float, y: Float, velocityX: Float = 0f, velocityY: Float = 0f): Boolean {
+    public fun touchUp(x: Float, y: Float, velocityX: Float = 0f, velocityY: Float = 0f): Boolean {
         context.touchUp(velocityX, velocityY, touchExpressions)
         return dispatch(ActionTrigger.TOUCH_UP, x, y)
     }
 
     /** `CoreDocument.touchCancel`: as touchUp, but nothing carries on. */
-    fun touchCancel(x: Float, y: Float): Boolean {
+    public fun touchCancel(x: Float, y: Float): Boolean {
         context.touchUp(0f, 0f, touchExpressions)
         return dispatch(ActionTrigger.TOUCH_CANCEL, x, y)
     }
@@ -156,7 +163,11 @@ class RemoteComposeDocument internal constructor(
      * The names this document gave its values, and what kind each is: `NAMED_VARIABLE` is how a
      * document says which of its values a host is expected to fill in.
      */
-    val namedValues: Map<String, RemoteContext.NamedValue> get() = context.namedValues
+    public val namedValues: Map<String, NamedValueKind>
+        get() = context.namedValues.mapValues { (_, value) -> NamedValueKind.of(value.type) }
+
+    /** The same names, with the document ids behind them, for the code that resolves them. */
+    internal val namedValueEntries: Map<String, RemoteContext.NamedValue> get() = context.namedValues
 
     /**
      * `setNamedFloatOverride`: puts [value] into the float the document named [name].
@@ -165,23 +176,23 @@ class RemoteComposeDocument internal constructor(
      * pushing a value it has no home for finds out rather than being ignored. The next frame
      * shows it, as any other value change does.
      */
-    fun setNamedFloat(name: String, value: Float): Boolean =
+    public fun setNamedFloat(name: String, value: Float): Boolean =
         context.setNamedValue(name, RemoteContext.NAMED_FLOAT) { context.overrideFloat(it, value) }
 
     /** `setNamedIntegerOverride`. */
-    fun setNamedInteger(name: String, value: Int): Boolean =
+    public fun setNamedInteger(name: String, value: Int): Boolean =
         context.setNamedValue(name, RemoteContext.NAMED_INT) { context.overrideInteger(it, value) }
 
     /** `setNamedColorOverride`; the value is ARGB, as every colour on the wire is. */
-    fun setNamedColor(name: String, argb: Int): Boolean =
+    public fun setNamedColor(name: String, argb: Int): Boolean =
         context.setNamedValue(name, RemoteContext.NAMED_COLOR) { context.overrideColorValue(it, argb) }
 
     /** `setNamedLong`. */
-    fun setNamedLong(name: String, value: Long): Boolean =
+    public fun setNamedLong(name: String, value: Long): Boolean =
         context.setNamedValue(name, RemoteContext.NAMED_LONG) { context.overrideLong(it, value) }
 
     /** `setNamedStringOverride`. */
-    fun setNamedString(name: String, value: String): Boolean =
+    public fun setNamedString(name: String, value: String): Boolean =
         context.setNamedValue(name, RemoteContext.NAMED_STRING) { context.overrideTextValue(it, value) }
 
     private fun run(action: DocumentAction) {

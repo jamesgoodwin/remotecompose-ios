@@ -27,7 +27,7 @@ import kotlin.math.sin
  * component are positioned relative to its padded content origin; painting translates by the
  * component's `(x, y)` and again by its padding, exactly as the real player does.
  */
-class LayoutEngine(private val context: RemoteContext, private val textMetrics: TextMetricsProvider) {
+internal class LayoutEngine(private val context: RemoteContext, private val textMetrics: TextMetricsProvider) {
 
     private class Size(var width: Float = 0f, var height: Float = 0f)
 

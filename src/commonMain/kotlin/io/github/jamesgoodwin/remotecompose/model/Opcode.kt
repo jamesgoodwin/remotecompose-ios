@@ -8,15 +8,15 @@ package io.github.jamesgoodwin.remotecompose.model
  * resolved values, since resolution requires the pools on the parsed [RemoteDocument] alongside
  * the opcode list — resolving eagerly here would duplicate that data per opcode.
  */
-sealed interface Opcode {
+public sealed interface Opcode {
 
     // --- Matrix & coordinate transforms (§4.1) ---
 
     /** Pushes the current transform/clip state; paired with [MatrixRestore]. */
-    data object MatrixSave : Opcode
+    public data object MatrixSave : Opcode
 
     /** Pops back to the state at the most recent unmatched [MatrixSave] *or* [SaveLayerAlpha]. */
-    data object MatrixRestore : Opcode
+    public data object MatrixRestore : Opcode
 
     /**
      * Pushes a new compositing layer with overall opacity [alpha] (`0f`..`1f`), so everything
@@ -25,65 +25,65 @@ sealed interface Opcode {
      * Uses a generous sentinel layer size rather than this container's real bounds, since this
      * renderer has no measure/layout pass to compute those from.
      */
-    data class SaveLayerAlpha(val alpha: Float) : Opcode
+    public data class SaveLayerAlpha(val alpha: Float) : Opcode
 
     /** Shifts the local coordinate origin by ([dx], [dy]), in DP. */
-    data class Translate(val dx: Float, val dy: Float) : Opcode
+    public data class Translate(val dx: Float, val dy: Float) : Opcode
 
     /** Scales the coordinate space by ([sx], [sy]) about ([pivotX], [pivotY]). */
-    data class Scale(val sx: Float, val sy: Float, val pivotX: Float, val pivotY: Float) : Opcode
+    public data class Scale(val sx: Float, val sy: Float, val pivotX: Float, val pivotY: Float) : Opcode
 
     /** Rotates the coordinate space by [degrees] about ([pivotX], [pivotY]). */
-    data class Rotate(val degrees: Float, val pivotX: Float, val pivotY: Float) : Opcode
+    public data class Rotate(val degrees: Float, val pivotX: Float, val pivotY: Float) : Opcode
 
     /**
      * Shears the coordinate space: `x' = x + skewX*y`, `y' = skewY*x + y` — the same convention
      * `android.graphics.Matrix.setSkew(kx, ky)` uses. Unlike [Scale]/[Rotate], the real
      * `MatrixSkew` operation carries no pivot field at all.
      */
-    data class Skew(val skewX: Float, val skewY: Float) : Opcode
+    public data class Skew(val skewX: Float, val skewY: Float) : Opcode
 
     /** Intersects the current clip with an axis-aligned rectangle. */
-    data class ClipRect(val left: Float, val top: Float, val right: Float, val bottom: Float) : Opcode
+    public data class ClipRect(val left: Float, val top: Float, val right: Float, val bottom: Float) : Opcode
 
     /** Intersects the current clip with an arbitrary path, reconstructed from [commands]. */
-    data class ClipPath(val commands: List<PathCommand>) : Opcode
+    public data class ClipPath(val commands: List<PathCommand>) : Opcode
 
     // --- Draw instructions (§4.2) ---
 
     /** Draws an axis-aligned rectangle. */
-    data class DrawRect(
+    public data class DrawRect(
         val left: Float, val top: Float, val right: Float, val bottom: Float,
         val paint: PaintStyle,
     ) : Opcode
 
     /** Draws a rectangle with elliptical corners of radius ([radiusX], [radiusY]). */
-    data class DrawRoundRect(
+    public data class DrawRoundRect(
         val left: Float, val top: Float, val right: Float, val bottom: Float,
         val radiusX: Float, val radiusY: Float,
         val paint: PaintStyle,
     ) : Opcode
 
     /** Draws a circle centered at ([centerX], [centerY]) with the given [radius]. */
-    data class DrawCircle(
+    public data class DrawCircle(
         val centerX: Float, val centerY: Float, val radius: Float,
         val paint: PaintStyle,
     ) : Opcode
 
     /** Draws an arbitrary path reconstructed from [commands]. */
-    data class DrawPath(
+    public data class DrawPath(
         val commands: List<PathCommand>,
         val paint: PaintStyle,
     ) : Opcode
 
     /** Draws a straight line segment from `(x1, y1)` to `(x2, y2)`. */
-    data class DrawLine(
+    public data class DrawLine(
         val x1: Float, val y1: Float, val x2: Float, val y2: Float,
         val paint: PaintStyle,
     ) : Opcode
 
     /** Draws an ellipse inscribed in the rect `(left, top, right, bottom)`. */
-    data class DrawOval(
+    public data class DrawOval(
         val left: Float, val top: Float, val right: Float, val bottom: Float,
         val paint: PaintStyle,
     ) : Opcode
@@ -94,7 +94,7 @@ sealed interface Opcode {
      * arc is closed back to the ellipse's center (a pie/sector slice); when false it's just the
      * curved stroke/fill between the two arc endpoints.
      */
-    data class DrawArc(
+    public data class DrawArc(
         val left: Float, val top: Float, val right: Float, val bottom: Float,
         val startAngleDegrees: Float, val sweepAngleDegrees: Float,
         val useCenter: Boolean,
@@ -120,7 +120,7 @@ sealed interface Opcode {
      * @property baselineRelative `DrawTextAnchored.BASELINE_RELATIVE` flag: the vertical pan
      *   measures from the box's own center instead of from the baseline.
      */
-    data class DrawText(
+    public data class DrawText(
         val stringIndex: Int,
         val x: Float,
         val y: Float,
@@ -139,7 +139,7 @@ sealed interface Opcode {
      * draws the whole source image), only that sub-rectangle of the source bitmap is sampled,
      * still scaled/positioned into the same destination rect.
      */
-    data class DrawBitmap(
+    public data class DrawBitmap(
         val bitmapIndex: Int,
         val left: Float, val top: Float, val right: Float, val bottom: Float,
         val srcLeft: Float? = null, val srcTop: Float? = null,
@@ -154,7 +154,7 @@ sealed interface Opcode {
      * [RemoteAction.Click] on hit-test is the responsibility of the composable integration layer
      * (Phase 3), not the parser.
      */
-    data class ActionClick(
+    public data class ActionClick(
         val actionId: Int,
         val targetUrlStringIndex: Int,
         val left: Float, val top: Float, val right: Float, val bottom: Float,

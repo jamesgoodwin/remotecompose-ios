@@ -33,7 +33,7 @@ import java.io.File
  *   clicked in order before the frame is rendered, which is how an interactive document's later
  *   states get screenshotted.
  */
-fun main(args: Array<String>) {
+public fun main(args: Array<String>) {
     val inputPath = args.getOrElse(0) { "tools/rc-writer/sample.rc" }
     val outputPath = args.getOrElse(1) { "real-payload-render.png" }
     val bytes = File(inputPath).readBytes()

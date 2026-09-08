@@ -8,7 +8,7 @@ import kotlin.math.sqrt
  * flattening curves to a polyline, total length, and the point and tangent at a distance along
  * it. Used by `MATRIX_FROM_PATH`, `DRAW_TWEEN_PATH`'s trim, and text drawn on a path.
  */
-object PathGeometry {
+internal object PathGeometry {
 
     /** Samples per Bézier segment when flattening; the standard trade of accuracy for simplicity. */
     private const val CURVE_SAMPLES = 16

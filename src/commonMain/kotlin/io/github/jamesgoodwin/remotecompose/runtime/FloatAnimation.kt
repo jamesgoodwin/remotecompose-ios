@@ -4,14 +4,14 @@ import kotlin.math.pow
 import kotlin.math.sin
 
 /** `Easing`: a curve from 0 to 1, which is all any of its subclasses offer the callers here. */
-interface Easing {
+internal interface Easing {
     fun get(fraction: Float): Float
 }
 
 /**
  * `BounceCurve`: the value drops in and settles over four shortening bounces.
  */
-class BounceCurve : Easing {
+internal class BounceCurve : Easing {
     override fun get(fraction: Float): Float {
         var t = fraction
         if (t < 0f) return 0f
@@ -36,7 +36,7 @@ class BounceCurve : Easing {
  * `ElasticOutCurve`: overshoots and oscillates into place, the oscillation decaying by `2^-10t`.
  * `2.0943952` is the `C4` the real class names, which is two thirds of pi.
  */
-class ElasticOutCurve : Easing {
+internal class ElasticOutCurve : Easing {
     override fun get(fraction: Float): Float {
         if (fraction <= 0f) return 0f
         if (fraction >= 1f) return 1f
@@ -52,7 +52,7 @@ class ElasticOutCurve : Easing {
  * a period above, each copy offset by one in value, so that the spline running through the middle
  * copy meets its neighbours smoothly instead of flattening at the ends.
  */
-class StepCurve(values: FloatArray, offset: Int, length: Int) : Easing {
+internal class StepCurve(values: FloatArray, offset: Int, length: Int) : Easing {
 
     private val spline: MonotonicSpline
 
@@ -87,7 +87,7 @@ class StepCurve(values: FloatArray, offset: Int, length: Int) : Easing {
  * A cubic Bézier easing on `(0,0) .. (1,1)` with control points `(x1,y1)`, `(x2,y2)`:
  * `CubicEasing` from remote-core, including its preset curves and its bisection lookup.
  */
-class CubicEasing(private val x1: Float, private val y1: Float, private val x2: Float, private val y2: Float) : Easing {
+internal class CubicEasing(private val x1: Float, private val y1: Float, private val x2: Float, private val y2: Float) : Easing {
 
     private fun getX(t: Float): Float {
         val u = 1f - t
@@ -169,7 +169,7 @@ class CubicEasing(private val x1: Float, private val y1: Float, private val x2: 
  * which is what stops a clock hand swinging backwards through the dial at the end of a minute.
  * The directional snap is decoded but not applied.
  */
-class FloatAnimation(description: FloatArray) {
+internal class FloatAnimation(description: FloatArray) {
     val duration: Float
     val type: Int
     var initialValue: Float = Float.NaN

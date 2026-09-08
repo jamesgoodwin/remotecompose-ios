@@ -11,7 +11,7 @@ import kotlin.math.max
  * from the top of the block. [ended] says which lines were ended by the text rather than by
  * running out of room, so justification knows not to stretch them.
  */
-class TextBlock(
+internal class TextBlock(
     val lines: List<String>,
     val lineWidths: List<Float>,
     val ended: List<Boolean>,
@@ -37,7 +37,7 @@ class TextBlock(
  * `_BALANCED` fall back to the greedy break, and hyphenation is not applied — both want a
  * dictionary and a penalty model this renderer has neither of.
  */
-object TextWrapping {
+internal object TextWrapping {
 
     /** `CoreText.OVERFLOW_*`. */
     const val OVERFLOW_CLIP = 1

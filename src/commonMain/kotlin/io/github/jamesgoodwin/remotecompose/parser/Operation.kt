@@ -12,7 +12,7 @@ import io.github.jamesgoodwin.remotecompose.text.BitmapGlyph
  * A `Float` field may carry a NaN-tagged reference into the float pool (`Utils.asNan(id)`)
  * instead of a literal; that is resolved at evaluation time, as the real player does.
  */
-sealed interface Operation {
+internal sealed interface Operation {
 
     // --- Document ---
 

@@ -12,7 +12,7 @@ import io.github.jamesgoodwin.remotecompose.runtime.DocumentAction
  * `DimensionModifierOperation.Type` in ordinal order (the wire int of `MODIFIER_WIDTH` /
  * `MODIFIER_HEIGHT`).
  */
-enum class DimensionType {
+internal enum class DimensionType {
     EXACT, FILL, WRAP, WEIGHT, INTRINSIC_MIN, INTRINSIC_MAX, EXACT_DP, FILL_PARENT_MAX_WIDTH, FILL_PARENT_MAX_HEIGHT;
 
     companion object {
@@ -21,7 +21,7 @@ enum class DimensionType {
 }
 
 /** A width or height modifier plus any `widthIn`/`heightIn` range attached to it. */
-class Dimension(var type: DimensionType = DimensionType.WRAP, var value: Float = Float.NaN) {
+internal class Dimension(var type: DimensionType = DimensionType.WRAP, var value: Float = Float.NaN) {
     /** From `MODIFIER_WIDTH_IN` etc.; `-1` means unset, as `DimensionInModifierOperation` uses. */
     var rangeMin: Float = -1f
     var rangeMax: Float = -1f
@@ -41,7 +41,7 @@ class Dimension(var type: DimensionType = DimensionType.WRAP, var value: Float =
  * every modifier and the content after it, and a decorator's box is the component box minus
  * the paddings that precede it (`ComponentModifiers.layout`).
  */
-sealed class Modifier {
+internal sealed class Modifier {
     class Padding(val left: Float, val top: Float, val right: Float, val bottom: Float) : Modifier()
 
     /** A modifier that paints or clips a box of its own; sized by [LayoutEngine.layoutModifiers]. */
@@ -125,14 +125,14 @@ sealed class Modifier {
 }
 
 /** `Component.Visibility` values. */
-object Visibility {
+internal object Visibility {
     const val GONE = 0
     const val VISIBLE = 1
     const val INVISIBLE = 2
 }
 
 /** `RowLayout`/`ColumnLayout`/`BoxLayout` positioning constants. */
-object Positioning {
+internal object Positioning {
     const val START = 1
     const val CENTER = 2
     const val END = 3
@@ -149,7 +149,7 @@ object Positioning {
  * what it contains ([children]) and, after [LayoutEngine.measure] and [LayoutEngine.layout],
  * where it sits ([x], [y], [width], [height]).
  */
-class LayoutNode(val kind: Kind) {
+internal class LayoutNode(val kind: Kind) {
 
     enum class Kind { ROOT, BOX, FIT_BOX, CANVAS, CUSTOM, COLUMN, ROW, COLLAPSIBLE_COLUMN, COLLAPSIBLE_ROW, FLOW, STATE, TEXT, IMAGE }
 

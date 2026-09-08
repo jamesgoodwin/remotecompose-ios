@@ -8,20 +8,20 @@ import io.github.jamesgoodwin.remotecompose.model.PaintStyle
  * [ascent] above and [descent] below the baseline. Stands in for Android's
  * `Paint.getTextBounds` result `[left, top, right, bottom]` as `[0, -ascent, width, descent]`.
  */
-data class TextMetrics(val width: Float, val ascent: Float, val descent: Float) {
+public data class TextMetrics(val width: Float, val ascent: Float, val descent: Float) {
     val height: Float get() = ascent + descent
 }
 
 /** Measures a string as the given paint would draw it. */
-fun interface TextMetricsProvider {
-    fun measure(text: String, paint: PaintStyle): TextMetrics
+public fun interface TextMetricsProvider {
+    public fun measure(text: String, paint: PaintStyle): TextMetrics
 }
 
 /**
  * A font-free approximation for callers with no text engine at hand (tests, the parser when
  * used headlessly): average glyph advance of 0.55em, ascent 0.9em, descent 0.3em.
  */
-object EstimatedTextMetrics : TextMetricsProvider {
+public object EstimatedTextMetrics : TextMetricsProvider {
     override fun measure(text: String, paint: PaintStyle): TextMetrics {
         val size = paint.textSize
         return TextMetrics(width = text.length * size * 0.55f, ascent = size * 0.9f, descent = size * 0.3f)
@@ -34,10 +34,10 @@ object EstimatedTextMetrics : TextMetricsProvider {
  * the measured box. Formulas are those of `DrawTextAnchored.getHorizontalOffset()` and
  * `getVerticalOffset(baselineRelative)` with the bounds substitution documented on [TextMetrics].
  */
-object TextAnchoring {
+internal object TextAnchoring {
 
     /** Top-left corner of the text's box, as `(x, y)`. */
-    fun topLeft(op: Opcode.DrawText, metrics: TextMetrics): Pair<Float, Float> {
+    public fun topLeft(op: Opcode.DrawText, metrics: TextMetrics): Pair<Float, Float> {
         val panX = op.panX
         val panY = op.panY
         // getHorizontalOffset: -(width * (1 + panX) / 2) - bounds[0], with bounds[0] = 0.

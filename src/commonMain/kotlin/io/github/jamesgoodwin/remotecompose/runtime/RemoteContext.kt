@@ -19,7 +19,7 @@ import kotlin.math.abs
  * One context lives as long as its document. [beginFrame] advances time; the parser's per-frame
  * evaluation then re-applies every non-constant operation against it.
  */
-class RemoteContext : FloatCollections {
+internal class RemoteContext : FloatCollections {
     val texts = mutableMapOf<Int, String>()
     val floats = mutableMapOf<Int, Float>()
     val ints = mutableMapOf<Int, Int>()
@@ -34,27 +34,27 @@ class RemoteContext : FloatCollections {
 
     /** `CollectionsAccess.getFloats`: the entries of a collection, for those operators. */
     override fun floats(id: Int): FloatArray? = floatLists[id]
-    val dataMaps = mutableMapOf<Int, List<Operation.DataMapEntry>>()
+    internal val dataMaps = mutableMapOf<Int, List<Operation.DataMapEntry>>()
     val bitmaps = mutableMapOf<Int, ByteArray>()
 
     /** `loadFont`: embedded font files by id. Kept, not drawn with — see `Operation.FontData`. */
     val fonts = mutableMapOf<Int, ByteArray>()
 
     /** `TEXT_STYLE` bundles by id, for a `CORE_TEXT` that points at one. */
-    val textStyles = mutableMapOf<Int, Operation.StyleParameters>()
+    internal val textStyles = mutableMapOf<Int, Operation.StyleParameters>()
 
     /** `DATA_BITMAP` carries the size beside the bytes, which is what `ImageAttribute` reads. */
     val bitmapSizes = mutableMapOf<Int, Pair<Int, Int>>()
-    val bitmapFonts = mutableMapOf<Int, BitmapFont>()
+    internal val bitmapFonts = mutableMapOf<Int, BitmapFont>()
 
     /** Shaders, keyed by id. Decoded only: nothing here paints one. */
-    val shaders = mutableMapOf<Int, Operation.ShaderData>()
+    internal val shaders = mutableMapOf<Int, Operation.ShaderData>()
 
     /** Matrices, keyed by id, as the raw values a `MatrixAccess` hands out. */
     val matrices = mutableMapOf<Int, FloatArray>()
 
     /** `AnimationSpec`s by id, for the components that name one. */
-    val animationSpecs = mutableMapOf<Int, Operation.AnimationSpec>()
+    internal val animationSpecs = mutableMapOf<Int, Operation.AnimationSpec>()
 
     /**
      * The press each rippling component is showing: when it started, and where it was touched
@@ -99,7 +99,7 @@ class RemoteContext : FloatCollections {
     internal val measureAnimations = mutableMapOf<Int, io.github.jamesgoodwin.remotecompose.layout.MeasureAnimation>()
 
     /** Particle variables, keyed by the id of the `ParticlesCreate` that made them. */
-    val particles = mutableMapOf<Int, ParticleSystem>()
+    internal val particles = mutableMapOf<Int, ParticleSystem>()
 
     /**
      * Previous operands of each `ConditionalOperations`, keyed by its index in the operation
@@ -367,7 +367,7 @@ class RemoteContext : FloatCollections {
      * The real operation also carries velocity easing, wrap-around and notch stops
      * (`VelocityEasing`, `STOP_*`); those are decoded but not applied here.
      */
-    fun applyTouchExpression(op: Operation.TouchExpression) {
+    internal fun applyTouchExpression(op: Operation.TouchExpression) {
         val state = touchStates.getOrPut(op.id) { TouchState() }
         val min = resolveFloat(op.min)
         val max = resolveFloat(op.max)
@@ -645,7 +645,7 @@ class RemoteContext : FloatCollections {
      * `FloatExpression.apply`: resolve the expression's variables, evaluate, feed the result
      * through the expression's animation if it has one, and store it under the expression's id.
      */
-    fun applyFloatExpression(op: Operation.FloatExpression) {
+    internal fun applyFloatExpression(op: Operation.FloatExpression) {
         val state = floatExpressions.getOrPut(op) { FloatExpressionState(op) }
         val resolved = FloatArray(op.expression.size) { i ->
             val v = op.expression[i]

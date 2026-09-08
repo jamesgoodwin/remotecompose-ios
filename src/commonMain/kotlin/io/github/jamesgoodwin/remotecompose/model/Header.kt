@@ -10,7 +10,7 @@ package io.github.jamesgoodwin.remotecompose.model
  * @property height Intrinsic document height in document pixels.
  * @property capabilities Bitmask of features the document relies on; not yet interpreted.
  */
-data class Header(
+public data class Header(
     val majorVersion: Int,
     val minorVersion: Int,
     val patchVersion: Int,

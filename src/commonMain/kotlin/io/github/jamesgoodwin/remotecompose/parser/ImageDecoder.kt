@@ -14,4 +14,4 @@ import androidx.compose.ui.graphics.ImageBitmap
  *   [BitmapPool.get] are expected to catch this and degrade gracefully (e.g. skip the image)
  *   rather than let a single malformed asset abort the whole render.
  */
-expect fun decodeImageBitmap(bytes: ByteArray): ImageBitmap
+internal expect fun decodeImageBitmap(bytes: ByteArray): ImageBitmap

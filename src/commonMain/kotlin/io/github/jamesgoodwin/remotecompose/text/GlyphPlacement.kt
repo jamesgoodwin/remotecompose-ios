@@ -19,7 +19,7 @@ import kotlin.math.sin
  * of the pooled string inside its own transform. Kerning is lost, since each glyph is measured
  * on its own; the advance used is the glyph's measured width.
  */
-object GlyphPlacement {
+internal object GlyphPlacement {
 
     private const val RADIANS_TO_DEGREES = 180f / PI.toFloat()
 

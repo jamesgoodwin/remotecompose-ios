@@ -38,12 +38,12 @@ import kotlin.math.withSign
  * evaluate to NaN.
  */
 /** Where the `A_*` operators read a collection from: see `CollectionsAccess`. */
-fun interface FloatCollections {
+internal fun interface FloatCollections {
     /** The entries of the collection [id], or null when there is no such collection. */
     fun floats(id: Int): FloatArray?
 }
 
-object FloatExpressionEvaluator {
+internal object FloatExpressionEvaluator {
 
     const val OFFSET = 3211264
     const val LAST_OP = 3211343

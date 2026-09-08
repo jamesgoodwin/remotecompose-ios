@@ -64,7 +64,7 @@ import kotlin.math.sqrt
  * value-producing one into [RemoteContext]'s pools, collecting the components into a tree,
  * measuring and laying that tree out, and flattening the result into draw opcodes.
  */
-object RemoteComposeParser {
+public object RemoteComposeParser {
 
     /**
      * Decodes [bytes] into a live [RemoteComposeDocument] whose [RemoteComposeDocument.frame]
@@ -75,7 +75,7 @@ object RemoteComposeParser {
      *   is a font-free estimate, adequate for tests and headless use.
      * @throws RemoteComposeParseException on an unhandled opcode or a truncated record.
      */
-    fun load(bytes: ByteArray, textMetrics: TextMetricsProvider = EstimatedTextMetrics): RemoteComposeDocument {
+    public fun load(bytes: ByteArray, textMetrics: TextMetricsProvider = EstimatedTextMetrics): RemoteComposeDocument {
         val operations = OperationReader.readAll(bytes)
         val header = operations.filterIsInstance<Op.Header>().firstOrNull()?.let {
             Header(it.majorVersion, it.minorVersion, it.patchVersion, it.width, it.height, it.capabilities)
@@ -89,7 +89,7 @@ object RemoteComposeParser {
     }
 
     /** A static snapshot: [load] followed by the first frame at time zero. */
-    fun parse(bytes: ByteArray, textMetrics: TextMetricsProvider = EstimatedTextMetrics): RemoteDocument =
+    public fun parse(bytes: ByteArray, textMetrics: TextMetricsProvider = EstimatedTextMetrics): RemoteDocument =
         load(bytes, textMetrics).frame(0L)
 
     /** Hit regions of the tree built by the most recent [build]; read by [RemoteComposeDocument]. */

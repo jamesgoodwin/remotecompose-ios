@@ -18,7 +18,7 @@ import kotlin.math.sqrt
  * then joined by [Kind]. Every segment is emitted as a cubic, exactly as `PathGenerator.Path`
  * does, so a generated path and a hand-written one are the same kind of object downstream.
  */
-object PathGenerator {
+internal object PathGenerator {
 
     /** How the sampled points are joined: `PathGenerator`'s `SPLINE`(0), `MONOTONIC`(2), `LINEAR`(4). */
     enum class Kind { SPLINE, MONOTONIC, LINEAR }

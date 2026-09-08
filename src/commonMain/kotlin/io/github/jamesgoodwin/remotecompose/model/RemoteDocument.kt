@@ -12,9 +12,9 @@ import io.github.jamesgoodwin.remotecompose.parser.BitmapPool
  * @property strings `DATA_TEXT` entries (and every text-producing operation's result) keyed by
  *   the writer's document-wide id. Ids are not contiguous or 0-based.
  */
-data class RemoteDocument(
+public data class RemoteDocument internal constructor(
     val header: Header,
     val strings: Map<Int, String>,
-    val bitmaps: BitmapPool,
+    internal val bitmaps: BitmapPool,
     val opcodes: List<Opcode>,
 )

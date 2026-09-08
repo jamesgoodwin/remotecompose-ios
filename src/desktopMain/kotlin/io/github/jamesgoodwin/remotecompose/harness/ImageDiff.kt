@@ -6,7 +6,7 @@ import java.awt.image.BufferedImage
  * A rectangle of pixels, kept as packed ARGB so a comparison does not go through
  * `BufferedImage.getRGB` per pixel.
  */
-class Raster(val width: Int, val height: Int, val pixels: IntArray) {
+internal class Raster(val width: Int, val height: Int, val pixels: IntArray) {
 
     operator fun get(x: Int, y: Int): Int = pixels[y * width + x]
 
@@ -43,7 +43,7 @@ class Raster(val width: Int, val height: Int, val pixels: IntArray) {
  * since shapes are expected to match; [textMismatches] is judged against a share of [textPixels],
  * because two font rasterizers disagree about glyph pixels no matter how correct both are.
  */
-data class DiffReport(
+internal data class DiffReport(
     val width: Int,
     val height: Int,
     val textPixels: Int,
@@ -87,7 +87,7 @@ data class DiffReport(
  * [textMask] marks are only counted, and judged against a share of the text rather than expected
  * to match.
  */
-object ImageDiff {
+internal object ImageDiff {
 
     /**
      * How far a channel may be off before a pixel counts as different. Measured, not chosen: the
