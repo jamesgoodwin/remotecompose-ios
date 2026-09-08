@@ -1,24 +1,6 @@
 # remotecompose-ios
 
-**Draws a complete, interactive screen that arrived as a file.**
 
-A `.rc` document describes a screen: its layout, its text and images, its animation, and the
-arithmetic behind all of it. Hand one to this library and it measures it, draws it, runs the
-animation and handles the gestures. The app around it does not need to know what is inside, so
-changing the screen means sending a different file instead of shipping a new build.
-
-The documents are not pictures. A watch face follows the clock, a list scrolls under a finger, and
-a panel re-measures itself when a value is set in it, all from expressions the file carries. None
-of it needs a round trip to a server, and none of it is code the host has to run.
-
-The format is RemoteCompose, part of
-[`androidx.compose.remote`](https://developer.android.com/jetpack/androidx/releases/compose-remote),
-whose official player runs on Android. This project reads the same bytes and draws them on iOS,
-shipped as a Swift package.
-
-It builds for Android and desktop too, which is how the iOS output gets checked: the pixel harness
-renders a document on both platforms and compares the results. The Android player is the reference
-implementation, and where the two disagree the assumption is that this one is wrong.
 
 ## Using it
 
