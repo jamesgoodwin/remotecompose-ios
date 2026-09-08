@@ -36,7 +36,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":"))
+    implementation(project(":demo"))
     implementation(platform("androidx.compose:compose-bom:2024.09.00"))
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.compose.ui:ui")

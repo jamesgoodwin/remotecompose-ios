@@ -29,11 +29,11 @@ targets:
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGNING_ALLOWED: NO
-        FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
-        OTHER_LDFLAGS: "$(inherited) -framework RemoteComposeShared"
+        FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../demo/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS: "$(inherited) -framework RemoteComposeDemoShared"
     preBuildScripts:
       - name: Compile Kotlin Framework
         script: |
           cd "$SRCROOT/.."
-          ./gradlew :embedAndSignAppleFrameworkForXcode
+          ./gradlew :demo:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false

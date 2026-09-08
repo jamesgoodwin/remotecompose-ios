@@ -1,5 +1,5 @@
 import SwiftUI
-import RemoteComposeShared
+import RemoteComposeDemoShared
 
 /// Hosts the Kotlin-side `DemoScreen` (real `androidx.compose.remote` payloads, parsed by our own
 /// `RealRemoteComposeParser` and rendered by our own `OpcodeExecutor`) in a UIKit view controller

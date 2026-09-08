@@ -198,8 +198,21 @@ our idea of it.
 ./gradlew :tools:rc-writer:run --args="watch"     # writes tools/rc-writer/watch.rc
 ```
 
-Each fixture is carried into `src/commonMain/.../demo/*Payload.kt` as Base64 so the tests can run
-on every target, and `PayloadDriftTest` fails if the two ever disagree.
+Each fixture is carried into `fixtures/` as Base64 so the tests can run on every target, and
+`PayloadDriftTest` fails if the two ever disagree.
+
+The repository is four Gradle modules, and the split is the one the published framework needs:
+
+| | |
+| --- | --- |
+| `:` | the renderer, and nothing else — this is what the Swift package ships |
+| `:fixtures` | the writer's documents as Base64, for the tests and the demo to share |
+| `:demo` | the demo app's screens, and its own `RemoteComposeDemoShared` framework for `iosApp` |
+| `:androidApp` | the Android host for `:demo` |
+
+`:fixtures` exists because the library's tests and the demo need the same bytes and neither can
+reach the other: putting them in `:demo` would make the library's tests depend on the demo, which
+depends on the library.
 
 ## Tests
 

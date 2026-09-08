@@ -76,12 +76,12 @@ kotlin {
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.ui)
-                implementation(compose.components.resources)
             }
         }
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(project(":fixtures"))
             }
         }
 
@@ -127,12 +127,6 @@ kotlin {
 
         val androidMain by getting {
             dependsOn(commonMain)
-            dependencies {
-                // For `BackHandler`, so the demo's back is the system's own rather than a
-                // control drawn over the page. Compose Multiplatform only gained a common one
-                // in 1.8; this project is on 1.7, so it is an expect/actual.
-                implementation("androidx.activity:activity-compose:1.9.2")
-            }
         }
     }
 }
@@ -162,5 +156,5 @@ tasks.register<JavaExec>("runDesktopDemo") {
     dependsOn("desktopMainClasses")
     val compilation = kotlin.targets.getByName("desktop").compilations.getByName("main")
     classpath = compilation.output.allOutputs + compilation.runtimeDependencyFiles!!
-    mainClass.set("com.example.remotecompose.demo.DemoMainKt")
+    mainClass.set("com.example.remotecompose.harness.RenderMainKt")
 }

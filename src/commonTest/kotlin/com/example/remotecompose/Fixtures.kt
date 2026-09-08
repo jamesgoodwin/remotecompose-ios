@@ -1,28 +1,28 @@
 package com.example.remotecompose
 
-import com.example.remotecompose.demo.ACTIONS_RC_BYTES
-import com.example.remotecompose.demo.ADVANCED_RC_BYTES
-import com.example.remotecompose.demo.ARTICLE_RC_BYTES
-import com.example.remotecompose.demo.ANIM_RC_BYTES
-import com.example.remotecompose.demo.COFFEE_RC_BYTES
-import com.example.remotecompose.demo.FLIGHT_RC_BYTES
-import com.example.remotecompose.demo.LAZYLIST_RC_BYTES
-import com.example.remotecompose.demo.NOTCHES_RC_BYTES
-import com.example.remotecompose.demo.REFERENCED_RC_BYTES
-import com.example.remotecompose.demo.LAYOUT_RC_BYTES
-import com.example.remotecompose.demo.MARQUEE_RC_BYTES
-import com.example.remotecompose.demo.RUNACTION_RC_BYTES
-import com.example.remotecompose.demo.WRAP_RC_BYTES
-import com.example.remotecompose.demo.LIST_RC_BYTES
-import com.example.remotecompose.demo.MATERIAL_RC_BYTES
-import com.example.remotecompose.demo.CAROUSEL_RC_BYTES
-import com.example.remotecompose.demo.PAINT_RC_BYTES
-import com.example.remotecompose.demo.PARALLAX_RC_BYTES
-import com.example.remotecompose.demo.PATTERN_RC_BYTES
-import com.example.remotecompose.demo.SAMPLE_RC_BYTES
-import com.example.remotecompose.demo.SHOWCASE_RC_BYTES
-import com.example.remotecompose.demo.WATCH_RC_BYTES
-import com.example.remotecompose.demo.TEXTPATH_RC_BYTES
+import com.example.remotecompose.fixtures.ACTIONS_RC_BYTES
+import com.example.remotecompose.fixtures.ADVANCED_RC_BYTES
+import com.example.remotecompose.fixtures.ARTICLE_RC_BYTES
+import com.example.remotecompose.fixtures.ANIM_RC_BYTES
+import com.example.remotecompose.fixtures.COFFEE_RC_BYTES
+import com.example.remotecompose.fixtures.FLIGHT_RC_BYTES
+import com.example.remotecompose.fixtures.LAZYLIST_RC_BYTES
+import com.example.remotecompose.fixtures.NOTCHES_RC_BYTES
+import com.example.remotecompose.fixtures.REFERENCED_RC_BYTES
+import com.example.remotecompose.fixtures.LAYOUT_RC_BYTES
+import com.example.remotecompose.fixtures.MARQUEE_RC_BYTES
+import com.example.remotecompose.fixtures.RUNACTION_RC_BYTES
+import com.example.remotecompose.fixtures.WRAP_RC_BYTES
+import com.example.remotecompose.fixtures.LIST_RC_BYTES
+import com.example.remotecompose.fixtures.MATERIAL_RC_BYTES
+import com.example.remotecompose.fixtures.CAROUSEL_RC_BYTES
+import com.example.remotecompose.fixtures.PAINT_RC_BYTES
+import com.example.remotecompose.fixtures.PARALLAX_RC_BYTES
+import com.example.remotecompose.fixtures.PATTERN_RC_BYTES
+import com.example.remotecompose.fixtures.SAMPLE_RC_BYTES
+import com.example.remotecompose.fixtures.SHOWCASE_RC_BYTES
+import com.example.remotecompose.fixtures.WATCH_RC_BYTES
+import com.example.remotecompose.fixtures.TEXTPATH_RC_BYTES
 
 /**
  * The writer's fixtures by name, as the bytes the demo pages already carry.
