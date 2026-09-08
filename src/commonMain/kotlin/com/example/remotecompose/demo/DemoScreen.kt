@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -23,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -100,24 +103,50 @@ private val DEMOS = listOf(
 @Composable
 fun DemoScreen(initialDemo: String? = null, oneToOne: Boolean = false) {
     var open by remember { mutableStateOf(DEMOS.firstOrNull { it.id == initialDemo }) }
+    // One scroll position for the list, so the copy of it behind a page being dragged away is
+    // where the real one is rather than back at the top.
+    val listScroll = rememberScrollState()
     val demo = open
     if (demo == null) {
-        DemoList(onOpen = { open = it })
+        DemoList(scroll = listScroll, onOpen = { open = it })
     } else {
-        BackGesture(enabled = true, onBack = { open = null }) {
-            DemoPage(demo = demo, oneToOne = oneToOne)
+        BackGesture(enabled = true, onBack = { open = null }) { progress ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                // What the gesture is going back to, so that going back is something you watch
+                // rather than something that happens when you let go. Not tappable while it is
+                // behind: the page over it is what the finger is on.
+                if (progress > 0f) DemoList(scroll = listScroll, onOpen = {})
+                DemoPage(
+                    demo = demo,
+                    oneToOne = oneToOne,
+                    modifier = Modifier.graphicsLayer {
+                        // The page draws back from the edge the gesture came from and shrinks a
+                        // little, which is the shape of both platforms' own back.
+                        translationX = size.width * 0.28f * progress
+                        val shrink = 1f - 0.09f * progress
+                        scaleX = shrink
+                        scaleY = shrink
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                        if (progress > 0f) {
+                            clip = true
+                            shape = RoundedCornerShape(28.dp * progress)
+                            shadowElevation = 24.dp.toPx() * progress
+                        }
+                    },
+                )
+            }
         }
     }
 }
 
 /** The documents, by name and by what each is for. */
 @Composable
-private fun DemoList(onOpen: (Demo) -> Unit) {
+private fun DemoList(scroll: ScrollState, onOpen: (Demo) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0E1116))
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scroll)
             .padding(horizontal = 16.dp),
     ) {
         Spacer(Modifier.height(72.dp))
@@ -167,7 +196,7 @@ private fun DemoRow(demo: Demo, onClick: () -> Unit) {
  * except what a host action briefly says.
  */
 @Composable
-private fun DemoPage(demo: Demo, oneToOne: Boolean) {
+private fun DemoPage(demo: Demo, oneToOne: Boolean, modifier: Modifier = Modifier) {
     var document by remember(demo) { mutableStateOf<RemoteComposeDocument?>(null) }
     // Where a `HOST_ACTION` lands, and only for as long as it takes to read: it used to turn the
     // page, which made a document with a button on it unusable — pressing the button left.
@@ -182,7 +211,7 @@ private fun DemoPage(demo: Demo, oneToOne: Boolean) {
         LaunchedEffect(document) { document?.let { demo.feed.invoke(it) } }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         if (oneToOne) {
             RealPayloadDemoScreen(demo.bytes)
         } else {

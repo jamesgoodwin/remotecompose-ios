@@ -3,6 +3,7 @@
 
     <application
         android:label="RemoteComposeDemo"
+        android:enableOnBackInvokedCallback="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:name=".MainActivity"

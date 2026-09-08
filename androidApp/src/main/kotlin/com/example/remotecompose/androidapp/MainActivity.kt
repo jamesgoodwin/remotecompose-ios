@@ -14,18 +14,16 @@ import com.example.remotecompose.demo.DemoScreen
  * render byte-identical input through the shared `OpcodeExecutor` — the point being a direct
  * visual cross-check, not two different demos.
  *
- * System bars are hidden so cross-platform screenshots compare the rendered content directly,
- * without a status bar/nav bar overlapping it on one platform but not the other.
+ * The pixel harness hides the system bars so that a screenshot compares the rendered content
+ * directly, without a status or navigation bar over it on one platform and not the other. Nothing
+ * else does: hidden bars come with `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`, and that spends the
+ * first swipe in from an edge on showing the bars rather than on going back.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
         // `adb shell am start -n <package>/.MainActivity --es demo watch` launches straight onto
         // a payload for scripted screenshots; see DemoScreen. The name is the fixture's, so it
         // survives the demo list being reordered. Without it the app opens on the list.
@@ -33,6 +31,12 @@ class MainActivity : ComponentActivity() {
         // compares against.
         val initialDemo = intent.getStringExtra("demo")
         val oneToOne = intent.getBooleanExtra("oneToOne", false)
+        if (oneToOne) {
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                hide(WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        }
         setContent {
             DemoScreen(initialDemo = initialDemo, oneToOne = oneToOne)
         }
