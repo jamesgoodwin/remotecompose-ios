@@ -1,0 +1,11 @@
+ios-remote-compose
+Copyright 2026 James Goodwin
+
+This product is an independent reimplementation of the RemoteCompose wire format
+read and written by androidx.compose.remote (Apache License 2.0), and is not
+affiliated with or endorsed by Google or the AndroidX team. It contains no code
+from that library.
+
+The fixture writer under tools/rc-writer depends on
+androidx.compose.remote:remote-creation, remote-creation-core and remote-core
+(Apache License 2.0, Copyright The Android Open Source Project) at build time.

@@ -20,6 +20,10 @@ DerivedData/
 .idea/
 local.properties
 
+# Renders and screenshots produced while working; the ones worth keeping go in a commit
+# message or an issue, not in the tree.
+/*.png
+
 # macOS
 .DS_Store
 
