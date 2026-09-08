@@ -134,7 +134,7 @@ on every target, and `PayloadDriftTest` fails if the two ever disagree.
 ```bash
 ./gradlew desktopTest
 ./gradlew iosSimulatorArm64Test       # the same suite, on Kotlin/Native
-./gradlew :androidApp:connectedCheck
+./gradlew connectedAndroidTest        # the same suite again, on ART, on a device
 ```
 
 `tools/capture-screens.sh <fixture>...` is a third kind of check: it drives a document onto the
@@ -156,6 +156,9 @@ Multiplatform. The Google artifacts are a build-time dependency of the fixture w
 
 Where a decision here follows the library, the code says which class and method it follows, and
 where it departs, it says that too. `docs/OPCODES.md` is the summary of both.
+
+`docs/PERFORMANCE.md` measures the shared pipeline on Kotlin/Native and on ART, and says which
+differences between the two platforms are real and which are an artefact of how the app was built.
 
 `docs/PLAN.md` is the review that reset this project in September 2026 and the plan that came out
 of it. It is unflattering about the code that preceded it and is kept because the reasoning is

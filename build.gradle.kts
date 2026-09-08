@@ -16,6 +16,7 @@ android {
     compileSdk = 35
     defaultConfig {
         minSdk = 24
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     // No JDK 17/21 toolchain is installed in this environment (only JDK 24), and Kotlin 2.0.21's
     // compiler caps out at bytecode target 22 — align javac's release with Kotlin's target
@@ -42,11 +43,24 @@ kotlin {
         }
     }
 
+    // A release test binary as well as the debug one the test task builds. Kotlin/Native debug
+    // is unoptimised, and on the frame-building benchmark it is ten times its own release — so a
+    // measurement taken from the debug binary says nothing about what this renderer does on a
+    // device. Links as `linkReleaseTestIosSimulatorArm64`; see docs/PERFORMANCE.md.
+    iosSimulatorArm64 {
+        binaries.test(listOf(org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.RELEASE))
+    }
+
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
         }
+        // Puts commonTest on the instrumented-test compilation, so `connectedAndroidTest` runs
+        // the same suite the JVM and Kotlin/Native targets run — on ART, on a device. Without
+        // this the Android target is the one platform that ships the code and never runs it.
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        instrumentedTestVariant.sourceSetTree.set(org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.test)
     }
 
     sourceSets {
@@ -93,6 +107,14 @@ kotlin {
                 // explicitly here. Machine-specific (macOS/arm64) — fine for this dev-only demo
                 // task, not something a real multi-OS target list should hardcode.
                 runtimeOnly("org.jetbrains.skiko:skiko-awt-runtime-macos-arm64:0.9.4.2")
+            }
+        }
+
+        // Just the runner: the tests themselves are commonTest, through kotlin("test").
+        val androidInstrumentedTest by getting {
+            dependencies {
+                implementation("androidx.test:runner:1.6.2")
+                implementation("androidx.test.ext:junit:1.2.1")
             }
         }
 
