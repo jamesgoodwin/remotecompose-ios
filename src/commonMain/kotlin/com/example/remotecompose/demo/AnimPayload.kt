@@ -10,7 +10,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * given times; this copy lets the device demos show the document actually moving.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val ANIM_RC_BYTES: ByteArray by lazy {
+internal val ANIM_RC_BYTES: ByteArray by lazy {
     Base64.decode(
         "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAARhbmltZwAAACpRAAAAKwAAAAj/gAABQAAAAP+xAAP/sQASQnAAAP+xAANCyAAA/7EA" +
             "ASgAAAACAAAABP8eiOUu/4AAK0IgAABBgAAAUQAAACwAAAAFQEAAAECAAAD/sQAvQIAAAP+xAAMoAAAAAgAAAAT/Q6BHLkIgAABCyAAA/4AALFEAAAAt" +

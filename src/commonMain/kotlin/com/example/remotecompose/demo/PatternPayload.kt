@@ -10,7 +10,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * asserts each call keeps both.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val PATTERN_RC_BYTES: ByteArray by lazy {
+internal val PATTERN_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAAPAAAAFYAAAAAAAAAABmAAAAKgAAAAdwYXR0ZXJuZwAAACpmAAAALAAAAARjYXJk9gAAACwAAAABAAAAKwAAAUDM/////v////8A" +
             "AAABAAAABEDAAAAQAAAAAX/AAABDAAAAAEKgAAA2QQAAAEEAAABBAAAAQQAAADcAAAAAAAAAAAAAAAAAAAAAP3Pz9D909PU/ePj5P4AAAAAAAABrAAAAAAAA" +

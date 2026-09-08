@@ -10,7 +10,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `CONDITIONAL_OPERATIONS`. `TextPathFixtureTest` asserts the placement.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val TEXTPATH_RC_BYTES: ByteArray by lazy {
+internal val TEXTPATH_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAAh0ZXh0cGF0aGcAAAAqewAAACsAAAAM/4AACkEgAABCIAAA/4AADgAAAAAAAAAAQkgA" +
             "AECgAABCyAAAQoIAAEMWAABByAAAKAAAAAQAAAAE/x6I5QAAAAFBUAAAZgAAACwAAAAQZm9sbG93aW5nIGEgd2F2ZTUAAAAsAAAAKwAAAABAgAAAKAAA" +

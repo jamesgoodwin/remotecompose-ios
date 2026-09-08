@@ -115,6 +115,78 @@ Below the composable, `RemoteComposeParser.load(bytes)` gives a `RemoteComposeDo
 `touchUp` deliver gestures. `nextRepaintDelayMillis()` says how long a host may wait before
 drawing again — `-1` when nothing has asked for another frame at all.
 
+## Using it from Swift
+
+The renderer is published as an XCFramework behind a Swift package, so an iOS app can render `.rc`
+documents without a Kotlin toolchain anywhere in its build:
+
+```swift
+// The package is RemoteCompose; the repository it comes from is not.
+dependencies: [
+    .package(url: "https://github.com/jamesgoodwin/apple-remote-compose", from: "0.1.0"),
+],
+targets: [
+    .target(name: "YourApp", dependencies: [
+        .product(name: "RemoteCompose", package: "apple-remote-compose"),
+    ]),
+]
+```
+
+```swift
+import RemoteCompose
+
+struct WatchFace: View {
+    let document: Data   // the bytes of a .rc file
+
+    var body: some View {
+        RemoteComposeView(data: document)
+            .ignoresSafeArea()
+    }
+}
+```
+
+Gestures, animation and the frame loop are handled inside, the same as on the Kotlin side: a
+document that scrolls follows a finger, one that animates keeps its own time, one that does
+neither is drawn once. A document carries a palette for each of light and dark, and the view
+follows the environment's `colorScheme`.
+
+For a document whose values the host fills in, hold a `RemoteComposeDocument` and pass that
+instead. Values set before it is on screen are applied when it gets there, so there is no ordering
+to arrange:
+
+```swift
+@StateObject private var flight = RemoteComposeDocument(data: document)
+
+var body: some View {
+    RemoteComposeView(document: flight)
+        .onAppear {
+            flight.setString("route", "Bristol to Palma")
+            flight.setFloat("minutes", 23)
+            flight.onAction = { action in print(action.id, action.url as Any) }
+        }
+}
+```
+
+`setString`/`setFloat`/`setInteger`/`setLong`/`setColor` return `false` when the document is on
+screen and named no such value, or named it as a different kind, so a host pushing a value that
+has nowhere to go finds out. UIKit callers can take
+`document.makeViewController()` and skip the SwiftUI wrapper.
+
+The framework is iOS 14 and up — Compose Multiplatform's floor, which is what its binaries
+declare. `tools/release-xcframework.sh <tag>` builds the XCFramework, writes the URL and checksum
+into `Package.swift`, and stops short of uploading anything.
+
+One entry is worth adding to the app's own `Info.plist`:
+
+```xml
+<key>CADisableMinimumFrameDurationOnPhone</key><true/>
+```
+
+Without it iOS caps Compose at 60Hz on a display that can do 120, and an animating document is
+exactly where that shows. It has to be the app's plist rather than the framework's, so no library
+can set it for you; this one says so once on the console rather than refusing to start, which is
+what Compose Multiplatform does by default.
+
 ## Fixtures
 
 `tools/rc-writer` is a JVM tool that writes the `.rc` files through

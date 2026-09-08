@@ -12,7 +12,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * exists so the iOS and Android demos can render the same bytes for a visual cross-check.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val PAINT_RC_BYTES: ByteArray by lazy {
+internal val PAINT_RC_BYTES: ByteArray by lazy {
     Base64.decode(
         "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAAVwYWludGcAAAAqKAAAAAcAAAAE/+U5NQABAAgAAAAFQMAAAAABAAcAAQAPKkFAAABB" +
             "QAAAQnAAAEJwAAAoAAAAAQAAAAguQrQAAEIQAABBoAAAKAAAAAQAAAAE/x6I5QAAAAw/AAAAKkKgAABB0AAAQwwAAEI4AAAoAAAABQAAAAT/AAAAAAAA" +

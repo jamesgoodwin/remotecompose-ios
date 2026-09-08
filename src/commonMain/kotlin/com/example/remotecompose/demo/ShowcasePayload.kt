@@ -10,7 +10,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * whole picture comes from the layout engine's measure and layout passes.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val SHOWCASE_RC_BYTES: ByteArray by lazy {
+internal val SHOWCASE_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAAWgAAAGkAAAAAAAAAABmAAAAKgAAAAhzaG93Y2FzZWcAAAAqzP////7/////AAAAAQAAAARBkAAAEAAAAAF/wAAAQwAAAAF/" +
             "wAAAOkGgAABBoAAAQaAAAEGgAADJ/////WYAAAArAAAACURhc2hib2FyZGYAAAAsAAAAAND////8/////wAAACv/GiN+QbAAAAAAAABDyAAAAAAALAAA" +

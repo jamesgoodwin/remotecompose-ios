@@ -11,7 +11,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * The photograph is CC0; `tools/rc-writer/photos/CREDITS.md` says who took it.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val PARALLAX_RC_BYTES: ByteArray by lazy {
+internal val PARALLAX_RC_BYTES: ByteArray by lazy {
     Base64.decode(
         listOf(
         "AAAAAAEAAAABAAAAAAAAASwAAAGkAAAAAAAAAABmAAAAKgAAAAhwYXJhbGxheGcAAAAqZQAAACsAAAOEAAAEsAACDjn/2P/gABBKRklGAAEBAAABAAEAAP/bAEMACQYHCAcGCQgHCAoKCQsNFg8NDAwNGxQVEBYgHSIiIB0fHyQoNCwkJjEnHx8tPS0xNTc6OjojKz9E",

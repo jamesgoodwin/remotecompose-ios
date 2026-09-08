@@ -9,7 +9,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `LAYOUT_COMPUTE` for a size and a position, `COMPONENT_VALUE` for a measurement read back.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val LAYOUT_RC_BYTES: ByteArray by lazy {
+internal val LAYOUT_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAHMAAAAAAAAAABmAAAAKgAAAAZsYXlvdXRnAAAAKsz////+/////wAAAAEAAAAEQMAAABAAAAABf8AAAEMAAAABf8AAADcA" +
             "AAAAAAAAAAAAAAAAAAAAPXDw8T2IiIk9uLi5P4AAAAAAAAA6QYAAAEGAAABBgAAAQYAAAMn////9ZgAAACsAAAAGTGF5b3V0ZgAAACwAAAAA7wAAACsACgH/" +

@@ -15,7 +15,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * so the reflow is a movement rather than a jump.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val WRAP_RC_BYTES: ByteArray by lazy {
+internal val WRAP_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAL4AAAAAAAAAABmAAAAKgAAAAR3cmFwZwAAACrM/////v////8AAAABAAAABECAAAAQAAAAAX/AAABDAAAAAX/AAAA3AAAA" +
             "AAAAAAAAAAAAAAAAAD2AgIE9kJCRPcjIyT+AAAAAAAAAOkGAAABBgAAAQYAAAEGAAADJ/////WYAAAArAAAACFdyYXBwaW5nZgAAACwAAAAA7wAAACsACgH/" +

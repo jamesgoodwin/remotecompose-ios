@@ -16,6 +16,11 @@ iosApp/build/
 xcuserdata/
 DerivedData/
 
+# SwiftPM, when the package is built or opened locally
+.build/
+.swiftpm/
+Package.resolved
+
 # Android Studio / IntelliJ
 .idea/
 local.properties

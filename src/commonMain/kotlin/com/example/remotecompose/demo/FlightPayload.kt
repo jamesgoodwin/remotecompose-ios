@@ -13,7 +13,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * keeps it current with `setNamedString("gate", "B12")`.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val FLIGHT_RC_BYTES: ByteArray by lazy {
+internal val FLIGHT_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAGkAAAAAAAAAABmAAAAKgAAAAZmbGlnaHRnAAAAKokAAAArAAAAAAAAAAVyb3V0ZWYAAAArAAAAA+KAlIkAAAAsAAAAAAAA" +
             "AAZmbGlnaHRmAAAALAAAAAPigJSJAAAALQAAAAAAAAAEZ2F0ZWYAAAAtAAAAA+KAlIkAAAAuAAAAAAAAAAZzdGF0dXNmAAAALgAAABBXYWl0aW5nIGZvciBm" +

@@ -17,7 +17,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * deep enough to overflow the Kotlin/Native compiler's stack.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val CAROUSEL_RC_BYTES: ByteArray by lazy {
+internal val CAROUSEL_RC_BYTES: ByteArray by lazy {
     Base64.decode(
         listOf(
         "AAAAAAEAAAABAAAAAAAAASwAAAGkAAAAAAAAAABmAAAAKgAAAAhjYXJvdXNlbGcAAAAqZQAAACsAAAFoAAAA8gAARY3/2P/gABBKRklGAAEBAAABAAEAAP/bAEMACQYHCAcGCQgHCAoKCQsNFg8NDAwNGxQVEBYgHSIiIB0fHyQoNCwkJjEnHx8tPS0xNTc6OjojKz9E",

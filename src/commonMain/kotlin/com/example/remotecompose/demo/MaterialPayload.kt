@@ -10,7 +10,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `MaterialFixtureTest` taps its way through it.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val MATERIAL_RC_BYTES: ByteArray by lazy {
+internal val MATERIAL_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAAWgAAAHgAAAAAAAAAABmAAAAKgAAAAhtYXRlcmlhbGcAAAAqUAAAACs/gAAAUQAAACwAAAAD/4AAKz+AAAD/sQABUQAAAC0AAAAF" +
             "/4AAKz+AAAD/sQACP4AAAP+xAAdQAAAALgAAAABmAAAALwAAABJBZGRlZCB0byB5b3VyIGNhcnSHAAAAMP+AACsAAQAAAAAABWYAAAAxAAAAAsKjUQAAADIA" +

@@ -11,7 +11,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `AdvancedFixtureTest` asserts what it decodes to.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val ADVANCED_RC_BYTES: ByteArray by lazy {
+internal val ADVANCED_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAAhhZHZhbmNlZGcAAAAqqAAAACsAAAACAAAALAAAAC1RAAAALgAAAAP/gAAs/4AALf+xAAPW" +
             "KAAAAAIAAAAE/x6I5aYAAAArAAAAAkHwAABAgAAAUQAAAC8AAAAD/4AALkFAAAD/sQABKkFAAABBQAAA/4AAL0HQAAAoAAAAAgAAAAT/Q6BHpgAAACsAAAAC" +

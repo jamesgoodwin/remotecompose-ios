@@ -9,7 +9,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * broken — two speeds, and one row short enough to stay where it is.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val MARQUEE_RC_BYTES: ByteArray by lazy {
+internal val MARQUEE_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAEsAAAAAAAAAABmAAAAKgAAAAdtYXJxdWVlZwAAACrM/////v////8AAAABAAAABEEAAAAQAAAAAX/AAABDAAAAAX/AAAA3" +
             "AAAAAAAAAAAAAAAAAAAAAD2AgIE9mJiZPcjIyT+AAAAAAAAAOkGAAABBgAAAQYAAAEGAAADJ/////WYAAAArAAAAB01hcnF1ZWVmAAAALAAAAADvAAAAKwAK" +

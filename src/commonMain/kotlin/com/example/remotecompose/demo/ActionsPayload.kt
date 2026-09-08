@@ -11,7 +11,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `ActionsFixtureTest` asserts the behaviour; this copy makes it tappable on device.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val ACTIONS_RC_BYTES: ByteArray by lazy {
+internal val ACTIONS_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAAdhY3Rpb25zZwAAACpQAAAAK0IgAABmAAAALAAAAAx0YXAgYSBidXR0b26MAAAALQAA" +
             "AADM/////v////8AAAACAAAABEEgAAAQAAAAAX/AAABDAAAAAX/AAAA6QUAAAEFAAABBQAAAQUAAAMn////9y/////z/////AAAAAQAAAAJBAAAAyf//" +

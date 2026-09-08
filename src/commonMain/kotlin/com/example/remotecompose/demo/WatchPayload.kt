@@ -12,7 +12,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * reading the calendar off the same moment. Nobody sends it a frame.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val WATCH_RC_BYTES: ByteArray by lazy {
+internal val WATCH_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAGkAAAAAAAAAABmAAAAKgAAAAV3YXRjaGcAAAAqxAAAA4QAAAAAAAAAAP/38vr/EhAWxAAAA4UAAAAAAAAAAP/n4Oz/KiYw" +
             "xAAAA4YAAAAAAAAAAP8bGx//5uHpxAAAA4cAAAAAAAAAAP96dYD/joiUxAAAA4gAAAAAAAAAAP9nUKT/0Lz/KAAAAAIAAAATAAADhCoAAAAAAAAAAEOWAABD" +

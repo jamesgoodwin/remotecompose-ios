@@ -9,7 +9,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `REFERENCED_OPERATIONS` block and drawn on each of three cards by including it.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val REFERENCED_RC_BYTES: ByteArray by lazy {
+internal val REFERENCED_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAGkAAAAAAAAAABmAAAAKgAAAApyZWZlcmVuY2VkZwAAACqOAAAAKygAAAADAAAABP8ufTIAAAAIMwAAAAAAAAAAQsAAAEGg" +
             "AABBIAAAQSAAACgAAAAEAAAABP/o9ekAAAABQUAAAGYAAAAsAAAACFZlcmlmaWVkhQAAACxCQAAAQWAAAAAAAAAAAAAAAAAAANbM/////v////8AAAABAAAA" +

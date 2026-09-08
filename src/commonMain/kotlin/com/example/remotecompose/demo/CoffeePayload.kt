@@ -11,7 +11,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * brightness.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val COFFEE_RC_BYTES: ByteArray by lazy {
+internal val COFFEE_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAGkAAAAAAAAAABmAAAAKgAAAAZjb2ZmZWVnAAAAKsQAAAOEAAAAAAAAAAD//fjz/xsWFMQAAAOFAAAAAAAAAAD//////yoj" +
             "IMQAAAOGAAAAAAAAAAD/Lh4U//Pp4cQAAAOHAAAAAAAAAAD/emRV/7mnmsQAAAOIAAAAAAAAAAD/jVUk/9mgZsQAAAOJAAAAAAAAAAD/59rO/z0zLcz////+" +

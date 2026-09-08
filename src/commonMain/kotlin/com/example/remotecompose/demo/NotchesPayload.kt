@@ -12,7 +12,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * division, a set of fractions and a set of written-out positions.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val NOTCHES_RC_BYTES: ByteArray by lazy {
+internal val NOTCHES_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAGkAAAAAAAAAABmAAAAKgAAAAdub3RjaGVzZwAAACrM/////v////8AAAABAAAABEDAAAAQAAAAAX/AAABDAAAAAX/AAAA3" +
             "AAAAAAAAAAAAAAAAAAAAAD2IiIk9mJiZPdDQ0T+AAAAAAAAAOkGAAABBgAAAQYAAAEGAAADJ/////WYAAAArAAAABFNuYXBmAAAALAAAAADQ/////P////8A" +

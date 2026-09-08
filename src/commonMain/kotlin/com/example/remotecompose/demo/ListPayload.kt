@@ -10,7 +10,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `DYNAMIC_FLOAT_LIST` written and read back. `MacroFixtureTest` asserts all three.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val LIST_RC_BYTES: ByteArray by lazy {
+internal val LIST_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAAPAAAAEYAAAAAAAAAABmAAAAKgAAAARsaXN0ZwAAACpmAAAAKwAAAAhFc3ByZXNzb2YAAAAsAAAAB0NvcnRhZG9mAAAALQAAAApG" +
             "bGF0IHdoaXRlZgAAAC4AAAAGRmlsdGVykgAgACoAAAAEAAAAKwAAACwAAAAtAAAALsz////+/////wAAAAEAAAAEQQAAABAAAAABf8AAAEMAAAABf8AAADpB" +

@@ -10,7 +10,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * stops its counter dead.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val RUNACTION_RC_BYTES: ByteArray by lazy {
+internal val RUNACTION_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAEsAAAAAAAAAABmAAAAKgAAAAlydW5hY3Rpb25nAAAAKlAAAAArAAAAAFEAAAAsAAAAA/+AACs/gAAA/7EAAVAAAAAtAAAA" +
             "AFEAAAAuAAAAA/+AAC0/gAAA/7EAAYwAAAAvAAAAAcz////+/////wAAAAEAAAAEQQAAABAAAAABf8AAAEMAAAABf8AAADcAAAAAAAAAAAAAAAAAAAAAPXDw" +

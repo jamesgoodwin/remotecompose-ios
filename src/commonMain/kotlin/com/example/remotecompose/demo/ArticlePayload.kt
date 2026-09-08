@@ -13,7 +13,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * else.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val ARTICLE_RC_BYTES: ByteArray by lazy {
+internal val ARTICLE_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAGkAAAAAAAAAABmAAAAKgAAAAdhcnRpY2xlZwAAACpQAAAAKwAAAADM/////v////8AAAABAAAABAAAAAAQAAAAAX/AAABD" +
             "AAAAAX/AAAA3AAAAAAAAAAAAAAAAAAAAAD+AAAA/e/v8P37+/z+AAAAAAAAAyf////3K/////P////8AAAABAAAAAhAAAAABf8AAAEMAAAAAQIAAAMn////7" +

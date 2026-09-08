@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -36,10 +37,16 @@ kotlin {
         }
     }
 
+    // One XCFramework over the three Apple targets, which is what a Swift package's binary
+    // target consumes. Dynamic rather than static: SwiftPM embeds and signs a dynamic framework
+    // from a binary target on its own, where a static one leaves the consumer to supply the
+    // linker flags Skia and the C++ runtime need.
+    val xcframework = XCFramework("RemoteComposeShared")
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { target ->
         target.binaries.framework {
             baseName = "RemoteComposeShared"
-            isStatic = true
+            isStatic = false
+            xcframework.add(this)
         }
     }
 

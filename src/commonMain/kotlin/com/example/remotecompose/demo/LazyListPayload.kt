@@ -13,7 +13,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * its arithmetic and nothing else — which is why five hundred rows fit in under a kilobyte.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val LAZYLIST_RC_BYTES: ByteArray by lazy {
+internal val LAZYLIST_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAASwAAAGkAAAAAAAAAABmAAAAKgAAAAhsYXp5bGlzdGcAAAAqUAAAACsAAAAAzP////7/////AAAAAQAAAARAwAAAEAAAAAF/wAAA" +
             "QwAAAAF/wAAANwAAAAAAAAAAAAAAAAAAAAA9kJCRPYCAgT3Q0NE/gAAAAAAAADpBgAAAQYAAAEGAAABBgAAAyf////1mAAAALAAAAAg1MDAgcm93c2YAAAAt" +

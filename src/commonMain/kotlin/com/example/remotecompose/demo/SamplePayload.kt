@@ -425,7 +425,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * differences, not to accidentally compare two different payloads.
  */
 @OptIn(ExperimentalEncodingApi::class)
-val SAMPLE_RC_BYTES: ByteArray by lazy {
+internal val SAMPLE_RC_BYTES: ByteArray by lazy {
     Base64.decode(
             "AAAAAAEAAAABAAAAAAAAAMgAAADIAAAAAAAAAABmAAAAKgAAAARkZW1vZwAAACooAAAAAgAAAAT/5Tk1KkGgAABBoAAAQzQAAEM0AAAoAAAAAgAAAAT/Hojl" +
             "LkJwAABDDAAAQfAAACgAAAACAAAABP9DoEczQtwAAELcAABDPgAAQz4AAEFAAABBQAAAKAAAAAIAAAAE/wAAAGYAAAArAAAAAkhphQAAACtCyAAAQaAAAAAA" +
