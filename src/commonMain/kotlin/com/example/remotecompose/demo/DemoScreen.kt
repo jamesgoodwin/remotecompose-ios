@@ -48,16 +48,26 @@ private class Demo(
     val name: String,
     val about: String,
     val bytes: ByteArray,
-    val background: Color? = null,
+    /**
+     * The ground the document sits on, which the page fills the screen with.
+     *
+     * A document is scaled to fit rather than cropped, so on a screen of a different shape it
+     * does not reach two of the edges. Painting the ground its own corner is painted in is what
+     * makes the page look like a page rather than a card floating on whatever is behind it —
+     * which is what a back gesture drags away and shows.
+     */
+    val background: Color,
+    /** The same, in the dark, for a document that carries both palettes. */
+    val backgroundDark: Color = background,
     val followsSystemTheme: Boolean = false,
     val listed: Boolean = true,
     val feed: (suspend (RemoteComposeDocument) -> Unit)? = null,
 )
 
 private val DEMOS = listOf(
-    Demo("watch", "Watch", "Hands and a date from the clock alone, in two palettes", WATCH_RC_BYTES, followsSystemTheme = true),
+    Demo("watch", "Watch", "Hands and a date from the clock alone, in two palettes", WATCH_RC_BYTES, background = Color(0xFFF7F2FA), backgroundDark = Color(0xFF121016), followsSystemTheme = true),
     Demo("carousel", "Carousel", "Cards that fling, shrinking and dimming away from the middle", CAROUSEL_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("coffee", "Coffee", "A shop: themed colours, a scrolling menu, rows that expand", COFFEE_RC_BYTES, followsSystemTheme = true),
+    Demo("coffee", "Coffee", "A shop: themed colours, a scrolling menu, rows that expand", COFFEE_RC_BYTES, background = Color(0xFFFDF8F3), backgroundDark = Color(0xFF1B1614), followsSystemTheme = true),
     Demo("flight", "Flight", "Every value fed by name from outside, and eased on the way in", FLIGHT_RC_BYTES, background = Color(0xFFFFFBFE), feed = ::runFlightFeed),
     Demo("lazylist", "Lazy list", "Five hundred rows, of which only the ones in view are built", LAZYLIST_RC_BYTES, background = Color(0xFF12101A)),
     Demo("material", "Material", "A Material screen: a stepper, a snackbar, real tokens", MATERIAL_RC_BYTES, background = Color(0xFFFEF7FF)),
@@ -65,21 +75,21 @@ private val DEMOS = listOf(
     Demo("notches", "Snap", "The four ways a released scroll can be told where to stop", NOTCHES_RC_BYTES, background = Color(0xFF12101A)),
     Demo("layout", "Layout", "A document working out its own size, place and measurements", LAYOUT_RC_BYTES, background = Color(0xFF12101A)),
     Demo("parallax", "Parallax", "A photograph moving slower than the words over it", PARALLAX_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("advanced", "Generated", "Functions, path expressions, particles and matrices", ADVANCED_RC_BYTES),
+    Demo("advanced", "Generated", "Functions, path expressions, particles and matrices", ADVANCED_RC_BYTES, background = Color.White),
     Demo("article", "Article", "A progress bar the document works out from its own scroll", ARTICLE_RC_BYTES, background = Color(0xFFFFFBFE)),
-    Demo("textpath", "Text paths", "Glyphs placed along a curve, one at a time", TEXTPATH_RC_BYTES),
+    Demo("textpath", "Text paths", "Glyphs placed along a curve, one at a time", TEXTPATH_RC_BYTES, background = Color.White),
     Demo("runaction", "Run action", "Actions that run because a component was painted", RUNACTION_RC_BYTES, background = Color(0xFF12101A)),
     Demo("marquee", "Marquee", "Text too long for its box, slid rather than left clipped", MARQUEE_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("pattern", "Pattern", "A card written once and called three times, each with its own contents", PATTERN_RC_BYTES),
+    Demo("pattern", "Pattern", "A card written once and called three times, each with its own contents", PATTERN_RC_BYTES, background = Color.White),
     Demo("referenced", "Referenced", "One block of operations, drawn on three cards", REFERENCED_RC_BYTES, background = Color(0xFF12101A)),
-    Demo("list", "List", "One row body over a list, with its bars read from a float list", LIST_RC_BYTES),
-    Demo("anim", "Anim", "Values that move with the clock, and the curves they move on", ANIM_RC_BYTES),
-    Demo("actions", "Actions", "Buttons that write the document's own values", ACTIONS_RC_BYTES),
-    Demo("paint", "Paint", "Every paint attribute: strokes, caps, joins, gradients", PAINT_RC_BYTES),
-    Demo("showcase", "Showcase", "The format's drawing and layout on one page", SHOWCASE_RC_BYTES),
+    Demo("list", "List", "One row body over a list, with its bars read from a float list", LIST_RC_BYTES, background = Color.White),
+    Demo("anim", "Anim", "Values that move with the clock, and the curves they move on", ANIM_RC_BYTES, background = Color.White),
+    Demo("actions", "Actions", "Buttons that write the document's own values", ACTIONS_RC_BYTES, background = Color.White),
+    Demo("paint", "Paint", "Every paint attribute: strokes, caps, joins, gradients", PAINT_RC_BYTES, background = Color.White),
+    Demo("showcase", "Showcase", "The format's drawing and layout on one page", SHOWCASE_RC_BYTES, background = Color.White),
     // Not offered: one drawing per opcode, overlapping, which is a fixture for the golden test
     // and the pixel harness rather than anything to look at.
-    Demo("sample", "Coverage", "One drawing per opcode", SAMPLE_RC_BYTES, listed = false),
+    Demo("sample", "Coverage", "One drawing per opcode", SAMPLE_RC_BYTES, background = Color.White, listed = false),
 )
 
 /**
@@ -220,11 +230,12 @@ private fun DemoPage(demo: Demo, oneToOne: Boolean, modifier: Modifier = Modifie
         if (oneToOne) {
             RealPayloadDemoScreen(demo.bytes)
         } else {
+            val dark = demo.followsSystemTheme && isSystemInDarkTheme()
             RemoteComposeCanvas(
                 bytes = demo.bytes,
                 modifier = Modifier.fillMaxSize()
-                    .let { if (demo.background != null) it.background(demo.background) else it },
-                dark = if (demo.followsSystemTheme) isSystemInDarkTheme() else false,
+                    .background(if (dark) demo.backgroundDark else demo.background),
+                dark = dark,
                 onDocument = { document = it },
                 onAction = { action ->
                     heard = when (action) {
