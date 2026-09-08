@@ -160,10 +160,6 @@ where it departs, it says that too. `docs/OPCODES.md` is the summary of both.
 `docs/PERFORMANCE.md` measures the shared pipeline on Kotlin/Native and on ART, and says which
 differences between the two platforms are real and which are an artefact of how the app was built.
 
-`docs/PLAN.md` is the review that reset this project in September 2026 and the plan that came out
-of it. It is unflattering about the code that preceded it and is kept because the reasoning is
-still the reasoning.
-
 Photographs in the demo documents are CC0 from Wikimedia Commons; `tools/rc-writer/photos/CREDITS.md`
 says who took each one.
 

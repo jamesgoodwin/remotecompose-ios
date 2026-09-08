@@ -60,10 +60,9 @@ import kotlin.math.sqrt
  *   `resolveFloat` inside [build].
  *
  * Two phases: [OperationReader] decodes the bytes into one [Operation] per record with no
- * evaluation, then [build] walks those operations once, evaluating every value-producing one
- * into pools and flattening layout containers into draw opcodes with a bounding-box heuristic.
- * The second phase is the known architectural gap versus the real player's per-frame
- * `RemoteContext` and measure/layout pass; `docs/PLAN.md` steps 5 and 6 replace it.
+ * evaluation, then [build] walks those operations once per frame — evaluating every
+ * value-producing one into [RemoteContext]'s pools, collecting the components into a tree,
+ * measuring and laying that tree out, and flattening the result into draw opcodes.
  */
 object RemoteComposeParser {
 
@@ -71,7 +70,7 @@ object RemoteComposeParser {
      * Decodes [bytes] into a live [RemoteComposeDocument] whose [RemoteComposeDocument.frame]
      * produces the flattened opcodes for a moment in time.
      *
-     * @param textMetrics Measures text for the layout heuristics. Pass
+     * @param textMetrics Measures text for the layout pass. Pass
      *   [com.example.remotecompose.engine.ComposeTextMetrics] for real font metrics; the default
      *   is a font-free estimate, adequate for tests and headless use.
      * @throws RemoteComposeParseException on an unhandled opcode or a truncated record.
@@ -311,10 +310,6 @@ object RemoteComposeParser {
                         colorPool[op.id] = Color(argb)
                     }
 
-                    // Decoded by OperationReader so the stream stays aligned, but with no effect in
-                    // this evaluator: their semantics are runtime state, actions or animation, which
-                    // need the per-frame context of docs/PLAN.md step 5.
-
                     is Op.AnimationSpec -> {
                         // The spec is written among a component's modifiers, so the component it
                         // belongs to is the one open rather than one it names by id.
@@ -330,6 +325,9 @@ object RemoteComposeParser {
                         }
                     }
 
+                    // Decoded by OperationReader so the byte stream stays aligned, and then
+                    // nothing: accessibility text, a debug string, a haptic this renderer has no
+                    // way to fire. docs/OPCODES.md lists them as decoded only.
                     is Op.Skip, is Op.Rem, is Op.RootContentDescription, is Op.DebugMessage,
                     is Op.HapticFeedback, is Op.RootContentBehavior,
                     is Op.ModifierAlignBy, is Op.ModifierDrawContent -> Unit

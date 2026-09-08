@@ -225,8 +225,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * `writer.restore()`, and a blue rect plus a separate green circle wrapped in a
  * `startBox`/`endBox` carrying a `background(0xFFFF6F00)` modifier — with a gap between the two
  * shapes deliberately left unpainted by either, so an orange background rect inferred from their
- * combined bounding box (this renderer has no measure/layout pass, so real content-position
- * knowledge is the closest available substitute) is visually distinguishable from either shape's
+ * combined bounding box is visually distinguishable from either shape's
  * own fill, and three red/blue/green `startBox`/`endBox` children — each drawing its rect at the
  * *identical* raw `(2, 90)-(12, 100)` document coordinates, i.e. not pre-spaced by the document
  * author at all — wrapped in a `startColumn(RecordingModifier().spacedBy(3f), 0, 0)`/`endColumn`,

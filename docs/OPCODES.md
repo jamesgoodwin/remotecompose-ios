@@ -3,7 +3,7 @@
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
 1.0.0-alpha18). This renderer decodes 154 of them; this file says what each one does here.
 
-Three statuses, and the distinction matters — see "what supported means" in `docs/PLAN.md`:
+Three statuses, and the distinction matters:
 
 - **supported** — decoded and acted on, with a fixture and a test behind it.
 - **partial** — the common path is acted on and the rest is not. The note says which is which.
