@@ -25,7 +25,7 @@ let package = Package(
         .binaryTarget(
             name: "RemoteComposeShared",
             url: "https://github.com/jamesgoodwin/remotecompose-ios/releases/download/v0.1.0/RemoteComposeShared.xcframework.zip",
-            checksum: "33639af53f4f92b48cfd82c3ec30749319e8685893b4fc724db1fa6065cf40ff"
+            checksum: "b4f904e623e0037c9e80f64cffaa3e3c59b88c598586d06f893e560e2b8ac6a2"
         ),
     ]
 )
