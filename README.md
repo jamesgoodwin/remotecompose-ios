@@ -64,6 +64,12 @@ start.
 
 **Experimental.** It has not been used in anything that ships, and its API is not stable.
 
+Underneath the Swift API this is a Compose Multiplatform renderer, so it draws on Android and
+desktop too. On Android, use Google's
+[`remote-player-compose`](https://developer.android.com/jetpack/androidx/releases/compose-remote)
+instead: it is the reference implementation and covers the whole format. This one exists because
+it also runs on iOS.
+
 **154 of the format's 172 opcodes** are decoded, 132 of them acted on in full.
 [`docs/OPCODES.md`](docs/OPCODES.md) lists every one. Anything not listed is not decoded, and a
 document containing one throws `RemoteComposeParseException` at the byte where it appears: the
@@ -79,26 +85,6 @@ Known gaps:
   vanishing point.
 - **No sound.**
 - **Targets 1.0.0-alpha18 only.** There is no version negotiation.
-
-## Using it from Kotlin
-
-The same renderer is a Compose Multiplatform composable, for an Android or desktop host, or for the
-Android side of a KMP app whose iOS side uses the Swift package. It is not on Maven yet, so this
-means depending on the module in a build of your own.
-
-```kotlin
-RemoteComposeCanvas(
-    bytes = documentBytes,
-    modifier = Modifier.fillMaxSize(),
-    dark = isSystemInDarkTheme(),
-    onAction = { action -> /* HOST_ACTION reaches you here */ },
-    onDocument = { it.setNamedString("route", "Bristol to Palma") },
-)
-```
-
-Below the composable, `RemoteComposeParser.load(bytes)` gives a `RemoteComposeDocument` whose
-`frame(nowMillis)` returns the draw list for one frame, and whose `click`/`touchDown`/`touchDrag`/
-`touchUp` deliver gestures.
 
 ## Trying it
 
