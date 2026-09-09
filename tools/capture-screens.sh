@@ -87,4 +87,20 @@ for name in "$@"; do
   fi
   ./gradlew -q pixelHarness --args="$fixture ${candidates[*]} --allow-shape-pixels $allow" || status=1
 done
+
+# Leave the apps as a person would want to find them. Unscaled is for comparing screenshots, and
+# an app left showing a document at a third of its size on a grey backdrop looks broken to anyone
+# who picks the phone up afterwards.
+restore_apps() {
+  if [ "${SKIP_ANDROID:-0}" != "1" ]; then
+    "$ADB" shell am force-stop "$ANDROID_PACKAGE" >/dev/null 2>&1 || true
+    "$ADB" shell am start -n "$ANDROID_PACKAGE/.MainActivity" >/dev/null 2>&1 || true
+  fi
+  if [ "${SKIP_IOS:-0}" != "1" ]; then
+    xcrun simctl terminate "${IOS_UDID:-booted}" "$IOS_BUNDLE" >/dev/null 2>&1 || true
+    xcrun simctl launch "${IOS_UDID:-booted}" "$IOS_BUNDLE" >/dev/null 2>&1 || true
+  fi
+}
+restore_apps
+
 exit $status
