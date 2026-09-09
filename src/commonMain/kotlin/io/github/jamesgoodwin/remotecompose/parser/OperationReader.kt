@@ -462,6 +462,15 @@ internal object OperationReader {
             r = r.readFloat32(), g = r.readFloat32(), b = r.readFloat32(), a = r.readFloat32(),
             shapeType = r.readS32(),
         )
+        Operations.ACCESSIBILITY_SEMANTICS -> Op.Semantics(
+            contentDescriptionId = r.readS32(),
+            role = r.readU8(),
+            textId = r.readS32(),
+            stateDescriptionId = r.readS32(),
+            mode = r.readU8(),
+            enabled = r.readU8() == 1,
+            clickable = r.readU8() == 1,
+        )
         Operations.MODIFIER_VISIBILITY -> Op.ModifierVisibility(r.readS32())
         Operations.MODIFIER_OFFSET -> Op.ModifierOffset(r.readFloat32(), r.readFloat32())
         Operations.MODIFIER_BORDER -> Op.ModifierBorder(

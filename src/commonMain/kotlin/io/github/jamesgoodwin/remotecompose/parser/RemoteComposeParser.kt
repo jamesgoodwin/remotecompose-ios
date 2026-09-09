@@ -18,12 +18,14 @@ import io.github.jamesgoodwin.remotecompose.layout.LayoutEngine
 import io.github.jamesgoodwin.remotecompose.layout.LayoutNode
 import io.github.jamesgoodwin.remotecompose.layout.LayoutTreeBuilder
 import io.github.jamesgoodwin.remotecompose.layout.Modifier
+import io.github.jamesgoodwin.remotecompose.layout.SemanticsSpec
 import io.github.jamesgoodwin.remotecompose.layout.Visibility
 import io.github.jamesgoodwin.remotecompose.parser.Operation as Op
 import io.github.jamesgoodwin.remotecompose.runtime.ActionTrigger
 import io.github.jamesgoodwin.remotecompose.runtime.DocumentAction
 import io.github.jamesgoodwin.remotecompose.runtime.FloatExpressionEvaluator
 import io.github.jamesgoodwin.remotecompose.runtime.HitRegion
+import io.github.jamesgoodwin.remotecompose.runtime.SemanticsNode
 import io.github.jamesgoodwin.remotecompose.runtime.ParticleSystem
 import io.github.jamesgoodwin.remotecompose.runtime.RemoteContext
 import io.github.jamesgoodwin.remotecompose.runtime.TimeSnapshot
@@ -96,6 +98,10 @@ public object RemoteComposeParser {
     internal var hitRegions: List<HitRegion> = emptyList()
         private set
 
+    /** What the same tree tells a screen reader; read by [RemoteComposeDocument]. */
+    internal var semantics: List<SemanticsNode> = emptyList()
+        private set
+
     /** Where the components that ripple when pressed ended up, from the same build. */
     internal var rippleTargets: List<LayoutEngine.RippleTarget> = emptyList()
         private set
@@ -107,6 +113,7 @@ public object RemoteComposeParser {
      */
     internal fun build(operations: List<Op>, context: RemoteContext, textMetrics: TextMetricsProvider): List<Opcode> {
         hitRegions = emptyList()
+        semantics = emptyList()
         rippleTargets = emptyList()
         // Ids generated for a pattern's declarations start again each frame: the walk is the
         // same every time, so the same declaration keeps the same id rather than the document
@@ -1750,6 +1757,18 @@ public object RemoteComposeParser {
                         }
                     }
 
+                    is Op.Semantics -> tree.current?.let { node ->
+                        node.semantics = SemanticsSpec(
+                            contentDescriptionId = op.contentDescriptionId,
+                            role = op.role,
+                            textId = op.textId,
+                            stateDescriptionId = op.stateDescriptionId,
+                            mode = op.mode,
+                            enabled = op.enabled,
+                            clickable = op.clickable,
+                        )
+                    }
+
                     is Op.ModifierVisibility -> tree.current?.let { node ->
                         // ComponentVisibilityOperation reads an int variable; a bare Visibility value
                         // that is not a known id is taken literally.
@@ -1825,6 +1844,7 @@ public object RemoteComposeParser {
         walk(operations, 0, operations.size)
         opcodes += tree.flush(paint)
         hitRegions = tree.hitRegions
+        semantics = tree.semantics
         rippleTargets = tree.rippleTargets
         opcodes += trailing
         context.inflated = true

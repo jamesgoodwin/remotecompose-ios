@@ -88,6 +88,10 @@ fun main(args: Array<String>) {
         buildFontSample()
         return
     }
+    if (args.getOrNull(0) == "semantics") {
+        buildSemanticsSample()
+        return
+    }
     if (args.getOrNull(0) == "material") {
         buildMaterialSample()
         return
@@ -647,6 +651,94 @@ private fun buildMaterialSample() {
     val bytes = writer.encodeToByteArray()
     File("material.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to material.rc")
+}
+
+/**
+ * What a screen reader is told: `ACCESSIBILITY_SEMANTICS` (`CoreSemantics`), a modifier that
+ * labels the component it is attached to.
+ *
+ * Nothing else in the format describes anything to a reader — text a component draws is drawn,
+ * not labelled — so everything here is what the document chose to say. The four cases are the
+ * three modes and a role that comes with an action:
+ *
+ *  - an image, described but not readable any other way;
+ *  - a row in `MERGE`, whose two texts should be read as one thing rather than two;
+ *  - a button, `clickable` and carrying a state description that its own action changes;
+ *  - a decorative panel in `CLEAR_AND_SET`, which replaces whatever is inside it.
+ */
+private fun buildSemanticsSample() {
+    val platform = JvmRcPlatformServices()
+    // The writer's third argument is the document's own ROOT_CONTENT_DESCRIPTION.
+    val writer = RemoteComposeWriter(300, 300, "Four things a screen reader can find", platform)
+
+    val ink = 0xFF1B1B1F.toInt()
+    val faint = 0xFF6F6A78.toInt()
+
+    // Roles and modes as `AccessibleComponent.Role` / `.Mode` order them on the wire.
+    val roleButton = 0.toByte()
+    val roleImage = 5.toByte()
+    val modeSet = 0
+    val modeClearAndSet = 1
+    val modeMerge = 2
+
+    /**
+     * A text component, optionally labelled with what it says. A modifier written between the
+     * component and its end belongs to that component, which is how a label lands on the text
+     * rather than on whatever contains it.
+     */
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, labelled: Boolean = false) {
+        writer.startTextComponent(RecordingModifier(), value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        if (labelled) writer.addSemanticsModifier(0, 9.toByte(), value, 0, modeSet, true, false)
+        writer.endTextComponent()
+    }
+
+    // The state description is a value the button writes, so what a reader is told about it
+    // changes with the document rather than being fixed when it was written.
+    val state = writer.addText("Not yet refreshed")
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFFFFFFFF.toInt()).padding(16f).spacedBy(12f),
+        1, 4,
+    )
+
+    text(writer.addText("Semantics"), ink, 22f, 700f)
+
+    // 1. A picture: there is nothing here to read, so the description is the only way in.
+    writer.startBox(RecordingModifier().fillMaxWidth().height(60f).background(0xFF1E88E5.toInt()), 2, 2)
+    writer.addSemanticsModifier(writer.addText("Chart of the last seven days"), roleImage, 0, 0, modeSet, true, false)
+    writer.endBox()
+
+    // 2. A row read as one: "Battery" and "82%" are two components and one thing. Each label
+    //    is on the text that carries it — a component draws its text without describing it, so
+    //    an unlabelled text is silent and a MERGE of two of them merges nothing.
+    writer.startRow(RecordingModifier().fillMaxWidth().spacedBy(6f), 1, 2)
+    writer.addSemanticsModifier(0, 9.toByte(), 0, 0, modeMerge, true, false)
+    text(writer.addText("Battery"), faint, 14f, labelled = true)
+    text(writer.addText("82%"), ink, 14f, 700f, labelled = true)
+    writer.endRow()
+
+    // 3. A button: the role, the click, and a state description its own action rewrites.
+    writer.startBox(
+        RecordingModifier().width(120f).height(36f)
+            .background(0xFF6750A4.toInt())
+            .onClick(ValueStringChange(state, "Refreshed")),
+        2, 2,
+    )
+    writer.addSemanticsModifier(writer.addText("Refresh"), roleButton, 0, state, modeSet, true, true)
+    text(writer.addText("Refresh"), 0xFFFFFFFF.toInt(), 14f, 700f)
+    writer.endBox()
+
+    // 4. Decoration: the text inside is a texture, and CLEAR_AND_SET is the document saying so.
+    writer.startBox(RecordingModifier().fillMaxWidth().height(48f).background(0xFFF2EFF7.toInt()), 2, 2)
+    writer.addSemanticsModifier(writer.addText("Decorative pattern"), 9.toByte(), 0, 0, modeClearAndSet, true, false)
+    text(writer.addText("/////////////"), faint, 16f)
+    writer.endBox()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("semantics.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to semantics.rc")
 }
 
 /**

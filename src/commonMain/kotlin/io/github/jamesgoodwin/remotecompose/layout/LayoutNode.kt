@@ -124,6 +124,23 @@ internal sealed class Modifier {
     }
 }
 
+/**
+ * An `ACCESSIBILITY_SEMANTICS` modifier as it was written, ids and all.
+ *
+ * The labels stay ids here because they are resolved once per frame rather than once per parse:
+ * a document can point a description at a value it computes, and a reader should be told the
+ * value it has now.
+ */
+internal class SemanticsSpec(
+    val contentDescriptionId: Int,
+    val role: Int,
+    val textId: Int,
+    val stateDescriptionId: Int,
+    val mode: Int,
+    val enabled: Boolean,
+    val clickable: Boolean,
+)
+
 /** `Component.Visibility` values. */
 internal object Visibility {
     const val GONE = 0
@@ -233,6 +250,9 @@ internal class LayoutNode(val kind: Kind) {
 
     /** Explicit visibility from a `MODIFIER_VISIBILITY`; `Visibility.VISIBLE` otherwise. */
     var visibility: Int = Visibility.VISIBLE
+
+    /** `CoreSemantics`: what this component tells a screen reader, or null if it says nothing. */
+    var semantics: SemanticsSpec? = null
 
     /** Action lists from `MODIFIER_CLICK` and the `MODIFIER_TOUCH_*` modifiers. */
     val actions = mutableMapOf<ActionTrigger, MutableList<DocumentAction>>()

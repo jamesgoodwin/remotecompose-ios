@@ -5,6 +5,7 @@ import io.github.jamesgoodwin.remotecompose.parser.PaintState
 import io.github.jamesgoodwin.remotecompose.runtime.ActionTrigger
 import io.github.jamesgoodwin.remotecompose.runtime.DocumentAction
 import io.github.jamesgoodwin.remotecompose.runtime.HitRegion
+import io.github.jamesgoodwin.remotecompose.runtime.SemanticsNode
 import io.github.jamesgoodwin.remotecompose.runtime.CubicEasing
 import io.github.jamesgoodwin.remotecompose.runtime.RemoteContext
 
@@ -39,6 +40,10 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
 
     /** Hit regions of the most recently rendered tree, in window coordinates. */
     var hitRegions: List<HitRegion> = emptyList()
+        private set
+
+    /** What that tree tells a screen reader, in window coordinates. */
+    var semantics: List<SemanticsNode> = emptyList()
         private set
 
     /** The components of that tree that ripple when pressed, in window coordinates. */
@@ -133,6 +138,7 @@ internal class LayoutTreeBuilder(private val context: RemoteContext, private val
         animateMeasures(root)
         engine.paint(root, out)
         hitRegions = engine.collectHitRegions(root)
+        semantics = engine.collectSemantics(root)
         rippleTargets = engine.collectRippleTargets(root)
         context.scrollBounds = engine.collectScrollBounds(root)
         context.componentBounds.clear()

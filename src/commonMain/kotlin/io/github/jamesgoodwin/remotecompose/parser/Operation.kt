@@ -616,6 +616,30 @@ internal sealed interface Operation {
         val r: Float, val g: Float, val b: Float, val a: Float, val shapeType: Int,
     ) : Operation
 
+    /**
+     * `CoreSemantics` (opcode `ACCESSIBILITY_SEMANTICS`): what a screen reader should say about
+     * the component this modifier is attached to.
+     *
+     * `[contentDescriptionId][role:u8][textId][stateDescriptionId][mode:u8][enabled][clickable]`.
+     * Every label is a text-pool id rather than a string, so a document can describe itself with
+     * a value it computed — the id is resolved per frame, not once.
+     *
+     * [role] indexes `AccessibleComponent.Role`: 0 button, 1 checkbox, 2 switch, 3 radio button,
+     * 4 tab, 5 image, 6 dropdown list, 7 picker, 8 carousel, and anything else unknown. [mode] is
+     * `AccessibleComponent.Mode`: 0 set, 1 clear and set, 2 merge, which is what the official
+     * player turns into `Modifier.semantics`, `clearAndSetSemantics` and
+     * `semantics(mergeDescendants = true)`.
+     */
+    data class Semantics(
+        val contentDescriptionId: Int,
+        val role: Int,
+        val textId: Int,
+        val stateDescriptionId: Int,
+        val mode: Int,
+        val enabled: Boolean,
+        val clickable: Boolean,
+    ) : Operation
+
     /** `Component.Visibility`: 0 gone, 1 visible, 2 invisible. */
     data class ModifierVisibility(val visibility: Int) : Operation
     data object ModifierClipRect : Operation

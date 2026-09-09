@@ -1,7 +1,7 @@
 # Opcode coverage
 
 The wire format has 172 opcodes (`androidx.compose.remote.core.Operations`, remote-core
-1.0.0-alpha18). This renderer decodes 154 of them; this file says what each one does here.
+1.0.0-alpha18). This renderer decodes 155 of them; this file says what each one does here.
 
 Three statuses, and the distinction matters:
 
@@ -24,7 +24,7 @@ because the format has no generic length prefix to skip by.
 | 14 | `ANIMATION_SPEC` | partial | a component that moved or resized is drawn on its way there, and one appearing or disappearing fades; the slide, rotate and particle animations are not run |
 | 63 | `THEME` | supported | brackets the operations belonging to one mode |
 | 65 | `ROOT_CONTENT_BEHAVIOR` | decoded only | no document-level scaling or scroll mode |
-| 103 | `ROOT_CONTENT_DESCRIPTION` | decoded only | accessibility text is not surfaced |
+| 103 | `ROOT_CONTENT_DESCRIPTION` | supported | what the document as a whole is, through `RemoteComposeDocument.contentDescription`, and on the canvas as its content description |
 | 177 | `HAPTIC_FEEDBACK` | decoded only | no haptics |
 | 191 | `WAKE_IN` | supported | how long the host may wait before drawing again, through `RemoteComposeDocument.nextRepaintDelayMillis`; the soonest request wins once one has been served |
 | 179 | `DEBUG_MESSAGE` | decoded only | nothing is logged |
@@ -198,6 +198,7 @@ because the format has no generic length prefix to skip by.
 | 108 | `MODIFIER_CLIP_RECT` | supported |  |
 | 174 | `MODIFIER_DRAW_CONTENT` | decoded only | content is drawn in stream order regardless |
 | 211 | `MODIFIER_VISIBILITY` | supported |  |
+| 250 | `ACCESSIBILITY_SEMANTICS` | supported | `CoreSemantics`, in remote-core's `semantics` package rather than `operations`: the description, text, state, role and clickability of the component it is attached to, in all three modes. `RemoteComposeCanvas` lays these over the canvas as Compose semantics, so a screen reader can walk a document that was drawn rather than laid out; a host drawing a document itself reads them from `RemoteComposeDocument.semantics` |
 | 221 | `MODIFIER_OFFSET` | supported |  |
 | 223 | `MODIFIER_ZINDEX` | supported |  |
 | 224 | `MODIFIER_GRAPHICS_LAYER` | partial | alpha, scale, translation, transform origin, shape clip and all three rotations, each read as a value the document may compute per frame rather than a written constant; `ROTATION_X`/`ROTATION_Y` foreshorten without perspective, so `CAMERA_DISTANCE` has no effect. `SHADOW_ELEVATION` is cast from the component's outline, which is what the official Compose player does with it. `TRANSLATION_Z`, `SPOT_SHADOW_COLOR`, `AMBIENT_SHADOW_COLOR`, `COMPOSITING_STRATEGY`, `HAS_BLUR`, `BLUR_RADIUS_X`, `BLUR_RADIUS_Y` and `BLUR_TILE_MODE` are decoded and ignored, because the official Compose player does not act on them either: with no reference behaviour to compare against, anything this renderer did with them would be its own invention. `CAMERA_DISTANCE` is the one the official player does act on and this does not |
@@ -235,12 +236,11 @@ because the format has no generic length prefix to skip by.
 
 A document using any of these fails to parse. They fall into groups: sound (`PLAY_SOUND`,
 `DATA_SOUND`, `SOUND_EXPRESSION`), the rest of the loom system (`IMPULSE_START`,
-`IMPULSE_PROCESS`, `PARTICLE_PROCESS`), accessibility semantics, and the extension range.
+`IMPULSE_PROCESS`, `PARTICLE_PROCESS`), and the extension range.
 
-Five of them have no class in remote-core 1.0.0-alpha18 at all — the constant is declared in
+Four of them have no class in remote-core 1.0.0-alpha18 at all — the constant is declared in
 `Operations` and nothing answers to it, so there is nothing to decode until upstream implements
-them: `LOAD_BITMAP` (4), `MATRIX_SET` (132), `PARTICLE_PROCESS` (162), `UPDATE` (195) and
-`ACCESSIBILITY_SEMANTICS` (250), the last being an interface rather than an operation.
+them: `LOAD_BITMAP` (4), `MATRIX_SET` (132), `PARTICLE_PROCESS` (162) and `UPDATE` (195).
 
 | Id | Opcode |
 | --: | --- |
@@ -256,7 +256,6 @@ them: `LOAD_BITMAP` (4), `MATRIX_SET` (132), `PARTICLE_PROCESS` (162), `UPDATE` 
 | 190 | `DRAW_TO_BITMAP` |
 | 195 | `UPDATE` |
 | 206 | `SOUND_EXPRESSION` |
-| 250 | `ACCESSIBILITY_SEMANTICS` |
 | 251 | `EXTENSION_RANGE_RESERVED_4` |
 | 252 | `EXTENSION_RANGE_RESERVED_3` |
 | 253 | `EXTENSION_RANGE_RESERVED_2` |

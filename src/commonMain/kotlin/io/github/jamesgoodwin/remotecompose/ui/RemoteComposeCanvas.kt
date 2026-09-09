@@ -1,6 +1,7 @@
 package io.github.jamesgoodwin.remotecompose.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
@@ -23,6 +24,8 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalGraphicsContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
 import io.github.jamesgoodwin.remotecompose.engine.ComposeTextMetrics
@@ -108,23 +111,45 @@ public fun RemoteComposeCanvas(
         onDispose { loaded.onHostAction = null }
     }
 
-    Canvas(
-        modifier = modifier
-            .onSizeChanged { canvasSize = it }
-            .documentGestures(loaded, canvasSize) {
-                fitDocumentToCanvas(
-                    canvasWidth = canvasSize.width.toFloat(),
-                    canvasHeight = canvasSize.height.toFloat(),
-                    header = loaded.header,
-                )
-            },
+    // The canvas draws; the box around it is what a screen reader can find. Everything in a
+    // document is drawn rather than laid out, so without the overlay there is nothing for one to
+    // walk — see SemanticsOverlay.
+    val description = loaded.contentDescription
+    Box(
+        modifier = modifier.semantics { description?.let { contentDescription = it } },
     ) {
-        val fit = fitDocumentToCanvas(canvasWidth = size.width, canvasHeight = size.height, header = document.header)
-        drawContext.canvas.save()
-        drawContext.transform.translate(fit.offsetX, fit.offsetY)
-        drawContext.transform.scale(fit.scale, fit.scale, pivot = Offset.Zero)
-        OpcodeExecutor.render(this, document.opcodes, renderContext)
-        drawContext.canvas.restore()
+        Canvas(
+            modifier = Modifier
+                .matchParentSize()
+                .onSizeChanged { canvasSize = it }
+                .documentGestures(loaded, canvasSize) {
+                    fitDocumentToCanvas(
+                        canvasWidth = canvasSize.width.toFloat(),
+                        canvasHeight = canvasSize.height.toFloat(),
+                        header = loaded.header,
+                    )
+                },
+        ) {
+            val fit = fitDocumentToCanvas(canvasWidth = size.width, canvasHeight = size.height, header = document.header)
+            drawContext.canvas.save()
+            drawContext.transform.translate(fit.offsetX, fit.offsetY)
+            drawContext.transform.scale(fit.scale, fit.scale, pivot = Offset.Zero)
+            OpcodeExecutor.render(this, document.opcodes, renderContext)
+            drawContext.canvas.restore()
+        }
+        val semantics = loaded.semantics
+        if (semantics.isNotEmpty() && canvasSize != IntSize.Zero) {
+            val fit = fitDocumentToCanvas(
+                canvasWidth = canvasSize.width.toFloat(),
+                canvasHeight = canvasSize.height.toFloat(),
+                header = loaded.header,
+            )
+            // Activating a labelled control is the same click a finger would make, at the middle
+            // of where it ended up.
+            SemanticsOverlay(semantics, fit) { node ->
+                loaded.click((node.left + node.right) / 2f, (node.top + node.bottom) / 2f)
+            }
+        }
     }
 }
 

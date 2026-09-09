@@ -70,7 +70,7 @@ desktop too. On Android, use Google's
 instead: it is the reference implementation and covers the whole format. This one exists because
 it also runs on iOS.
 
-**154 of the format's 172 opcodes** are decoded, 134 of them acted on in full.
+**155 of the format's 172 opcodes** are decoded, 135 of them acted on in full.
 [`docs/OPCODES.md`](docs/OPCODES.md) lists every one. Anything not listed is not decoded, and a
 document containing one throws `RemoteComposeParseException` at the byte where it appears: the
 format has no generic length prefix, so an unknown record cannot be skipped safely.

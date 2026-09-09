@@ -52,6 +52,7 @@ import io.github.jamesgoodwin.remotecompose.fixtures.RUNACTION_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SAMPLE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHOWCASE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.FONT_RC_BYTES
+import io.github.jamesgoodwin.remotecompose.fixtures.SEMANTICS_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHADER_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHADOW_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SWIPE_RC_BYTES
@@ -97,6 +98,7 @@ private val DEMOS = listOf(
     Demo("shader", "Shader", "A runtime shader compiled from the document's own source", SHADER_RC_BYTES, background = Color(0xFFFFFFFF)),
     Demo("shadow", "Shadow", "Elevation, which is cast from a layer rather than drawn", SHADOW_RC_BYTES, background = Color(0xFFF4F2F7)),
     Demo("font", "Font", "A typeface the document brought with it, against the platform's own", FONT_RC_BYTES, background = Color(0xFFFFFFFF)),
+    Demo("semantics", "Semantics", "What the document tells a screen reader about itself", SEMANTICS_RC_BYTES, background = Color(0xFFFFFFFF)),
     Demo("swipe", "Swipe to delete", "Rows that swipe aside, delete on a tap, and close the gap", SWIPE_RC_BYTES, background = Color(0xFFF4F2F7)),
     Demo("coffee", "Coffee", "A shop: themed colours, a scrolling menu, rows that expand", COFFEE_RC_BYTES, background = Color(0xFFFDF8F3), backgroundDark = Color(0xFF1B1614), followsSystemTheme = true),
     Demo("flight", "Flight", "Every value fed by name from outside, and eased on the way in", FLIGHT_RC_BYTES, background = Color(0xFFFFFBFE), feed = ::runFlightFeed),

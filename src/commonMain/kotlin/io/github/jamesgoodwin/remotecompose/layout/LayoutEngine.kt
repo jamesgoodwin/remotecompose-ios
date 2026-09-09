@@ -7,6 +7,9 @@ import io.github.jamesgoodwin.remotecompose.model.PaintStyleKind
 import io.github.jamesgoodwin.remotecompose.model.PathCommand
 import io.github.jamesgoodwin.remotecompose.runtime.CubicEasing
 import io.github.jamesgoodwin.remotecompose.runtime.HitRegion
+import io.github.jamesgoodwin.remotecompose.runtime.SemanticsMode
+import io.github.jamesgoodwin.remotecompose.runtime.SemanticsNode
+import io.github.jamesgoodwin.remotecompose.runtime.SemanticsRole
 import io.github.jamesgoodwin.remotecompose.runtime.RemoteContext
 import io.github.jamesgoodwin.remotecompose.text.TextMetricsProvider
 import io.github.jamesgoodwin.remotecompose.text.TextBlock
@@ -1099,6 +1102,60 @@ internal class LayoutEngine(private val context: RemoteContext, private val text
             if (scroll.direction == 0) childY -= offset else childX -= offset
         }
         for (child in node.children) collectHitRegions(child, childX, childY, out)
+        return out
+    }
+
+    /**
+     * The `ACCESSIBILITY_SEMANTICS` of every component that carries one, as a tree in document
+     * coordinates, with its label ids resolved against this frame's text pool.
+     *
+     * The tree is of the components that say something, not of every component: one that says
+     * nothing contributes its children to whatever encloses it, so a labelled row inside three
+     * bare boxes is a child of whatever labelled thing is above those boxes. That keeps `MERGE`
+     * and `CLEAR_AND_SET` meaning what they mean — a component and the labelled things inside it
+     * — without a host having to walk past the layout that only exists to arrange things.
+     *
+     * Origins follow [collectHitRegions] exactly, scroll offset included: a reader's rectangle
+     * has to be where the finger would go.
+     */
+    fun collectSemantics(
+        node: LayoutNode,
+        originX: Float = 0f,
+        originY: Float = 0f,
+        out: MutableList<SemanticsNode> = mutableListOf(),
+    ): List<SemanticsNode> {
+        if (node.isGone) return out
+        val x = originX + node.x
+        val y = originY + node.y
+        var childX = x + node.paddingLeft
+        var childY = y + node.paddingTop
+        node.modifiers.filterIsInstance<Modifier.Scroll>().firstOrNull()?.let { scroll ->
+            val position = context.getFloat(scroll.positionExpressionId).takeUnless { it.isNaN() } ?: 0f
+            val offset = min(position, scroll.maxScroll)
+            if (scroll.direction == 0) childY -= offset else childX -= offset
+        }
+        val spec = node.semantics
+        if (spec == null) {
+            for (child in node.children) collectSemantics(child, childX, childY, out)
+            return out
+        }
+        val children = mutableListOf<SemanticsNode>()
+        for (child in node.children) collectSemantics(child, childX, childY, children)
+        fun label(id: Int): String? = if (id == 0) null else context.texts[id]
+        out += SemanticsNode(
+            left = x,
+            top = y,
+            right = x + node.width,
+            bottom = y + node.height,
+            contentDescription = label(spec.contentDescriptionId),
+            text = label(spec.textId),
+            stateDescription = label(spec.stateDescriptionId),
+            role = SemanticsRole.fromWire(spec.role),
+            mode = SemanticsMode.fromWire(spec.mode),
+            enabled = spec.enabled,
+            clickable = spec.clickable,
+            children = children,
+        )
         return out
     }
 

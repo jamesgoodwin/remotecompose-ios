@@ -159,4 +159,7 @@ internal object Operations {
     const val MACRO_ARGUMENT = 248
     const val MACRO_BLOCK = 249
     const val MODIFIER_DIMENSION_CONSTRAINTS = 243
+
+    /** `CoreSemantics`, in remote-core's `semantics` package rather than `operations`. */
+    const val ACCESSIBILITY_SEMANTICS = 250
 }

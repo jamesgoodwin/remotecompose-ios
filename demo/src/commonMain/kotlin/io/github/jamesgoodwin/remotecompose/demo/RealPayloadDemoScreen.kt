@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalGraphicsContext
 import io.github.jamesgoodwin.remotecompose.engine.ComposeTextMetrics
 import io.github.jamesgoodwin.remotecompose.engine.OpcodeExecutor
 import io.github.jamesgoodwin.remotecompose.engine.RenderContext
+import io.github.jamesgoodwin.remotecompose.ui.RemoteComposeSemantics
 import io.github.jamesgoodwin.remotecompose.parser.RemoteComposeParser
 import io.github.jamesgoodwin.remotecompose.ui.rememberDocumentFrames
 import androidx.compose.runtime.getValue
@@ -67,9 +68,10 @@ fun RealPayloadDemoScreen(bytes: ByteArray) {
         modifier = Modifier.fillMaxSize().background(Color(0xFF37474F)),
         contentAlignment = Alignment.Center,
     ) {
+        Box(Modifier.size(canvasWidth, canvasHeight)) {
         Canvas(
             modifier = Modifier
-                .size(canvasWidth, canvasHeight)
+                .matchParentSize()
                 .pointerInput(loaded) {
                     // The canvas is 1:1 with document pixels here, so a tap position is already
                     // in document space. A tap the document does not claim switches the page.
@@ -85,6 +87,11 @@ fun RealPayloadDemoScreen(bytes: ByteArray) {
         ) {
             drawRect(color = Color.White, size = size)
             OpcodeExecutor.render(this, document.opcodes, renderContext)
+        }
+        // What the document says about itself, for a screen reader: the canvas here is one to
+        // one with document coordinates, so the overlay needs no mapping. Transparent and
+        // without pointer input, so neither the screenshots nor the taps change.
+        RemoteComposeSemantics(loaded)
         }
     }
 }

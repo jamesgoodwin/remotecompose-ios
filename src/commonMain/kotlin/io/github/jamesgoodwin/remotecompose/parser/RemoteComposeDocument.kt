@@ -8,6 +8,7 @@ import io.github.jamesgoodwin.remotecompose.runtime.DocumentAction
 import io.github.jamesgoodwin.remotecompose.runtime.FloatExpressionEvaluator
 import io.github.jamesgoodwin.remotecompose.runtime.HitRegion
 import io.github.jamesgoodwin.remotecompose.runtime.RemoteContext
+import io.github.jamesgoodwin.remotecompose.runtime.SemanticsNode
 import io.github.jamesgoodwin.remotecompose.text.TextMetricsProvider
 
 /**
@@ -30,6 +31,22 @@ public class RemoteComposeDocument internal constructor(
     /** Hit rectangles of the most recent [frame], in document coordinates and in paint order. */
     public var hitRegions: List<HitRegion> = emptyList()
         private set
+
+    /**
+     * What the most recent [frame] tells a screen reader, as a tree in document coordinates.
+     *
+     * Empty for a document that carries no `ACCESSIBILITY_SEMANTICS`, which is most of them: the
+     * format labels nothing by itself, so this is only what the document was written to say.
+     * [io.github.jamesgoodwin.remotecompose.ui.RemoteComposeCanvas] turns these into Compose
+     * semantics; a host drawing the document some other way can read them here.
+     */
+    public var semantics: List<SemanticsNode> = emptyList()
+        private set
+
+    /** `ROOT_CONTENT_DESCRIPTION`: what the document as a whole is, or null if it does not say. */
+    public val contentDescription: String?
+        get() = operations.filterIsInstance<Operation.RootContentDescription>().lastOrNull()
+            ?.let { context.texts[it.textId] }
 
     private var rippleTargets: List<io.github.jamesgoodwin.remotecompose.layout.LayoutEngine.RippleTarget> = emptyList()
 
@@ -84,6 +101,7 @@ public class RemoteComposeDocument internal constructor(
         context.beginFrame(nowMillis)
         val opcodes = RemoteComposeParser.build(operations, context, textMetrics)
         hitRegions = RemoteComposeParser.hitRegions
+        semantics = RemoteComposeParser.semantics
         rippleTargets = RemoteComposeParser.rippleTargets
         // `RunActionOperation.paint`: the blocks of the components that were painted, run in the
         // order they were. What they write is read by the frame after this one, which is where
