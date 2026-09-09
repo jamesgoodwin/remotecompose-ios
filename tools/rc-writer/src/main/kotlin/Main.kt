@@ -742,6 +742,29 @@ private fun buildFitnessSample() {
     val pillX = writer.addFloatConstant(122f)
     val bars = week.map { writer.addFloatConstant(it) }
 
+    // iOS slides its segmented pill rather than jumping it, and settles a chart into its new
+    // shape; `ANIMATED_FLOAT` is that. Wrapping a value in one gives a float that eases to
+    // whatever is written to it, so the taps below stay a plain write and the movement is the
+    // document's own. Nothing eases on the first frame: with no previous target the animation
+    // starts where it already is, so a document opens settled rather than flying together.
+    fun eased(value: Float, seconds: Float, curve: Int): Float = writer.floatExpression(
+        floatArrayOf(value),
+        androidx.compose.remote.core.operations.utilities.easing.FloatAnimation.packToFloatArray(
+            seconds, curve, null, Float.NaN, Float.NaN,
+        ),
+    )
+
+    val standardCurve = androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_STANDARD
+    val settleCurve = androidx.compose.remote.core.operations.utilities.easing.Easing.CUBIC_DECELERATE
+
+    // 0.25s is what UIKit gives the segmented control; the rings and the bars take longer,
+    // because they are showing a change of data rather than following a finger.
+    val pillSlide = eased(pillX, 0.25f, standardCurve)
+    val moveSweep = eased(move, 0.6f, settleCurve)
+    val exerciseSweep = eased(exercise, 0.6f, settleCurve)
+    val standSweep = eased(stand, 0.6f, settleCurve)
+    val barHeights = bars.map { eased(it, 0.45f, settleCurve) }
+
     val moveId = androidx.compose.remote.core.operations.Utils.idFromNan(move)
     val exerciseId = androidx.compose.remote.core.operations.Utils.idFromNan(exercise)
     val standId = androidx.compose.remote.core.operations.Utils.idFromNan(stand)
@@ -942,7 +965,7 @@ private fun buildFitnessSample() {
     // The offset is on a box of its own, around the one that carries the shadow: this renderer
     // applies a graphics layer before the rest of a component's modifiers, so an offset beside
     // one ends up inside the layer and moves nothing.
-    writer.startBox(RecordingModifier().offset(pillX, 0f).width(118f).height(28f), 1, 2)
+    writer.startBox(RecordingModifier().offset(pillSlide, 0f).width(118f).height(28f), 1, 2)
     writer.startBox(
         RecordingModifier().width(118f).height(28f)
             .then(layer { setFloatAttribute(10, 2f); setIntAttribute(20, 1); setFloatAttribute(21, 8f) })
@@ -973,9 +996,9 @@ private fun buildFitnessSample() {
     )
     describe(writer.addText("Activity rings"), role = roleImage)
     writer.startBox(RecordingModifier().width(126f).height(126f), 2, 2)
-    ring(63f, 54f, pink, move)
-    ring(63f, 38f, green, exercise)
-    ring(63f, 22f, orange, stand)
+    ring(63f, 54f, pink, moveSweep)
+    ring(63f, 38f, green, exerciseSweep)
+    ring(63f, 22f, orange, standSweep)
     writer.endBox()
     writer.startColumn(RecordingModifier().spacedBy(14f), 1, 4)
     legend(pink, "Move", moveValue, moveUnit)
@@ -1008,7 +1031,7 @@ private fun buildFitnessSample() {
         writer.startBox(
             RecordingModifier()
                 .width(24f)
-                .height(writer.floatExpression(bars[index], 74f, Rc.FloatExpression.MUL))
+                .height(writer.floatExpression(barHeights[index], 74f, Rc.FloatExpression.MUL))
                 .clip(RoundedRectShape(6f, 6f, 6f, 6f))
                 .backgroundId(if (index == 5) blue.toShort() else barTint.toShort()),
             2, 5,
