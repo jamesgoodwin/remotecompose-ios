@@ -429,6 +429,7 @@ public object RemoteComposeParser {
                             resolveFloat = ::resolveFloat,
                             colorById = { colorPool[it] },
                             textById = { textPool[it] },
+                            fontById = { context.embeddedFont(it) },
                         )
                     }
 

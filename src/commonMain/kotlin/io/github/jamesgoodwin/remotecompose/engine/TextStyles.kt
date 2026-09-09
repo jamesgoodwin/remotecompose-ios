@@ -19,9 +19,18 @@ import io.github.jamesgoodwin.remotecompose.text.TextMetricsProvider
  * makes the result exactly `paint.textSize` document pixels in their own density.
  */
 internal fun PaintStyle.toTextStyle(fontSize: TextUnit, brush: Brush? = null): TextStyle {
-    val weight = FontWeight(fontWeight.coerceIn(1, 1000))
-    val fontStyle = if (fontItalic) FontStyle.Italic else FontStyle.Normal
-    val family = when (fontFamily) {
+    // An embedded DATA_FONT wins over the named family, the way it replaces the paint's typeface
+    // outright in the real player; a font this platform could not read falls back to the family.
+    val embedded = font?.family
+    // Weight and slant describe an embedded font file rather than restyle it: the real player
+    // hands the typeface straight to the paint, and its `Font.Builder.setWeight`/`setSlant` are
+    // metadata for matching within a family of one. Asking Compose for them as well would have
+    // Skia synthesise a bold or an oblique that Android would not draw — and `setTypeface(int)`
+    // sets the italic bit on every embedded font, since the reader reads the "this is an id"
+    // flag as part of it.
+    val weight = if (embedded != null) FontWeight.Normal else FontWeight(fontWeight.coerceIn(1, 1000))
+    val fontStyle = if (fontItalic && embedded == null) FontStyle.Italic else FontStyle.Normal
+    val family = embedded ?: when (fontFamily) {
         FontFamilyKind.DEFAULT -> FontFamily.Default
         FontFamilyKind.SANS_SERIF -> FontFamily.SansSerif
         FontFamilyKind.SERIF -> FontFamily.Serif

@@ -9,3 +9,10 @@ from that library.
 The fixture writer under tools/rc-writer depends on
 androidx.compose.remote:remote-creation, remote-creation-core and remote-core
 (Apache License 2.0, Copyright The Android Open Source Project) at build time.
+
+The demo fixtures under tools/rc-writer contain a subset of Rubik Mono One
+(Copyright 2015 The Rubik Project Authors), used under the SIL Open Font
+License 1.1. The licence is at tools/rc-writer/fonts/OFL.txt and the font's
+provenance at tools/rc-writer/fonts/CREDITS.md. The font travels inside
+tools/rc-writer/font.rc and the payload generated from it as well as beside
+them.

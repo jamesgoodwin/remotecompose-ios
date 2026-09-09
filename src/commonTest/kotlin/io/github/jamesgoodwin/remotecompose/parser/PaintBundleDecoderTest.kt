@@ -1,6 +1,7 @@
 package io.github.jamesgoodwin.remotecompose.parser
 
 import androidx.compose.ui.graphics.Color
+import io.github.jamesgoodwin.remotecompose.model.EmbeddedFont
 import io.github.jamesgoodwin.remotecompose.model.FontFamilyKind
 import io.github.jamesgoodwin.remotecompose.model.GradientSpec
 import io.github.jamesgoodwin.remotecompose.model.PaintStyleKind
@@ -9,6 +10,7 @@ import io.github.jamesgoodwin.remotecompose.model.StrokeJoinKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
@@ -17,6 +19,9 @@ import kotlin.test.assertTrue
  * needing the writer on the classpath.
  */
 class PaintBundleDecoderTest {
+
+    /** Bytes that are not a font: nothing here builds a typeface out of one. */
+    private val TEST_FONT = EmbeddedFont(43, ByteArray(4))
 
     private fun w(id: Int, hi: Int = 0): Int = id or (hi shl 16)
     private fun f(value: Float): Int = value.toRawBits()
@@ -27,8 +32,9 @@ class PaintBundleDecoderTest {
         resolveFloat: (Float) -> Float = { it },
         colorById: (Int) -> Color? = { null },
         textById: (Int) -> String? = { null },
+        fontById: (Int) -> EmbeddedFont? = { null },
     ): PaintState {
-        PaintBundleDecoder.apply(words, state, resolveFloat, colorById, textById)
+        PaintBundleDecoder.apply(words, state, resolveFloat, colorById, textById, fontById)
         return state
     }
 
@@ -144,6 +150,31 @@ class PaintBundleDecoderTest {
         )
         assertEquals(400, named.fontWeight)
         assertEquals(FontFamilyKind.SERIF, named.fontFamily)
+    }
+
+    @Test
+    fun aTypefaceOutsideTheBuiltInFamiliesIsAnEmbeddedFontId() {
+        // `RcPaint.setTypeface(int)` writes the id with the "force int" bit, which the real
+        // reader also reads as italic — mirrored here, so this asserts it rather than fixing it.
+        val embedded = TEST_FONT
+        val state = apply(
+            intArrayOf(w(PaintBundleDecoder.TYPEFACE, hi = 400 or 1024), 43),
+            fontById = { if (it == 43) embedded else null },
+        )
+        assertSame(embedded, state.font)
+        assertTrue(state.fontItalic)
+
+        // And a built-in family afterwards takes the paint off it again.
+        val cleared = apply(intArrayOf(w(PaintBundleDecoder.TYPEFACE, hi = 400), 2), state = state)
+        assertNull(cleared.font)
+        assertEquals(FontFamilyKind.SERIF, cleared.fontFamily)
+    }
+
+    @Test
+    fun anIdWithNoFontLoadedLeavesThePaintAlone() {
+        val state = apply(intArrayOf(w(PaintBundleDecoder.TYPEFACE, hi = 400 or 1024), 43))
+        assertNull(state.font)
+        assertEquals(FontFamilyKind.DEFAULT, state.fontFamily)
     }
 
     @Test

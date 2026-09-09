@@ -84,6 +84,10 @@ fun main(args: Array<String>) {
         buildShaderSample()
         return
     }
+    if (args.getOrNull(0) == "font") {
+        buildFontSample()
+        return
+    }
     if (args.getOrNull(0) == "material") {
         buildMaterialSample()
         return
@@ -646,10 +650,56 @@ private fun buildMaterialSample() {
 }
 
 /**
+ * A document carrying a font of its own: `DATA_FONT` holds the file, and a paint names it by id
+ * where it would otherwise name one of the four built-in families (`RcPaint.setTypeface(int)`).
+ *
+ * The same word is drawn twice, once in the platform default and once in the embedded face, so
+ * the pair shows both that the font was used and what it replaced. The file is a subset of Rubik
+ * Mono One holding only that word's glyphs; see `fonts/CREDITS.md`.
+ */
+private fun buildFontSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 200, "font", platform)
+
+    val fontId = writer.addFont(File("fonts/RubikMonoOne-subset.ttf").readBytes())
+
+    val ink = 0xFF1B1B1F.toInt()
+    val faint = 0xFF6F6A78.toInt()
+    val sample = writer.addText("Embedded")
+    val sampleLength = "Embedded".length
+
+    fun run(textId: Int, length: Int, x: Float, y: Float) =
+        writer.drawTextRun(textId, 0, length, 0, 0, x, y, false)
+
+    writer.getRcPaint().setColor(0xFFFFFFFF.toInt()).commit()
+    writer.drawRect(0f, 0f, 300f, 200f)
+
+    // Everything above the second sample is drawn in the default face, so the labels are not
+    // themselves evidence of anything: the typeface is set last, once, and only the final run
+    // sees it.
+    writer.getRcPaint().setColor(faint).setTextSize(13f).commit()
+    val defaultLabel = writer.addText("Default typeface")
+    run(defaultLabel, "Default typeface".length, 16f, 40f)
+
+    writer.getRcPaint().setColor(ink).setTextSize(24f).commit()
+    run(sample, sampleLength, 16f, 78f)
+
+    writer.getRcPaint().setColor(faint).setTextSize(13f).commit()
+    val embeddedLabel = writer.addText("The document's own")
+    run(embeddedLabel, "The document's own".length, 16f, 128f)
+
+    writer.getRcPaint().setColor(ink).setTextSize(24f).setTypeface(fontId).commit()
+    run(sample, sampleLength, 16f, 166f)
+
+    val bytes = writer.encodeToByteArray()
+    File("font.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to font.rc")
+}
+
+/**
  * A document carrying an AGSL shader with float, int and bitmap uniforms, plus two plain draws
- * either side of the shaded one. This renderer decodes `DATA_SHADER` and keeps the stream
- * aligned, but paints nothing with it — `ShaderFixtureTest` asserts both halves of that: the
- * uniforms decode, and the draws that do not depend on the shader still come out.
+ * either side of the shaded one, so a screenshot shows the shaded rectangle against geometry that
+ * does not depend on it.
  */
 private fun buildShaderSample() {
     val platform = JvmRcPlatformServices()

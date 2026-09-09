@@ -1,6 +1,7 @@
 package io.github.jamesgoodwin.remotecompose.runtime
 
 import androidx.compose.ui.graphics.Color
+import io.github.jamesgoodwin.remotecompose.model.EmbeddedFont
 import io.github.jamesgoodwin.remotecompose.model.PathCommand
 import io.github.jamesgoodwin.remotecompose.text.BitmapFont
 import io.github.jamesgoodwin.remotecompose.layout.LayoutEngine
@@ -37,8 +38,21 @@ internal class RemoteContext : FloatCollections {
     internal val dataMaps = mutableMapOf<Int, List<Operation.DataMapEntry>>()
     val bitmaps = mutableMapOf<Int, ByteArray>()
 
-    /** `loadFont`: embedded font files by id. Kept, not drawn with — see `Operation.FontData`. */
+    /** `loadFont`: embedded font files by id, as `FontData` left them. */
     val fonts = mutableMapOf<Int, ByteArray>()
+
+    private val embeddedFonts = mutableMapOf<Int, EmbeddedFont>()
+
+    /**
+     * The font a paint's `TYPEFACE` attribute named, or null when no `DATA_FONT` loaded that id.
+     *
+     * One instance per id, so the typeface behind it is built once however many paints name it.
+     */
+    internal fun embeddedFont(id: Int): EmbeddedFont? {
+        embeddedFonts[id]?.let { return it }
+        val bytes = fonts[id] ?: return null
+        return EmbeddedFont(id, bytes).also { embeddedFonts[id] = it }
+    }
 
     /** `TEXT_STYLE` bundles by id, for a `CORE_TEXT` that points at one. */
     internal val textStyles = mutableMapOf<Int, Operation.StyleParameters>()
@@ -47,7 +61,7 @@ internal class RemoteContext : FloatCollections {
     val bitmapSizes = mutableMapOf<Int, Pair<Int, Int>>()
     internal val bitmapFonts = mutableMapOf<Int, BitmapFont>()
 
-    /** Shaders, keyed by id. Decoded only: nothing here paints one. */
+    /** Shaders, keyed by id, for the paints that name one. */
     internal val shaders = mutableMapOf<Int, Operation.ShaderData>()
 
     /** Matrices, keyed by id, as the raw values a `MatrixAccess` hands out. */

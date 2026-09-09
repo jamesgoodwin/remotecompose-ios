@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.Color
  *   on an Android `Paint`. Cleared by a `SHADER` attribute with id 0.
  * @property shaderId The `DATA_SHADER` a `PaintBundle.SHADER` attribute named, or null. Takes
  *   precedence over [gradient] and [color], as a shader does on a real paint.
+ * @property font The `DATA_FONT` a `PaintBundle.TYPEFACE` attribute named, or null when it named
+ *   one of the built-in families in [fontFamily] instead. Takes precedence over [fontFamily].
  * @property blendMode `PaintBundle.BLEND_MODE_*` ordinal, or null for the default source-over.
  */
 public data class PaintStyle(
@@ -32,6 +34,7 @@ public data class PaintStyle(
     val fontWeight: Int = 400,
     val fontItalic: Boolean = false,
     val fontFamily: FontFamilyKind = FontFamilyKind.DEFAULT,
+    val font: EmbeddedFont? = null,
     val gradient: GradientSpec? = null,
     val shaderId: Int? = null,
     val blendMode: Int? = null,

@@ -1,6 +1,7 @@
 package io.github.jamesgoodwin.remotecompose.parser
 
 import androidx.compose.ui.graphics.Color
+import io.github.jamesgoodwin.remotecompose.model.EmbeddedFont
 import io.github.jamesgoodwin.remotecompose.model.FontFamilyKind
 import io.github.jamesgoodwin.remotecompose.model.GradientSpec
 import io.github.jamesgoodwin.remotecompose.model.PaintStyle
@@ -24,6 +25,7 @@ internal class PaintState {
     var fontWeight: Int = 400
     var fontItalic: Boolean = false
     var fontFamily: FontFamilyKind = FontFamilyKind.DEFAULT
+    var font: EmbeddedFont? = null
     var gradient: GradientSpec? = null
     var shaderId: Int? = null
     var blendMode: Int? = null
@@ -39,6 +41,7 @@ internal class PaintState {
         fontWeight = fontWeight,
         fontItalic = fontItalic,
         fontFamily = fontFamily,
+        font = font,
         gradient = gradient,
         shaderId = shaderId,
         blendMode = blendMode,
@@ -55,6 +58,7 @@ internal class PaintState {
         it.fontWeight = fontWeight
         it.fontItalic = fontItalic
         it.fontFamily = fontFamily
+        it.font = font
         it.gradient = gradient
         it.shaderId = shaderId
         it.blendMode = blendMode
@@ -71,6 +75,7 @@ internal class PaintState {
         fontWeight = other.fontWeight
         fontItalic = other.fontItalic
         fontFamily = other.fontFamily
+        font = other.font
         gradient = other.gradient
         shaderId = other.shaderId
         blendMode = other.blendMode
@@ -100,7 +105,7 @@ internal class PaintState {
  * | 13 | COLOR_FILTER         | porter-duff mode     | argb int                                |
  * | 14 | ANTI_ALIAS           | flag                 |                                         |
  * | 15 | STROKE_JOIN          | join ordinal         |                                         |
- * | 16 | TYPEFACE             | weight, italic, flag | font type or text id                    |
+ * | 16 | TYPEFACE             | weight, italic, flag | font type, text id or `DATA_FONT` id    |
  * | 17 | FILTER_BITMAP        | flag                 |                                         |
  * | 18 | BLEND_MODE           | mode                 |                                         |
  * | 19 | COLOR_ID             |                      | color pool id                           |
@@ -156,6 +161,7 @@ internal object PaintBundleDecoder {
         resolveFloat: (Float) -> Float,
         colorById: (Int) -> Color?,
         textById: (Int) -> String?,
+        fontById: (Int) -> EmbeddedFont? = { null },
     ) {
         var i = 0
         fun nextWord(): Int = words[i++]
@@ -202,10 +208,18 @@ internal object PaintBundleDecoder {
                     val value = nextWord()
                     state.fontWeight = if (weight == 0) 400 else weight
                     state.fontItalic = italic
-                    state.fontFamily = if (value > 10 && !forceIntType) {
-                        familyFromName(textById(value))
+                    if (value > 10 && !forceIntType) {
+                        state.fontFamily = familyFromName(textById(value))
+                        state.font = null
+                    } else if (value in FontFamilyKind.entries.indices) {
+                        state.fontFamily = FontFamilyKind.entries[value]
+                        state.font = null
                     } else {
-                        FontFamilyKind.entries.getOrElse(value) { FontFamilyKind.DEFAULT }
+                        // Anything the four built-in families do not cover is a DATA_FONT id, which
+                        // is how `setTypeface(int)` points a paint at an embedded font. An id with
+                        // no font loaded under it leaves the paint on the family it already had,
+                        // where the real player would throw.
+                        fontById(value)?.let { state.font = it }
                     }
                 }
                 FILTER_BITMAP -> Unit

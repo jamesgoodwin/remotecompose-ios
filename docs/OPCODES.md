@@ -44,8 +44,8 @@ because the format has no generic length prefix to skip by.
 | 210 | `HOST_NAMED_ACTION` | supported | an action named by a string, carrying a float, int, string or float list |
 | 216 | `HOST_METADATA_ACTION` | supported | a numbered action with a string beside it |
 | 137 | `NAMED_VARIABLE` | supported | gives a pool value a name, and `RemoteComposeDocument.setNamed*` is the host putting one in by it |
-| 189 | `DATA_FONT` | decoded only | the bytes are kept, so a document carrying a font parses and draws; nothing selects one to draw with |
-| 45 | `DATA_SHADER` | decoded only | uniforms are kept; painting one needs a runtime shader compiler |
+| 189 | `DATA_FONT` | supported | the font file the paint's `TYPEFACE` names by id, in place of a built-in family. Weight and slant describe the file rather than restyle it, which is what the official player does with them. On Android the platform reads the file from API 29; older devices keep the family the paint had |
+| 45 | `DATA_SHADER` | supported | the source is compiled and painted with, through Skia's runtime effect on iOS and desktop and `RuntimeShader` on Android, where it needs API 33. Float and int uniforms are set; bitmap uniforms are not |
 | 80 | `DATA_FLOAT` | supported |  |
 | 101 | `DATA_BITMAP` | supported |  |
 | 102 | `DATA_TEXT` | supported |  |

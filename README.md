@@ -70,7 +70,7 @@ desktop too. On Android, use Google's
 instead: it is the reference implementation and covers the whole format. This one exists because
 it also runs on iOS.
 
-**154 of the format's 172 opcodes** are decoded, 132 of them acted on in full.
+**154 of the format's 172 opcodes** are decoded, 134 of them acted on in full.
 [`docs/OPCODES.md`](docs/OPCODES.md) lists every one. Anything not listed is not decoded, and a
 document containing one throws `RemoteComposeParseException` at the byte where it appears: the
 format has no generic length prefix, so an unknown record cannot be skipped safely.
@@ -79,11 +79,10 @@ Known gaps:
 
 - **Text is measured by the platform, not by Android**, so line breaking and anything sized off a
   string differ from an Android render by a few pixels.
-- **No shader compilation.** `DATA_SHADER` decodes its uniforms and is then ignored. The official
-  player compiles them with Android's `RuntimeShader`, so this is a real gap rather than a mutual
-  one.
-- **No blur, shadow or perspective**, and `ROTATION_X`/`ROTATION_Y` foreshorten without a
-  vanishing point.
+- **Shaders take only float and int uniforms.** A `DATA_SHADER` whose source samples a bitmap
+  uniform compiles without it.
+- **No blur.** The official player does not implement it either, so there is nothing to check a
+  blur against.
 - **No sound.**
 - **Targets 1.0.0-alpha18 only.** There is no version negotiation.
 

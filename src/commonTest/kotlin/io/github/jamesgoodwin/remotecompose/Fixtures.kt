@@ -6,6 +6,7 @@ import io.github.jamesgoodwin.remotecompose.fixtures.ARTICLE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.ANIM_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.COFFEE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.FLIGHT_RC_BYTES
+import io.github.jamesgoodwin.remotecompose.fixtures.FONT_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.LAZYLIST_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.NOTCHES_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.REFERENCED_RC_BYTES
@@ -50,6 +51,7 @@ val FIXTURES: Map<String, ByteArray> = mapOf(
     "coretext" to CORETEXT_RC_BYTES,
     "easing" to EASING_RC_BYTES,
     "flight" to FLIGHT_RC_BYTES,
+    "font" to FONT_RC_BYTES,
     "hostactions" to HOSTACTIONS_RC_BYTES,
     "lazylist" to LAZYLIST_RC_BYTES,
     "notches" to NOTCHES_RC_BYTES,
