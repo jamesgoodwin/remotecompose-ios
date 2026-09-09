@@ -79,8 +79,9 @@ Known gaps:
 
 - **Text is measured by the platform, not by Android**, so line breaking and anything sized off a
   string differ from an Android render by a few pixels.
-- **No shader compilation.** `DATA_SHADER` decodes its uniforms; drawing with one needs a runtime
-  shader compiler this does not have.
+- **No shader compilation.** `DATA_SHADER` decodes its uniforms and is then ignored. The official
+  player compiles them with Android's `RuntimeShader`, so this is a real gap rather than a mutual
+  one.
 - **No blur, shadow or perspective**, and `ROTATION_X`/`ROTATION_Y` foreshorten without a
   vanishing point.
 - **No sound.**
