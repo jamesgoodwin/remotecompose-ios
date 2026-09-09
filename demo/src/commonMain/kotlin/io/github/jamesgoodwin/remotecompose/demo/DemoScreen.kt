@@ -51,6 +51,7 @@ import io.github.jamesgoodwin.remotecompose.fixtures.REFERENCED_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.RUNACTION_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SAMPLE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHOWCASE_RC_BYTES
+import io.github.jamesgoodwin.remotecompose.fixtures.FITNESS_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.FONT_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SEMANTICS_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHADER_RC_BYTES
@@ -93,6 +94,7 @@ private class Demo(
 )
 
 private val DEMOS = listOf(
+    Demo("fitness", "Fitness", "A screen an iOS app could ship: rings, a chart, a list, both palettes", FITNESS_RC_BYTES, background = Color(0xFFF2F2F7), backgroundDark = Color(0xFF000000), followsSystemTheme = true),
     Demo("watch", "Watch", "Hands and a date from the clock alone, in two palettes", WATCH_RC_BYTES, background = Color(0xFFF7F2FA), backgroundDark = Color(0xFF121016), followsSystemTheme = true),
     Demo("carousel", "Carousel", "Cards that fling, shrinking and dimming away from the middle", CAROUSEL_RC_BYTES, background = Color(0xFF12101A)),
     Demo("shader", "Shader", "A runtime shader compiled from the document's own source", SHADER_RC_BYTES, background = Color(0xFFFFFFFF)),

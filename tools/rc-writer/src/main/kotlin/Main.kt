@@ -92,6 +92,10 @@ fun main(args: Array<String>) {
         buildSemanticsSample()
         return
     }
+    if (args.getOrNull(0) == "fitness") {
+        buildFitnessSample()
+        return
+    }
     if (args.getOrNull(0) == "material") {
         buildMaterialSample()
         return
@@ -651,6 +655,411 @@ private fun buildMaterialSample() {
     val bytes = writer.encodeToByteArray()
     File("material.rc").writeBytes(bytes)
     println("wrote ${bytes.size} bytes to material.rc")
+}
+
+/**
+ * A screen of the kind an iOS app ships: a large title, a segmented control, cards on a grouped
+ * background, activity rings, a bar chart and an inset list, in both palettes, scrolling under
+ * the finger.
+ *
+ * None of it is a picture of a UI. Every part is the format doing something:
+ *
+ *  - the rings are `DRAW_ARC` with a round cap, swept by floats the segments write;
+ *  - the segmented control slides its pill with `MODIFIER_OFFSET` bound to another float;
+ *  - a press on a list row shows the grey iOS shows, through `MODIFIER_TOUCH_DOWN` and
+ *    `MODIFIER_TOUCH_UP` writing an int that a `MODIFIER_VISIBILITY` reads;
+ *  - every colour is a themed pair, so the one document is both palettes;
+ *  - and each part says what it is, through `ACCESSIBILITY_SEMANTICS`.
+ *
+ * The content is taller than the window, so it scrolls; the numbers are invented.
+ */
+private fun buildFitnessSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(390, 844, "Stride: your activity summary", platform)
+
+    var nextThemeId = 900
+    fun themed(light: Int, dark: Int): Int {
+        val id = nextThemeId++
+        writer.getBuffer().addThemedColor(id, 0, 0.toShort(), 0.toShort(), light, dark)
+        return id
+    }
+
+    // iOS's own system colours, light and dark. Two palettes in one document is what lets the
+    // screen read as native in either mode without the host being told which it is in.
+    val bg = themed(0xFFF2F2F7.toInt(), 0xFF000000.toInt())
+    val card = themed(0xFFFFFFFF.toInt(), 0xFF1C1C1E.toInt())
+    val label = themed(0xFF1C1C1E.toInt(), 0xFFF2F2F7.toInt())
+    val secondary = themed(0xFF8E8E93.toInt(), 0xFF98989F.toInt())
+    val separator = themed(0xFFE5E5EA.toInt(), 0xFF38383A.toInt())
+    val track = themed(0xFFE9E9EB.toInt(), 0xFF2C2C2E.toInt())
+    val pillColor = themed(0xFFFFFFFF.toInt(), 0xFF636366.toInt())
+    val pressTint = themed(0xFFD1D1D6.toInt(), 0xFF3A3A3C.toInt())
+    val barTint = themed(0xFFE5E5EA.toInt(), 0xFF2C2C2E.toInt())
+    val onAccent = themed(0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt())
+    val blue = themed(0xFF007AFF.toInt(), 0xFF0A84FF.toInt())
+    val pink = themed(0xFFFF2D55.toInt(), 0xFFFF375F.toInt())
+    val green = themed(0xFF34C759.toInt(), 0xFF30D158.toInt())
+    val orange = themed(0xFFFF9500.toInt(), 0xFFFF9F0A.toInt())
+
+    val roleButton = 0.toByte()
+    val roleImage = 5.toByte()
+    val roleNone = 9.toByte()
+
+    fun text(
+        value: Int,
+        colorId: Int,
+        size: Float,
+        weight: Float = 400f,
+        modifier: RecordingModifier = RecordingModifier(),
+    ) {
+        writer.startTextComponent(modifier, value, colorId, size, 0, weight, "", 1.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    fun layer(build: GraphicsLayerModifier.() -> Unit) = GraphicsLayerModifier().apply(build)
+
+    /** The shadow an iOS card sits on: soft, wide, and never a visible edge. */
+    fun cardShadow(radius: Float) = layer {
+        setFloatAttribute(10, 3f)
+        setIntAttribute(20, 1)
+        setFloatAttribute(21, radius)
+    }
+
+    /** What this component is, for a reader: a description, and the value it is showing. */
+    fun describe(descriptionId: Int = 0, valueId: Int = 0, role: Byte = roleNone, clickable: Boolean = false) {
+        writer.addSemanticsModifier(descriptionId, role, valueId, 0, 0, true, clickable)
+    }
+
+    // ---- what the segmented control writes ---------------------------------------------------
+
+    val week = listOf(0.42f, 0.68f, 0.30f, 0.86f, 0.55f, 0.94f, 0.72f)
+    val today = listOf(0.18f, 0.52f, 0.14f, 0.38f, 0.60f, 0.33f, 0.86f)
+    val month = listOf(0.61f, 0.73f, 0.80f, 0.57f, 0.90f, 0.66f, 0.78f)
+
+    val move = writer.addFloatConstant(0.81f)
+    val exercise = writer.addFloatConstant(0.93f)
+    val stand = writer.addFloatConstant(0.75f)
+    val pillX = writer.addFloatConstant(122f)
+    val bars = week.map { writer.addFloatConstant(it) }
+
+    val moveId = androidx.compose.remote.core.operations.Utils.idFromNan(move)
+    val exerciseId = androidx.compose.remote.core.operations.Utils.idFromNan(exercise)
+    val standId = androidx.compose.remote.core.operations.Utils.idFromNan(stand)
+    val pillXId = androidx.compose.remote.core.operations.Utils.idFromNan(pillX)
+    val barIds = bars.map { androidx.compose.remote.core.operations.Utils.idFromNan(it) }
+
+    val moveValue = writer.addText("486")
+    val moveUnit = writer.addText("of 600 CAL")
+    val exerciseValue = writer.addText("42 of 45 MIN")
+    val standValue = writer.addText("9 of 12 HR")
+    val distance = writer.addText("38.6 km")
+    val pace = writer.addText("5:12 /km")
+    val steps = writer.addText("64,180")
+    val chartTitle = writer.addText("This week")
+    val chartTotal = writer.addText("6 of 7 days")
+
+    /** One segment's whole effect: the rings, the bars, the figures and where the pill sits. */
+    fun period(
+        rings: Triple<Float, Float, Float>,
+        heights: List<Float>,
+        moveText: String,
+        moveUnitText: String,
+        exerciseText: String,
+        standText: String,
+        distanceText: String,
+        paceText: String,
+        stepsText: String,
+        title: String,
+        total: String,
+        pillPosition: Float,
+    ): Array<androidx.compose.remote.creation.actions.Action> = buildList {
+        add(ValueFloatChange(moveId, rings.first))
+        add(ValueFloatChange(exerciseId, rings.second))
+        add(ValueFloatChange(standId, rings.third))
+        add(ValueFloatChange(pillXId, pillPosition))
+        heights.forEachIndexed { index, height -> add(ValueFloatChange(barIds[index], height)) }
+        add(ValueStringChange(moveValue, moveText))
+        add(ValueStringChange(moveUnit, moveUnitText))
+        add(ValueStringChange(exerciseValue, exerciseText))
+        add(ValueStringChange(standValue, standText))
+        add(ValueStringChange(distance, distanceText))
+        add(ValueStringChange(pace, paceText))
+        add(ValueStringChange(steps, stepsText))
+        add(ValueStringChange(chartTitle, title))
+        add(ValueStringChange(chartTotal, total))
+    }.toTypedArray()
+
+    val segments = listOf(
+        "Day" to period(
+            Triple(0.62f, 0.71f, 0.58f), today,
+            "372", "of 600 CAL", "32 of 45 MIN", "7 of 12 HR",
+            "6.1 km", "5:44 /km", "9,240", "Today", "hour by hour", 2f,
+        ),
+        "Week" to period(
+            Triple(0.81f, 0.93f, 0.75f), week,
+            "486", "of 600 CAL", "42 of 45 MIN", "9 of 12 HR",
+            "38.6 km", "5:12 /km", "64,180", "This week", "6 of 7 days", 122f,
+        ),
+        "Month" to period(
+            Triple(0.94f, 0.88f, 0.90f), month,
+            "521", "of 600 CAL", "40 of 45 MIN", "11 of 12 HR",
+            "164.2 km", "5:26 /km", "271,905", "This month", "24 of 30 days", 242f,
+        ),
+    )
+
+    data class Workout(val initial: String, val tint: Int, val title: String, val detail: String, val value: String)
+    val workouts = listOf(
+        Workout("R", pink, "Morning run", "Riverside loop · 42 min", "7.2 km"),
+        Workout("C", green, "Cycle", "Towpath · 28 min", "11.4 km"),
+        Workout("S", blue, "Pool swim", "Lanes · 35 min", "1.6 km"),
+    )
+    // One int per row, holding whether that row is under a finger.
+    val pressed = workouts.map { writer.addInteger(0).toInt() }
+
+    // ---- pieces ------------------------------------------------------------------------------
+
+    /** A ring: the track it runs in, then the part of it that is filled. */
+    fun ring(centre: Float, radius: Float, colorId: Int, progress: Float) {
+        val left = centre - radius
+        val right = centre + radius
+        writer.getRcPaint().setColorId(colorId).setAlpha(0.16f).setStyle(1).setStrokeWidth(12f).setStrokeCap(1).commit()
+        writer.drawArc(left, left, right, right, 0f, 360f)
+        writer.getRcPaint().setColorId(colorId).setAlpha(1f).setStyle(1).setStrokeWidth(12f).setStrokeCap(1).commit()
+        writer.drawArc(left, left, right, right, -90f, writer.floatExpression(progress, 360f, Rc.FloatExpression.MUL))
+    }
+
+    fun legend(colorId: Int, name: String, valueId: Int, unitId: Int?) {
+        writer.startRow(RecordingModifier().spacedBy(9f), 1, 2)
+        writer.startBox(
+            RecordingModifier().width(10f).height(10f)
+                .clip(RoundedRectShape(5f, 5f, 5f, 5f)).backgroundId(colorId.toShort()),
+            2, 2,
+        )
+        writer.endBox()
+        writer.startColumn(RecordingModifier().spacedBy(1f), 1, 4)
+        text(writer.addText(name), secondary, 12f, 600f)
+        if (unitId == null) {
+            text(valueId, label, 15f, 600f)
+        } else {
+            writer.startRow(RecordingModifier().spacedBy(5f), 1, 5)
+            text(valueId, label, 22f, 700f)
+            writer.startBox(RecordingModifier().height(17f), 1, 5)
+            text(unitId, secondary, 12f, 500f)
+            writer.endBox()
+            writer.endRow()
+        }
+        writer.endColumn()
+        writer.endRow()
+    }
+
+    fun tile(caption: String, valueId: Int, colorId: Int) {
+        writer.startColumn(
+            RecordingModifier().width(87.33f).height(50f)
+                .then(cardShadow(14f)).clip(RoundedRectShape(14f, 14f, 14f, 14f))
+                .backgroundId(card.toShort()).padding(12f).spacedBy(5f),
+            1, 2,
+        )
+        describe(writer.addText(caption), valueId)
+        text(writer.addText(caption), secondary, 12f, 500f)
+        text(valueId, colorId, 19f, 700f)
+        writer.endColumn()
+    }
+
+    fun workoutRow(index: Int, workout: Workout) {
+        writer.startBox(
+            RecordingModifier().fillMaxWidth().height(64f)
+                .onTouchDown(ValueIntegerChange(pressed[index], 1))
+                .onTouchUp(ValueIntegerChange(pressed[index], 0))
+                .onTouchCancel(ValueIntegerChange(pressed[index], 0))
+                .onClick(HostAction(index + 1)),
+            1, 2,
+        )
+        describe(
+            writer.addText(workout.title),
+            writer.addText("${workout.detail}, ${workout.value}"),
+            roleButton,
+            clickable = true,
+        )
+        // The highlight, under everything: a box that is only laid out while the row is pressed.
+        writer.startBox(
+            RecordingModifier().fillMaxSize().visibility(pressed[index]).backgroundId(pressTint.toShort()),
+            1, 2,
+        )
+        writer.endBox()
+        writer.startRow(
+            RecordingModifier().fillMaxWidth().height(64f).padding(16f, 0f, 16f, 0f).spacedBy(12f),
+            1, 2,
+        )
+        writer.startBox(
+            RecordingModifier().width(34f).height(34f)
+                .clip(RoundedRectShape(9f, 9f, 9f, 9f)).backgroundId(workout.tint.toShort()),
+            2, 2,
+        )
+        text(writer.addText(workout.initial), onAccent, 15f, 700f)
+        writer.endBox()
+        writer.startColumn(RecordingModifier().horizontalWeight(1f).spacedBy(2f), 1, 2)
+        text(writer.addText(workout.title), label, 16f, 500f)
+        text(writer.addText(workout.detail), secondary, 13f, 400f)
+        writer.endColumn()
+        text(writer.addText(workout.value), secondary, 15f, 400f)
+        text(writer.addText("›"), separator, 20f, 600f)
+        writer.endRow()
+        writer.endBox()
+    }
+
+    // ---- the screen --------------------------------------------------------------------------
+
+    // 52 at the top is the status bar and the island above it: a document written for a phone
+    // has to leave room for them, since nothing on the wire tells it where the safe area is.
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().backgroundId(bg.toShort())
+            .verticalScroll(0f).padding(16f, 52f, 16f, 20f).spacedBy(16f),
+        1, 4,
+    )
+
+    // Large title, and the day above it in the caption iOS puts there.
+    writer.startRow(RecordingModifier().fillMaxWidth().height(52f), 6, 2)
+    writer.startColumn(RecordingModifier().spacedBy(1f), 1, 4)
+    text(writer.addText("TUESDAY, 9 SEPTEMBER"), secondary, 12f, 600f)
+    text(writer.addText("Summary"), label, 34f, 700f)
+    writer.endColumn()
+    writer.startBox(
+        RecordingModifier().width(40f).height(40f)
+            .clip(RoundedRectShape(20f, 20f, 20f, 20f)).backgroundId(blue.toShort()),
+        2, 2,
+    )
+    describe(writer.addText("Account, Sam Rivers"), role = roleButton, clickable = true)
+    text(writer.addText("SR"), onAccent, 15f, 600f)
+    writer.endBox()
+    writer.endRow()
+
+    // The segmented control: one pill under three labels, moved by a float the labels write.
+    writer.startBox(
+        RecordingModifier().fillMaxWidth().height(32f)
+            .clip(RoundedRectShape(9f, 9f, 9f, 9f)).backgroundId(track.toShort()),
+        1, 2,
+    )
+    // The offset is on a box of its own, around the one that carries the shadow: this renderer
+    // applies a graphics layer before the rest of a component's modifiers, so an offset beside
+    // one ends up inside the layer and moves nothing.
+    writer.startBox(RecordingModifier().offset(pillX, 0f).width(118f).height(28f), 1, 2)
+    writer.startBox(
+        RecordingModifier().width(118f).height(28f)
+            .then(layer { setFloatAttribute(10, 2f); setIntAttribute(20, 1); setFloatAttribute(21, 8f) })
+            .clip(RoundedRectShape(8f, 8f, 8f, 8f)).backgroundId(pillColor.toShort()),
+        1, 2,
+    )
+    writer.endBox()
+    writer.endBox()
+    writer.startRow(RecordingModifier().fillMaxWidth().height(32f), 1, 2)
+    for ((index, segment) in segments.withIndex()) {
+        writer.startBox(
+            RecordingModifier().width(118f).height(32f).onClick(*segment.second),
+            2, 2,
+        )
+        describe(writer.addText(segment.first), role = roleButton, clickable = true)
+        text(writer.addText(segment.first), label, 13f, 600f)
+        writer.endBox()
+    }
+    writer.endRow()
+    writer.endBox()
+
+    // The rings, and what they are counting.
+    writer.startRow(
+        RecordingModifier().fillMaxWidth().height(126f)
+            .then(cardShadow(16f)).clip(RoundedRectShape(16f, 16f, 16f, 16f))
+            .backgroundId(card.toShort()).padding(16f, 16f, 20f, 16f).spacedBy(20f),
+        1, 2,
+    )
+    describe(writer.addText("Activity rings"), role = roleImage)
+    writer.startBox(RecordingModifier().width(126f).height(126f), 2, 2)
+    ring(63f, 54f, pink, move)
+    ring(63f, 38f, green, exercise)
+    ring(63f, 22f, orange, stand)
+    writer.endBox()
+    writer.startColumn(RecordingModifier().spacedBy(14f), 1, 4)
+    legend(pink, "Move", moveValue, moveUnit)
+    legend(green, "Exercise", exerciseValue, null)
+    legend(orange, "Stand", standValue, null)
+    writer.endColumn()
+    writer.endRow()
+
+    // Three figures, the way an iOS app puts them across a row.
+    writer.startRow(RecordingModifier().fillMaxWidth().height(74f).spacedBy(12f), 1, 2)
+    tile("Distance", distance, blue)
+    tile("Avg pace", pace, green)
+    tile("Steps", steps, orange)
+    writer.endRow()
+
+    // The bar chart: seven bars whose heights are seven floats the segments write.
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth().height(132f)
+            .then(cardShadow(16f)).clip(RoundedRectShape(16f, 16f, 16f, 16f))
+            .backgroundId(card.toShort()).padding(16f).spacedBy(12f),
+        1, 4,
+    )
+    describe(writer.addText("Distance by day"), role = roleImage)
+    writer.startRow(RecordingModifier().fillMaxWidth(), 6, 2)
+    text(chartTitle, label, 17f, 600f)
+    text(chartTotal, secondary, 15f, 500f)
+    writer.endRow()
+    writer.startRow(RecordingModifier().fillMaxWidth().height(74f).spacedBy(26.3f), 1, 5)
+    for (index in 0..6) {
+        writer.startBox(
+            RecordingModifier()
+                .width(24f)
+                .height(writer.floatExpression(bars[index], 74f, Rc.FloatExpression.MUL))
+                .clip(RoundedRectShape(6f, 6f, 6f, 6f))
+                .backgroundId(if (index == 5) blue.toShort() else barTint.toShort()),
+            2, 5,
+        )
+        writer.endBox()
+    }
+    writer.endRow()
+    writer.startRow(RecordingModifier().fillMaxWidth().spacedBy(26.3f), 1, 2)
+    for (letter in listOf("M", "T", "W", "T", "F", "S", "S")) {
+        writer.startBox(RecordingModifier().width(24f).height(16f), 2, 2)
+        text(writer.addText(letter), secondary, 12f, 500f)
+        writer.endBox()
+    }
+    writer.endRow()
+    writer.endColumn()
+
+    // A grouped inset list, with the grey an iOS row goes while your finger is on it.
+    writer.startRow(RecordingModifier().fillMaxWidth().height(24f), 6, 2)
+    text(writer.addText("Recent workouts"), label, 17f, 600f)
+    text(writer.addText("See all"), blue, 15f, 400f)
+    writer.endRow()
+
+    writer.startColumn(
+        RecordingModifier().fillMaxWidth()
+            .then(cardShadow(16f)).clip(RoundedRectShape(16f, 16f, 16f, 16f))
+            .backgroundId(card.toShort()),
+        1, 4,
+    )
+    for ((index, workout) in workouts.withIndex()) {
+        workoutRow(index, workout)
+        if (index != workouts.lastIndex) {
+            writer.startRow(RecordingModifier().fillMaxWidth().height(1f), 3, 2)
+            writer.startBox(
+                RecordingModifier().width(302f).height(1f).backgroundId(separator.toShort()),
+                1, 2,
+            )
+            writer.endBox()
+            writer.endRow()
+        }
+    }
+    writer.endColumn()
+
+    writer.startBox(RecordingModifier().fillMaxWidth().height(20f), 2, 2)
+    text(writer.addText("Synced 4 minutes ago"), secondary, 12f, 400f)
+    writer.endBox()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("fitness.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to fitness.rc")
 }
 
 /**

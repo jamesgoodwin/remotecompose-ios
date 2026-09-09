@@ -28,7 +28,7 @@ mkdir -p "$OUT"
 
 fixture_for_name() {
   case "$1" in
-    sample|showcase|paint|actions|textpath|advanced|list|pattern|shadow|shader|font|semantics)
+    sample|showcase|paint|actions|textpath|advanced|list|pattern|shadow|shader|font|semantics|fitness)
       echo "tools/rc-writer/$1.rc" ;;
     anim) echo "anim changes with the clock, so it has no fixed reference" >&2; return 1 ;;
     coffee) echo "coffee wraps its text and follows the clock, so neither its layout nor its content is the same twice" >&2; return 1 ;;
@@ -63,6 +63,10 @@ capture_ios() {
 allowance_for_name() {
   case "$1" in
     textpath) echo 8 ;;
+    # One pixel on the outer corner of a card, where Android's rasterizer and Skia's disagree by
+    # 17/255 on the same antialiased edge. Measured, not guessed: it is the only shape pixel that
+    # differs across a screen of 245,764 of them.
+    fitness) echo 2 ;;
     *) echo 0 ;;
   esac
 }
