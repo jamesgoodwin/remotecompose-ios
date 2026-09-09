@@ -28,7 +28,7 @@ mkdir -p "$OUT"
 
 fixture_for_name() {
   case "$1" in
-    sample|showcase|paint|actions|textpath|advanced|list|pattern|shadow)
+    sample|showcase|paint|actions|textpath|advanced|list|pattern|shadow|shader)
       echo "tools/rc-writer/$1.rc" ;;
     anim) echo "anim changes with the clock, so it has no fixed reference" >&2; return 1 ;;
     coffee) echo "coffee wraps its text and follows the clock, so neither its layout nor its content is the same twice" >&2; return 1 ;;

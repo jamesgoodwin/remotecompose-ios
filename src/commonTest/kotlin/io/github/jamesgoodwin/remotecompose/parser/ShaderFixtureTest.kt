@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 
 /**
  * `DATA_SHADER` against `tools/rc-writer/shader.rc` (see `buildShaderSample()` in the writer
- * tool). Painting a shader needs a runtime shader compiler this renderer does not have, so the
+ * tool). The record carries source and named uniforms, and the
  * contract this locks down is the other one: the record decodes, its uniforms survive, and the
  * draws around the shaded one are unaffected.
  */
@@ -32,12 +32,31 @@ class ShaderFixtureTest {
     fun theRestOfTheDocumentStillDraws() {
         val rects = document.opcodes.filterIsInstance<Opcode.DrawRect>()
         val circles = document.opcodes.filterIsInstance<Opcode.DrawCircle>()
-        // Both rects are emitted, the shaded one with the colour it was left with; the shader
-        // itself is not applied to either.
         assertEquals(2, rects.size)
         assertEquals(1, circles.size)
         assertEquals(8f, rects[0].left)
         assertEquals(60f, rects[1].left)
-        assertEquals(null, rects[1].paint.gradient)
+    }
+
+    @Test
+    fun onlyTheShadedRectNamesTheShader() {
+        // The paint carries the id; compiling it is the executor's business, and whether a
+        // platform can do it is not something the opcode list knows or should.
+        val rects = document.opcodes.filterIsInstance<Opcode.DrawRect>()
+        assertEquals(null, rects[0].paint.shaderId, "the plain rect names none")
+        val shaderId = rects[1].paint.shaderId
+        assertTrue(shaderId != null && shaderId != 0, "the shaded rect names one: $shaderId")
+        assertEquals(null, rects[1].paint.gradient, "a shader is not a gradient")
+    }
+
+    @Test
+    fun theShaderSourceReachesTheFrameUnderThatId() {
+        // What the executor looks up when it comes to compile: the source out of the string pool
+        // and the uniforms the document set, under the id the paint named.
+        val id = document.opcodes.filterIsInstance<Opcode.DrawRect>()[1].paint.shaderId
+        val spec = document.shaders.getValue(id!!)
+        assertTrue(spec.source.contains("half4 main"), "the source came with it")
+        assertEquals(listOf(120f, 120f), spec.floatUniforms.getValue("iResolution").toList())
+        assertEquals(listOf(4), spec.intUniforms.getValue("iSteps").toList())
     }
 }

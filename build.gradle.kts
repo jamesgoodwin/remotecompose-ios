@@ -90,11 +90,16 @@ kotlin {
             }
         }
 
+        // iOS and desktop both draw through Skia, so what is written against skiko rather than
+        // against a platform belongs to both of them. Android is the odd one out here: it draws
+        // through its own canvas and has its own actual.
+        val skikoMain by creating { dependsOn(commonMain) }
+
         val iosX64Main by getting
         val iosArm64Main by getting
         val iosSimulatorArm64Main by getting
         val iosMain by creating {
-            dependsOn(commonMain)
+            dependsOn(skikoMain)
             iosX64Main.dependsOn(this)
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)
@@ -111,7 +116,7 @@ kotlin {
         }
 
         val desktopMain by getting {
-            dependsOn(commonMain)
+            dependsOn(skikoMain)
             dependencies {
                 // KotlinCompilation.runtimeDependencyFiles (used by the manual runDesktopDemo
                 // JavaExec task below) doesn't pick up Skiko's OS-specific native runtime jar the

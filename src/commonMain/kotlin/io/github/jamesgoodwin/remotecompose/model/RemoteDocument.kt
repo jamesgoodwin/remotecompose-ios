@@ -17,4 +17,5 @@ public data class RemoteDocument internal constructor(
     val strings: Map<Int, String>,
     internal val bitmaps: BitmapPool,
     val opcodes: List<Opcode>,
+    internal val shaders: Map<Int, ShaderSpec> = emptyMap(),
 )

@@ -1,4 +1,4 @@
-package io.github.jamesgoodwin.remotecompose
+package io.github.jamesgoodwin.remotecompose.fixtures
 
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi

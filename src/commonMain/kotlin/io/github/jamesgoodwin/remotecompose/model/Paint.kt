@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Color
  *   `DrawScope`'s own density so text scales with the geometry it sits next to.
  * @property gradient When non-null, replaces [color] as the fill/stroke source, as a shader does
  *   on an Android `Paint`. Cleared by a `SHADER` attribute with id 0.
+ * @property shaderId The `DATA_SHADER` a `PaintBundle.SHADER` attribute named, or null. Takes
+ *   precedence over [gradient] and [color], as a shader does on a real paint.
  * @property blendMode `PaintBundle.BLEND_MODE_*` ordinal, or null for the default source-over.
  */
 public data class PaintStyle(
@@ -31,6 +33,7 @@ public data class PaintStyle(
     val fontItalic: Boolean = false,
     val fontFamily: FontFamilyKind = FontFamilyKind.DEFAULT,
     val gradient: GradientSpec? = null,
+    val shaderId: Int? = null,
     val blendMode: Int? = null,
 ) {
     public companion object {
@@ -121,3 +124,15 @@ public sealed interface PathCommand {
     ) : PathCommand
     public data object Close : PathCommand
 }
+
+/**
+ * A `DATA_SHADER`: the source of a runtime shader and the uniforms the document set on it.
+ *
+ * Not a data class, because two of its three fields are maps of arrays and the generated equality
+ * would compare those by identity.
+ */
+public class ShaderSpec(
+    public val source: String,
+    public val floatUniforms: Map<String, FloatArray>,
+    public val intUniforms: Map<String, IntArray>,
+)

@@ -51,6 +51,7 @@ import io.github.jamesgoodwin.remotecompose.fixtures.REFERENCED_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.RUNACTION_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SAMPLE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHOWCASE_RC_BYTES
+import io.github.jamesgoodwin.remotecompose.fixtures.SHADER_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHADOW_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SWIPE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.TEXTPATH_RC_BYTES
@@ -92,6 +93,7 @@ private class Demo(
 private val DEMOS = listOf(
     Demo("watch", "Watch", "Hands and a date from the clock alone, in two palettes", WATCH_RC_BYTES, background = Color(0xFFF7F2FA), backgroundDark = Color(0xFF121016), followsSystemTheme = true),
     Demo("carousel", "Carousel", "Cards that fling, shrinking and dimming away from the middle", CAROUSEL_RC_BYTES, background = Color(0xFF12101A)),
+    Demo("shader", "Shader", "A runtime shader compiled from the document's own source", SHADER_RC_BYTES, background = Color(0xFFFFFFFF)),
     Demo("shadow", "Shadow", "Elevation, which is cast from a layer rather than drawn", SHADOW_RC_BYTES, background = Color(0xFFF4F2F7)),
     Demo("swipe", "Swipe to delete", "Rows that swipe aside, delete on a tap, and close the gap", SWIPE_RC_BYTES, background = Color(0xFFF4F2F7)),
     Demo("coffee", "Coffee", "A shop: themed colours, a scrolling menu, rows that expand", COFFEE_RC_BYTES, background = Color(0xFFFDF8F3), backgroundDark = Color(0xFF1B1614), followsSystemTheme = true),

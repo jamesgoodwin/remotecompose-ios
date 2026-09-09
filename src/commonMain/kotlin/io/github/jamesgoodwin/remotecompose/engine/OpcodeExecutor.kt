@@ -146,7 +146,7 @@ public object OpcodeExecutor {
 
                     is Opcode.ClipPath -> transform.clipPath(buildPath(opcode.commands))
 
-                    is Opcode.DrawRect -> withPaintStyles(opcode.paint) { brush, style, blend ->
+                    is Opcode.DrawRect -> withPaintStyles(opcode.paint, context) { brush, style, blend ->
                         drawScope.drawRect(
                             brush = brush,
                             topLeft = Offset(opcode.left, opcode.top),
@@ -156,7 +156,7 @@ public object OpcodeExecutor {
                         )
                     }
 
-                    is Opcode.DrawRoundRect -> withPaintStyles(opcode.paint) { brush, style, blend ->
+                    is Opcode.DrawRoundRect -> withPaintStyles(opcode.paint, context) { brush, style, blend ->
                         drawScope.drawRoundRect(
                             brush = brush,
                             topLeft = Offset(opcode.left, opcode.top),
@@ -167,7 +167,7 @@ public object OpcodeExecutor {
                         )
                     }
 
-                    is Opcode.DrawCircle -> withPaintStyles(opcode.paint) { brush, style, blend ->
+                    is Opcode.DrawCircle -> withPaintStyles(opcode.paint, context) { brush, style, blend ->
                         drawScope.drawCircle(
                             brush = brush,
                             radius = opcode.radius.coerceAtLeast(0f),
@@ -179,13 +179,13 @@ public object OpcodeExecutor {
 
                     is Opcode.DrawPath -> {
                         val path = buildPath(opcode.commands)
-                        withPaintStyles(opcode.paint) { brush, style, blend ->
+                        withPaintStyles(opcode.paint, context) { brush, style, blend ->
                             drawScope.drawPath(path = path, brush = brush, style = style, blendMode = blend)
                         }
                     }
 
                     is Opcode.DrawLine -> drawScope.drawLine(
-                        brush = brushOf(opcode.paint),
+                        brush = brushOf(opcode.paint, context),
                         start = Offset(opcode.x1, opcode.y1),
                         end = Offset(opcode.x2, opcode.y2),
                         // Android draws a line with the paint's stroke width regardless of style;
@@ -195,7 +195,7 @@ public object OpcodeExecutor {
                         blendMode = blendModeOf(opcode.paint),
                     )
 
-                    is Opcode.DrawOval -> withPaintStyles(opcode.paint) { brush, style, blend ->
+                    is Opcode.DrawOval -> withPaintStyles(opcode.paint, context) { brush, style, blend ->
                         drawScope.drawOval(
                             brush = brush,
                             topLeft = Offset(opcode.left, opcode.top),
@@ -205,7 +205,7 @@ public object OpcodeExecutor {
                         )
                     }
 
-                    is Opcode.DrawArc -> withPaintStyles(opcode.paint) { brush, style, blend ->
+                    is Opcode.DrawArc -> withPaintStyles(opcode.paint, context) { brush, style, blend ->
                         drawScope.drawArc(
                             brush = brush,
                             startAngle = opcode.startAngleDegrees,
@@ -229,7 +229,7 @@ public object OpcodeExecutor {
                         } else {
                             fullText
                         }
-                        val style = textStyleOf(drawScope, opcode.paint)
+                        val style = textStyleOf(drawScope, opcode.paint, context)
                         // y is a baseline (and the pans move the anchor across the box), so every
                         // text needs measuring to find its top-left; TextMeasurer caches layouts.
                         val layout = context.textMeasurer.measure(text, style)
@@ -323,8 +323,8 @@ public object OpcodeExecutor {
      * Compose `DrawScope` draw call takes a single [DrawStyle] per invocation, unlike Android's
      * combined `Paint.Style.FILL_AND_STROKE`.
      */
-    private inline fun withPaintStyles(paint: PaintStyle, block: (Brush, DrawStyle, BlendMode) -> Unit) {
-        val brush = brushOf(paint)
+    private inline fun withPaintStyles(paint: PaintStyle, context: RenderContext, block: (Brush, DrawStyle, BlendMode) -> Unit) {
+        val brush = brushOf(paint, context)
         val blend = blendModeOf(paint)
         when (paint.style) {
             PaintStyleKind.FILL -> block(brush, Fill, blend)
@@ -354,7 +354,13 @@ public object OpcodeExecutor {
     }
 
     /** A solid brush from the paint color, or the paint's gradient shader when one is set. */
-    private fun brushOf(paint: PaintStyle): Brush {
+    /**
+     * The paint's fill: its `DATA_SHADER` if it names one, then its gradient, then its colour —
+     * the order a real paint resolves them in. A shader that will not compile on this platform
+     * falls through to the colour rather than leaving the shape unpainted.
+     */
+    private fun brushOf(paint: PaintStyle, context: RenderContext): Brush {
+        paint.shaderId?.let { id -> context.shaderBrush(id)?.let { return it } }
         val gradient = paint.gradient ?: return SolidColor(paint.color)
         val stops = gradient.stops
         val colorStops = stops?.takeIf { it.size == gradient.colors.size }
@@ -498,9 +504,10 @@ public object OpcodeExecutor {
      * it is converted to sp through [drawScope]'s own density and font scale; the result is
      * exactly `textSize` physical pixels tall on every platform, matching the shapes around it.
      */
-    private fun textStyleOf(drawScope: DrawScope, paint: PaintStyle): TextStyle {
+    private fun textStyleOf(drawScope: DrawScope, paint: PaintStyle, context: RenderContext): TextStyle {
         val fontSize = with(drawScope) { paint.textSize.toSp() }
-        return paint.toTextStyle(fontSize, brush = if (paint.gradient != null) brushOf(paint) else null)
+        val shaded = paint.gradient != null || paint.shaderId != null
+        return paint.toTextStyle(fontSize, brush = if (shaded) brushOf(paint, context) else null)
     }
 
     /** Reconstructs a Compose [Path] from a decoded `OP_DRAW_PATH` / `OP_CLIP_PATH` command list. */

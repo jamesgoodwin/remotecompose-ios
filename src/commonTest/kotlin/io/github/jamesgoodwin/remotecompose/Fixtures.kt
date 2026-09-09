@@ -22,6 +22,7 @@ import io.github.jamesgoodwin.remotecompose.fixtures.PATTERN_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SAMPLE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHOWCASE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.WATCH_RC_BYTES
+import io.github.jamesgoodwin.remotecompose.fixtures.SHADER_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHADOW_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SWIPE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.TEXTPATH_RC_BYTES

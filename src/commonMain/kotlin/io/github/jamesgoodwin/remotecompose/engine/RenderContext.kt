@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.GraphicsContext
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.IntOffset
@@ -39,6 +40,20 @@ public class RenderContext(
     public val graphicsContext: GraphicsContext? = null,
 ) {
     private val _interactiveRegions = mutableListOf<InteractiveRegion>()
+
+    /**
+     * Compiled `DATA_SHADER` brushes, by the id the paint names.
+     *
+     * Compiling one means handing source to a shader compiler, which is far too expensive to do
+     * per draw and pointless to repeat: a document's shader source and its uniforms are fixed when
+     * it is written. A null value is cached too, so source that will not compile is not offered to
+     * the compiler again on every frame.
+     */
+    private val shaderBrushes = mutableMapOf<Int, Brush?>()
+
+    internal fun shaderBrush(id: Int): Brush? = shaderBrushes.getOrPut(id) {
+        document.shaders[id]?.let { runtimeShaderBrush(it.source, it.floatUniforms, it.intUniforms) }
+    }
 
     /**
      * Tap targets collected from `OP_ACTION_CLICK` opcodes during the most recent

@@ -25,6 +25,7 @@ internal class PaintState {
     var fontItalic: Boolean = false
     var fontFamily: FontFamilyKind = FontFamilyKind.DEFAULT
     var gradient: GradientSpec? = null
+    var shaderId: Int? = null
     var blendMode: Int? = null
 
     fun snapshot(): PaintStyle = PaintStyle(
@@ -39,6 +40,7 @@ internal class PaintState {
         fontItalic = fontItalic,
         fontFamily = fontFamily,
         gradient = gradient,
+        shaderId = shaderId,
         blendMode = blendMode,
     )
 
@@ -54,6 +56,7 @@ internal class PaintState {
         it.fontItalic = fontItalic
         it.fontFamily = fontFamily
         it.gradient = gradient
+        it.shaderId = shaderId
         it.blendMode = blendMode
     }
 
@@ -69,6 +72,7 @@ internal class PaintState {
         fontItalic = other.fontItalic
         fontFamily = other.fontFamily
         gradient = other.gradient
+        shaderId = other.shaderId
         blendMode = other.blendMode
     }
 }
@@ -169,9 +173,11 @@ internal object PaintBundleDecoder {
                 STROKE_CAP -> state.strokeCap = StrokeCapKind.entries.getOrElse(hi) { StrokeCapKind.BUTT }
                 STYLE -> state.style = PaintStyleKind.entries.getOrElse(hi) { PaintStyleKind.FILL }
                 SHADER -> {
-                    // Only id 0 (clear) has an effect here; a DATA_SHADER reference would need a
-                    // runtime shader compiler this renderer does not have.
-                    if (nextWord() == 0) state.gradient = null
+                    // 0 clears; anything else names a DATA_SHADER, which the executor compiles
+                    // when it draws. A shader replaces the gradient the way it replaces the colour.
+                    val id = nextWord()
+                    state.shaderId = id.takeIf { it != 0 }
+                    if (id == 0) state.gradient = null
                 }
                 IMAGE_FILTER_QUALITY -> Unit
                 GRADIENT -> {

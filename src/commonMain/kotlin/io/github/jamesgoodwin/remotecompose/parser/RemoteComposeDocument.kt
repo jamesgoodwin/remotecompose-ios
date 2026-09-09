@@ -2,6 +2,7 @@ package io.github.jamesgoodwin.remotecompose.parser
 
 import io.github.jamesgoodwin.remotecompose.model.Header
 import io.github.jamesgoodwin.remotecompose.model.RemoteDocument
+import io.github.jamesgoodwin.remotecompose.model.ShaderSpec
 import io.github.jamesgoodwin.remotecompose.runtime.ActionTrigger
 import io.github.jamesgoodwin.remotecompose.runtime.DocumentAction
 import io.github.jamesgoodwin.remotecompose.runtime.FloatExpressionEvaluator
@@ -88,7 +89,20 @@ public class RemoteComposeDocument internal constructor(
         // order they were. What they write is read by the frame after this one, which is where
         // painting puts them in the library too.
         for (action in context.paintActions) run(action)
-        return RemoteDocument(header, context.texts.toMap(), bitmaps, opcodes)
+        return RemoteDocument(header, context.texts.toMap(), bitmaps, opcodes, shaderSpecs())
+    }
+
+    /**
+     * The `DATA_SHADER`s this document declared, with their source text resolved out of the string
+     * pool. Cheap to rebuild per frame: a document has a handful of shaders at most, and what
+     * costs is compiling one, which the render context does once.
+     */
+    private fun shaderSpecs(): Map<Int, ShaderSpec> {
+        if (context.shaders.isEmpty()) return emptyMap()
+        return context.shaders.mapNotNull { (id, data) ->
+            val source = context.texts[data.shaderTextId] ?: return@mapNotNull null
+            id to ShaderSpec(source, data.floatUniforms, data.intUniforms)
+        }.toMap()
     }
 
     /**
