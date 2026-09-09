@@ -22,6 +22,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalGraphicsContext
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
 import io.github.jamesgoodwin.remotecompose.engine.ComposeTextMetrics
@@ -84,7 +85,12 @@ public fun RemoteComposeCanvas(
     loaded.paintTheme = if (dark) RemoteContext.THEME_DARK else RemoteContext.THEME_LIGHT
 
     val document by rememberDocumentFrames(loaded)
-    val renderContext = remember(loaded, textMeasurer) { RenderContext(document, textMeasurer) }
+    // Shadow and blur are properties of a layer rather than of a draw call, and a layer can only
+    // be made from the graphics context the composition provides.
+    val graphicsContext = LocalGraphicsContext.current
+    val renderContext = remember(loaded, textMeasurer, graphicsContext) {
+        RenderContext(document, textMeasurer, graphicsContext)
+    }
     renderContext.document = document
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 

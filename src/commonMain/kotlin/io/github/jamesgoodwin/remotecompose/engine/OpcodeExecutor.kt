@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.DrawStyle
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.IntOffset
@@ -31,6 +32,7 @@ import io.github.jamesgoodwin.remotecompose.model.StrokeCapKind
 import io.github.jamesgoodwin.remotecompose.model.StrokeJoinKind
 import io.github.jamesgoodwin.remotecompose.text.TextAnchoring
 import io.github.jamesgoodwin.remotecompose.text.TextMetrics
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 /**
@@ -62,12 +64,23 @@ public object OpcodeExecutor {
      */
     public fun render(drawScope: DrawScope, opcodes: List<Opcode>, context: RenderContext) {
         context.beginFrame()
+        draw(drawScope, opcodes, context)
+    }
 
+    /**
+     * The walk itself, which [drawEffectLayer] re-enters for the content of a layer.
+     *
+     * Indexed rather than a for-loop because a layer's content is a run of opcodes this has to
+     * hand somewhere else and then step over.
+     */
+    private fun draw(drawScope: DrawScope, opcodes: List<Opcode>, context: RenderContext) {
         val canvas = drawScope.drawContext.canvas
         val transform = drawScope.drawContext.transform
         var saveDepth = 0
 
-        for (opcode in opcodes) {
+        var index = 0
+        while (index < opcodes.size) {
+            val opcode = opcodes[index]
             try {
                 when (opcode) {
                     Opcode.MatrixSave -> {
@@ -83,6 +96,15 @@ public object OpcodeExecutor {
                             saveDepth--
                         }
                     }
+
+                    is Opcode.LayerEffects -> {
+                        val end = matchingEnd(opcodes, index)
+                        drawEffectLayer(drawScope, opcode, opcodes.subList(index + 1, end), context)
+                        // The `index++` below steps over the LayerEffectsEnd itself.
+                        index = end
+                    }
+
+                    Opcode.LayerEffectsEnd -> Unit
 
                     is Opcode.SaveLayerAlpha -> {
                         // A generous sentinel layer rect, since this renderer has no measure/
@@ -273,6 +295,7 @@ public object OpcodeExecutor {
                 // A single malformed/unsupported opcode must never break the rest of the draw
                 // stack. Fatal errors (e.g. OutOfMemoryError) are intentionally not caught here.
             }
+            index++
         }
 
         // Balance any OP_MATRIX_SAVE left un-restored by a malformed document, so this render
@@ -398,6 +421,76 @@ public object OpcodeExecutor {
         27 -> BlendMode.Color
         28 -> BlendMode.Luminosity
         else -> DrawScope.DefaultBlendMode
+    }
+
+    /** The index of the [Opcode.LayerEffectsEnd] closing the layer opened at [start], or the end. */
+    private fun matchingEnd(opcodes: List<Opcode>, start: Int): Int {
+        var depth = 1
+        for (i in start + 1 until opcodes.size) {
+            when (opcodes[i]) {
+                is Opcode.LayerEffects -> depth++
+                Opcode.LayerEffectsEnd -> if (--depth == 0) return i
+                else -> Unit
+            }
+        }
+        return opcodes.size
+    }
+
+    /**
+     * Draws [content] into a layer of its own so that a shadow can be cast from its outline.
+     *
+     * A shadow is something Compose does to a `GraphicsLayer` rather than to a canvas —
+     * `ShadowUtils.drawShadow` on Skia, a `RenderNode` elevation on Android — so the content has
+     * to be recorded before it can be cast behind.
+     *
+     * Without a [RenderContext.graphicsContext] there is no layer to record into — a headless
+     * render has no composition to take one from — so the content is drawn plainly. The document
+     * is still legible, just flat.
+     */
+    private fun drawEffectLayer(
+        drawScope: DrawScope,
+        effects: Opcode.LayerEffects,
+        content: List<Opcode>,
+        context: RenderContext,
+    ) {
+        val graphics = context.graphicsContext
+        if (graphics == null) {
+            draw(drawScope, content, context)
+            return
+        }
+        val layer = graphics.createGraphicsLayer()
+        try {
+            layer.record(
+                density = drawScope,
+                layoutDirection = drawScope.layoutDirection,
+                size = IntSize(
+                    ceil(effects.width).toInt().coerceAtLeast(1),
+                    ceil(effects.height).toInt().coerceAtLeast(1),
+                ),
+            ) {
+                draw(this, content, context)
+            }
+            // The outline is what the shadow is cast from; without one there is nothing to cast
+            // and the elevation is ignored.
+            layer.setRoundRectOutline(Offset.Zero, Size(effects.width, effects.height), effects.cornerRadius)
+            layer.shadowElevation = effects.elevation
+            // The same properties the official player sets on `Modifier.graphicsLayer`, and in the
+            // order Compose composes them: scale, then rotation about the pivot, then translation.
+            // `cameraDistance` is what makes a rotation about X or Y a projection rather than a
+            // squash; left at Compose's own default when the document does not name one.
+            layer.pivotOffset = Offset(effects.pivotX, effects.pivotY)
+            layer.scaleX = effects.scaleX
+            layer.scaleY = effects.scaleY
+            layer.rotationX = effects.rotationX
+            layer.rotationY = effects.rotationY
+            layer.rotationZ = effects.rotationZ
+            layer.translationX = effects.translationX
+            layer.translationY = effects.translationY
+            effects.cameraDistance?.let { layer.cameraDistance = it }
+            drawScope.drawLayer(layer)
+        } finally {
+            graphics.releaseGraphicsLayer(layer)
+        }
     }
 
     /**

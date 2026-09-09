@@ -22,6 +22,7 @@ import io.github.jamesgoodwin.remotecompose.fixtures.PATTERN_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SAMPLE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SHOWCASE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.WATCH_RC_BYTES
+import io.github.jamesgoodwin.remotecompose.fixtures.SHADOW_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.SWIPE_RC_BYTES
 import io.github.jamesgoodwin.remotecompose.fixtures.TEXTPATH_RC_BYTES
 
@@ -65,6 +66,7 @@ val FIXTURES: Map<String, ByteArray> = mapOf(
     "sample" to SAMPLE_RC_BYTES,
     "shader" to SHADER_RC_BYTES,
     "showcase" to SHOWCASE_RC_BYTES,
+    "shadow" to SHADOW_RC_BYTES,
     "swipe" to SWIPE_RC_BYTES,
     "textpath" to TEXTPATH_RC_BYTES,
     "watch" to WATCH_RC_BYTES,

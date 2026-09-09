@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalGraphicsContext
 import io.github.jamesgoodwin.remotecompose.engine.ComposeTextMetrics
 import io.github.jamesgoodwin.remotecompose.engine.OpcodeExecutor
 import io.github.jamesgoodwin.remotecompose.engine.RenderContext
@@ -40,7 +41,10 @@ fun RealPayloadDemoScreen(bytes: ByteArray) {
         RemoteComposeParser.load(bytes, ComposeTextMetrics(textMeasurer))
     }
     val document by rememberDocumentFrames(loaded)
-    val renderContext = remember(loaded, textMeasurer) { RenderContext(document, textMeasurer) }
+    val graphicsContext = LocalGraphicsContext.current
+    val renderContext = remember(loaded, textMeasurer, graphicsContext) {
+        RenderContext(document, textMeasurer, graphicsContext)
+    }
     renderContext.document = document
 
     // The .rc wire format's coordinates are raw device-independent-ish units matching

@@ -112,27 +112,45 @@ class GraphicsLayerTest {
      * The scale the sample fixture's 16x16 square at [left] is drawn under, which is the last one
      * before that rectangle.
      */
-    private fun scaleBefore(left: Float): Opcode.Scale {
+    /** The layer opened for the square drawn at [left]; a turned component is drawn through one. */
+    private fun layerFor(left: Float): Opcode.LayerEffects {
         val opcodes = RemoteComposeParser.load(sample).frame(0L).opcodes
         val rect = opcodes.indexOfFirst {
             it is Opcode.DrawRect && it.left == left && it.top == 61f && it.bottom == 77f
         }
         assertTrue(rect >= 0, "no square at $left in the fixture")
-        return opcodes.take(rect).filterIsInstance<Opcode.Scale>().last()
+        return opcodes.take(rect).filterIsInstance<Opcode.LayerEffects>().last()
     }
 
     @Test
-    fun turningALayerAboutTheHorizontalAxisForeshortensItsHeight() {
-        // ROTATION_X = 60 degrees: the width is untouched and the height is cos 60 of itself.
-        val scale = scaleBefore(100f)
-        assertEquals(1f, scale.sx, 0.001f)
-        assertEquals(0.5f, scale.sy, 0.001f)
+    fun turningALayerAboutTheHorizontalAxisGoesThroughALayer() {
+        // ROTATION_X cannot be done on the canvas: an affine transform can squash a shape but not
+        // project it, so the rotation is carried to a graphics layer the way the official player
+        // carries it to `Modifier.graphicsLayer`.
+        val layer = layerFor(100f)
+        assertEquals(60f, layer.rotationX, 0.001f)
+        assertEquals(0f, layer.rotationY, 0.001f)
     }
 
     @Test
-    fun turningItAboutTheVerticalAxisForeshortensItsWidth() {
-        val scale = scaleBefore(120f)
-        assertEquals(0.5f, scale.sx, 0.001f)
-        assertEquals(1f, scale.sy, 0.001f)
+    fun turningItAboutTheVerticalAxisGoesThroughALayerToo() {
+        val layer = layerFor(120f)
+        assertEquals(60f, layer.rotationY, 0.001f)
+        assertEquals(0f, layer.rotationX, 0.001f)
+    }
+
+    @Test
+    fun aLayerThatOnlyScalesStaysOnTheCanvas() {
+        // No layer for a transform the canvas can do, so nothing allocates an offscreen buffer to
+        // scale a square.
+        val opcodes = RemoteComposeParser.load(sample).frame(0L).opcodes
+        val scaled = opcodes.indexOfFirst { it is Opcode.DrawRect && it.left == 60f && it.top == 61f }
+        assertTrue(scaled >= 0, "no scaled square in the fixture")
+        val before = opcodes.take(scaled)
+        assertTrue(
+            before.filterIsInstance<Opcode.Scale>().isNotEmpty(),
+            "a scale is applied to the canvas",
+        )
     }
 }
+

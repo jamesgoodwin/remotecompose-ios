@@ -27,6 +27,44 @@ public sealed interface Opcode {
      */
     public data class SaveLayerAlpha(val alpha: Float) : Opcode
 
+    /**
+     * Draws everything up to the matching [LayerEffectsEnd] into a layer of its own, and applies
+     * the graphics-layer properties that only a layer can carry.
+     *
+     * `SHADOW_ELEVATION` needs the content to exist as a layer before anything can be cast behind
+     * it, and a rotation about X or Y needs one before it can be projected: a canvas transform is
+     * affine and cannot foreshorten with distance. Both are properties the official Compose player
+     * sets on `Modifier.graphicsLayer`, which is the same Compose mechanism reached another way.
+     *
+     * Emitted only for a component that asks for elevation or an out-of-plane rotation. A layer
+     * that only scales, translates, or turns in the plane stays on the canvas, where it costs no
+     * offscreen buffer.
+     *
+     * @property width the component's width, which with [height] and [cornerRadius] gives the
+     *   outline a shadow is cast from.
+     * @property cameraDistance `CAMERA_DISTANCE`: how far the viewer is from the plane, which is
+     *   what turns a rotation about X or Y into a perspective one.
+     */
+    public data class LayerEffects(
+        val width: Float,
+        val height: Float,
+        val cornerRadius: Float,
+        val elevation: Float,
+        val rotationX: Float,
+        val rotationY: Float,
+        val rotationZ: Float,
+        val scaleX: Float,
+        val scaleY: Float,
+        val translationX: Float,
+        val translationY: Float,
+        val cameraDistance: Float?,
+        val pivotX: Float,
+        val pivotY: Float,
+    ) : Opcode
+
+    /** Closes the most recent unmatched [LayerEffects]. */
+    public data object LayerEffectsEnd : Opcode
+
     /** Shifts the local coordinate origin by ([dx], [dy]), in DP. */
     public data class Translate(val dx: Float, val dy: Float) : Opcode
 

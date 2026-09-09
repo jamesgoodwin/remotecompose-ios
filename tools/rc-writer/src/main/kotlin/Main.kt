@@ -144,6 +144,10 @@ fun main(args: Array<String>) {
         buildCarouselSample()
         return
     }
+    if (args.getOrNull(0) == "shadow") {
+        buildShadowSample()
+        return
+    }
     if (args.getOrNull(0) == "swipe") {
         buildSwipeSample()
         return
@@ -3495,6 +3499,114 @@ private fun buildCarouselSample() {
  * document carries; `AnimationSpec` fades the row out and the rows below it slide up because the
  * column re-measures without it. The host is told nothing and does nothing.
  */
+/**
+ * `SHADOW_ELEVATION`, the graphics-layer attribute that needs the component drawn into a layer of
+ * its own before a shadow can be cast behind it.
+ *
+ * Attribute numbers are `GraphicsLayerModifierOperation`'s: 10 SHADOW_ELEVATION, 20 SHAPE,
+ * 21 SHAPE_RADIUS. The writer has no named helper for them, so they are set by number.
+ *
+ * The elevations rise across each row so the shadow's growth is visible rather than just its
+ * presence, and the second row is a circle so the outline is round rather than boxed.
+ */
+private fun buildShadowSample() {
+    val platform = JvmRcPlatformServices()
+    val writer = RemoteComposeWriter(300, 520, "shadow", platform)
+
+    val ink = 0xFF1B1B1F.toInt()
+    val faint = 0xFF6F6A78.toInt()
+
+    fun text(value: Int, color: Int, size: Float, weight: Float = 400f, modifier: RecordingModifier = RecordingModifier()) {
+        writer.startTextComponent(modifier, value, color, size, 0, weight, "", 0.toShort(), 1.toShort(), 1, 1)
+        writer.endTextComponent()
+    }
+
+    fun layer(build: GraphicsLayerModifier.() -> Unit) = GraphicsLayerModifier().apply(build)
+
+    writer.startColumn(
+        RecordingModifier().fillMaxSize().background(0xFFF4F2F7.toInt()).padding(16f).spacedBy(10f),
+        1, 4,
+    )
+
+    text(writer.addText("Shadow"), ink, 22f, 700f)
+    text(writer.addText("Elevation 2, 8 and 20"), faint, 12f)
+
+    writer.startRow(RecordingModifier().fillMaxWidth().height(96f).spacedBy(10f), 1, 2)
+    for (elevation in listOf(2f, 8f, 20f)) {
+        writer.startBox(
+            RecordingModifier()
+                .then(
+                    layer {
+                        setFloatAttribute(10, elevation)
+                        setIntAttribute(20, 1)
+                        setFloatAttribute(21, 14f)
+                    },
+                )
+                .width(82f).height(82f)
+                .clip(RoundedRectShape(14f, 14f, 14f, 14f))
+                .background(0xFFFFFFFF.toInt()),
+            1, 2,
+        )
+        text(writer.addText(elevation.toInt().toString()), ink, 18f, 700f)
+        writer.endBox()
+    }
+    writer.endRow()
+
+    text(writer.addText("The same, on a circle"), faint, 12f)
+
+    // SHAPE=2 is a circle, so the outline the shadow is cast from is round rather than boxed.
+    writer.startRow(RecordingModifier().fillMaxWidth().height(110f).spacedBy(14f), 1, 2)
+    for (elevation in listOf(3f, 12f)) {
+        writer.startBox(
+            RecordingModifier()
+                .then(
+                    layer {
+                        setFloatAttribute(10, elevation)
+                        setIntAttribute(20, 2)
+                    },
+                )
+                .width(96f).height(96f)
+                .clip(RoundedRectShape(48f, 48f, 48f, 48f))
+                .background(0xFF6750A4.toInt()),
+            1, 2,
+        )
+        text(writer.addText(elevation.toInt().toString()), 0xFFFFFFFF.toInt(), 20f, 700f)
+        writer.endBox()
+    }
+    writer.endRow()
+
+    text(writer.addText("Turned 50 degrees about Y"), faint, 12f)
+
+    // ROTATION_Y with CAMERA_DISTANCE (attribute 12): the near edge grows and the far edge
+    // shrinks, which an affine canvas transform cannot do. The left card is close to the viewer
+    // so the projection is strong; the right one is far away, so it is nearly a flat squash.
+    writer.startRow(RecordingModifier().fillMaxWidth().height(90f).spacedBy(20f), 1, 2)
+    for ((distance, label) in listOf(6f to "near", 40f to "far")) {
+        writer.startBox(
+            RecordingModifier()
+                .then(
+                    layer {
+                        setFloatAttribute(3, 50f)
+                        setFloatAttribute(12, distance)
+                    },
+                )
+                .width(110f).height(80f)
+                .clip(RoundedRectShape(10f, 10f, 10f, 10f))
+                .background(0xFF00695C.toInt()),
+            1, 2,
+        )
+        text(writer.addText(label), 0xFFFFFFFF.toInt(), 15f, 700f)
+        writer.endBox()
+    }
+    writer.endRow()
+
+    writer.endColumn()
+
+    val bytes = writer.encodeToByteArray()
+    File("shadow.rc").writeBytes(bytes)
+    println("wrote ${bytes.size} bytes to shadow.rc")
+}
+
 private fun buildSwipeSample() {
     val platform = JvmRcPlatformServices()
     val writer = RemoteComposeWriter(300, 420, "swipe", platform)

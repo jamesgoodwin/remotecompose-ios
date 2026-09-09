@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.GraphicsContext
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -35,6 +36,7 @@ import io.github.jamesgoodwin.remotecompose.model.RemoteDocument
 public class RenderContext(
     public var document: RemoteDocument,
     public val textMeasurer: TextMeasurer,
+    public val graphicsContext: GraphicsContext? = null,
 ) {
     private val _interactiveRegions = mutableListOf<InteractiveRegion>()
 

@@ -2,6 +2,7 @@ package io.github.jamesgoodwin.remotecompose.harness
 
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SkiaGraphicsContext
 import androidx.compose.ui.graphics.asComposeCanvas
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.text.TextMeasurer
@@ -108,7 +109,13 @@ public fun main(args: Array<String>) {
     val width = document.header.width
     val height = document.header.height
     val surface = Surface.makeRasterN32Premul(width, height)
-    val renderContext = RenderContext(document, textMeasurer)
+    // Skia's own graphics context, so that a headless render can make the layers a shadow or a
+    // blur needs. There is no composition here to take one from, and without it those two
+    // attributes would be silently missing from the reference the devices are compared against.
+    // It is marked internal to compose-ui and may move between versions; that is a risk worth
+    // taking in a development harness and would not be in the library.
+    @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
+    val renderContext = RenderContext(document, textMeasurer, SkiaGraphicsContext())
 
     CanvasDrawScope().draw(
         density = density,

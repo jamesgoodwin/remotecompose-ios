@@ -684,6 +684,12 @@ internal class LayoutEngine(private val context: RemoteContext, private val text
         out += Opcode.MatrixSave
         out += Opcode.Translate(node.x, node.y)
         var layerRestores = 0
+        // Outermost, so that the shadow is cast behind everything the component draws and the
+        // blur is applied to all of it.
+        var effectLayers = 0
+        node.modifiers.filterIsInstance<Modifier.GraphicsLayer>().firstOrNull()?.let { layer ->
+            effectLayers += paintLayerEffects(node, layer, out)
+        }
         // `AnimateMeasure.getVisibility()`: a component part way in or out is drawn faded, which
         // is the same compositing layer a graphics-layer alpha uses.
         if (node.fadeAlpha < 1f) {
@@ -691,7 +697,7 @@ internal class LayoutEngine(private val context: RemoteContext, private val text
             layerRestores++
         }
         node.modifiers.filterIsInstance<Modifier.GraphicsLayer>().firstOrNull()?.let { layer ->
-            layerRestores += paintGraphicsLayer(node, layer, out)
+            layerRestores += paintGraphicsLayer(node, layer, out, transformOnLayer = effectLayers > 0)
         }
         var px = 0f
         var py = 0f
@@ -752,6 +758,7 @@ internal class LayoutEngine(private val context: RemoteContext, private val text
         for (child in ordered) paint(child, out)
         repeat(scrollRestores) { out += Opcode.MatrixRestore }
         repeat(layerRestores) { out += Opcode.MatrixRestore }
+        repeat(effectLayers) { out += Opcode.LayerEffectsEnd }
         out += Opcode.MatrixRestore
     }
 
@@ -884,10 +891,62 @@ internal class LayoutEngine(private val context: RemoteContext, private val text
      * point that makes the near edge of a turned layer larger than the far one — has nowhere to
      * go. The two agree as the camera goes to infinity and part company as the angle opens.
      */
-    private fun paintGraphicsLayer(node: LayoutNode, layer: Modifier.GraphicsLayer, out: MutableList<Opcode>): Int {
+    /**
+     * The graphics-layer properties that need a layer: `SHADOW_ELEVATION`, and a rotation about X
+     * or Y, which only becomes a perspective one when `CAMERA_DISTANCE` is applied to a layer.
+     *
+     * Returns 1 when it emitted the layer, in which case [paintGraphicsLayer] leaves the transform
+     * alone: the two must not both apply it. A component that only scales, translates or turns in
+     * the plane is left on the canvas, so no offscreen buffer is allocated for it.
+     */
+    private fun paintLayerEffects(node: LayoutNode, layer: Modifier.GraphicsLayer, out: MutableList<Opcode>): Int {
+        fun f(tag: Int): Float? = layer.floats[tag]?.takeUnless { it.isNaN() }
+        val elevation = f(GL_SHADOW_ELEVATION) ?: 0f
+        val rotationX = f(GL_ROTATION_X)
+        val rotationY = f(GL_ROTATION_Y)
+        if (elevation <= 0f && rotationX == null && rotationY == null) return 0
+        val radius = when (layer.ints[GL_SHAPE] ?: 0) {
+            2 -> min(node.width, node.height) / 2f
+            1 -> f(GL_SHAPE_RADIUS) ?: 0f
+            else -> 0f
+        }
+        out += Opcode.LayerEffects(
+            width = node.width,
+            height = node.height,
+            cornerRadius = radius,
+            elevation = elevation,
+            rotationX = rotationX ?: 0f,
+            rotationY = rotationY ?: 0f,
+            rotationZ = f(GL_ROTATION_Z) ?: 0f,
+            scaleX = f(GL_SCALE_X) ?: 1f,
+            scaleY = f(GL_SCALE_Y) ?: 1f,
+            translationX = f(GL_TRANSLATION_X) ?: 0f,
+            translationY = f(GL_TRANSLATION_Y) ?: 0f,
+            cameraDistance = f(GL_CAMERA_DISTANCE),
+            pivotX = (f(GL_TRANSFORM_ORIGIN_X) ?: 0.5f) * node.width,
+            pivotY = (f(GL_TRANSFORM_ORIGIN_Y) ?: 0.5f) * node.height,
+        )
+        return 1
+    }
+
+    private fun paintGraphicsLayer(
+        node: LayoutNode,
+        layer: Modifier.GraphicsLayer,
+        out: MutableList<Opcode>,
+        transformOnLayer: Boolean,
+    ): Int {
         fun f(tag: Int): Float? = layer.floats[tag]?.takeUnless { it.isNaN() }
         var restores = 0
         f(GL_ALPHA)?.let { out += Opcode.SaveLayerAlpha(it); restores++ }
+        if (transformOnLayer) {
+            // Opcode.LayerEffects is carrying it; applying it here as well would double it.
+            val shapeOnly = layer.ints[GL_SHAPE]
+            if (shapeOnly != null && shapeOnly != 0) {
+                val r = if (shapeOnly == 2) min(node.width, node.height) / 2f else (f(GL_SHAPE_RADIUS) ?: 0f)
+                out += Opcode.ClipPath(roundedRectPath(0f, 0f, node.width, node.height, r, r, r, r))
+            }
+            return restores
+        }
         val sx = f(GL_SCALE_X); val sy = f(GL_SCALE_Y); val rz = f(GL_ROTATION_Z)
         val rx = f(GL_ROTATION_X); val ry = f(GL_ROTATION_Y)
         val tx = f(GL_TRANSLATION_X); val ty = f(GL_TRANSLATION_Y)
@@ -1124,6 +1183,8 @@ internal class LayoutEngine(private val context: RemoteContext, private val text
         const val GL_TRANSLATION_X = 7 or 0x400
         const val GL_TRANSLATION_Y = 8 or 0x400
         const val GL_ALPHA = 11 or 0x400
+        const val GL_CAMERA_DISTANCE = 12 or 0x400
+        const val GL_SHADOW_ELEVATION = 10 or 0x400
         const val GL_SHAPE = 20
         const val GL_SHAPE_RADIUS = 21 or 0x400
 
